@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User, UserRole } from '../types';
-import { useDingalanClock } from '../utils/philippineClock';
+import { useDingalanClock, isDingalanTimeOverridden } from '../utils/philippineClock';
+import { TimeAdjusterModal } from './TimeAdjusterModal';
 import {
   ShieldCheck,
   QrCode,
@@ -65,6 +66,7 @@ export const Header: React.FC<HeaderProps> = ({
   const isAdminOrSuperAdmin = currentUser.role === 'admin' || currentUser.role === 'superadmin';
 
   const isSuperadmin = currentUser.role === 'superadmin';
+  const [isTimeAdjusterOpen, setIsTimeAdjusterOpen] = useState(false);
 
   return (
     <header className="sticky top-1 sm:top-2 z-40 px-1.5 sm:px-4 w-full max-w-full overflow-hidden transition-all">
@@ -178,11 +180,11 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Center Section: Kinetic Navigation Pills */}
-        <nav className="hidden xl:flex items-center space-x-1 text-xs font-bold font-mono relative">
+        {/* Center Section: Compact Kinetic Navigation Pills (Slimmer for Computer/Desktop Fit) */}
+        <nav className="hidden xl:flex items-center space-x-0.5 xl:space-x-1 font-bold font-mono relative">
           {[
             { id: 'homepage', label: 'Overview', icon: Sparkles },
-            { id: 'portal', label: 'Field Terminal', icon: QrCode },
+            { id: 'portal', label: 'Terminal', fullLabel: 'Field Terminal', icon: QrCode },
             { id: 'beneficiaries', label: 'Masterlist', icon: Users },
             { id: 'activities', label: 'Programs', icon: Calendar },
             { id: 'reports', label: 'Reports', icon: FileText },
@@ -195,11 +197,11 @@ export const Header: React.FC<HeaderProps> = ({
             return (
               <motion.button
                 key={tab.id}
-                whileHover={{ scale: 1.07, y: -1 }}
-                whileTap={{ scale: 0.92, y: 1 }}
+                whileHover={{ scale: 1.05, y: -1 }}
+                whileTap={{ scale: 0.94 }}
                 transition={{ type: 'spring', stiffness: 500, damping: 22 }}
                 onClick={() => setActiveTab(tab.id)}
-                className={`relative px-3 py-1.5 rounded-full flex items-center space-x-1.5 cursor-pointer select-none transition-colors duration-200 group ${
+                className={`relative px-1.5 py-0.5 lg:px-1.5 lg:py-0.5 xl:px-2 xl:py-0.5 rounded-full flex items-center space-x-1 cursor-pointer select-none transition-colors duration-200 group text-[10px] lg:text-[10px] xl:text-[10.5px] 2xl:text-xs ${
                   isActive
                     ? 'text-slate-950 font-black'
                     : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
@@ -208,13 +210,13 @@ export const Header: React.FC<HeaderProps> = ({
                 {isActive && (
                   <motion.div
                     layoutId="kineticHeaderTabPill"
-                    className="absolute inset-0 rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-400 shadow-[0_0_18px_rgba(16,185,129,0.5),0_2px_8px_rgba(0,0,0,0.35)] border border-emerald-300"
+                    className="absolute inset-0 rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-400 shadow-[0_0_12px_rgba(16,185,129,0.5),0_2px_6px_rgba(0,0,0,0.35)] border border-emerald-300"
                     transition={{ type: 'spring', stiffness: 500, damping: 28, mass: 0.8 }}
                   />
                 )}
-                <span className="relative z-10 flex items-center space-x-1.5">
+                <span className="relative z-10 flex items-center space-x-1">
                   <Icon
-                    className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 group-hover:scale-110 ${
+                    className={`w-3 h-3 lg:w-2.5 lg:h-2.5 xl:w-3 xl:h-3 shrink-0 transition-transform duration-200 group-hover:scale-110 ${
                       isActive ? 'text-slate-950' : 'text-slate-400 group-hover:text-emerald-400'
                     }`}
                   />
@@ -223,10 +225,11 @@ export const Header: React.FC<HeaderProps> = ({
                     className={`inline-block transition-all duration-200 select-none ${
                       isActive
                         ? 'font-black text-slate-950 tracking-tight drop-shadow-[0_1px_2px_rgba(255,255,255,0.45)] kinetic-text-float'
-                        : 'text-slate-300 font-bold group-hover:text-white group-hover:tracking-wider group-hover:-translate-y-0.5 group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.7)]'
+                        : 'text-slate-300 font-bold group-hover:text-white group-hover:tracking-wider group-hover:-translate-y-0.5'
                     }`}
                   >
-                    {tab.label}
+                    <span className="hidden 2xl:inline">{tab.fullLabel || tab.label}</span>
+                    <span className="2xl:hidden">{tab.label}</span>
                   </span>
                 </span>
               </motion.button>
@@ -234,109 +237,129 @@ export const Header: React.FC<HeaderProps> = ({
           })}
         </nav>
 
-        {/* Right Section: Small Live Clock & Kinetic Glowing Action Pills */}
-        <div className="flex items-center space-x-1 xs:space-x-1.5 sm:space-x-2 shrink-0">
-          {/* Small Live Clock - Synchronized for Dingalan, Aurora */}
-          <motion.div
-            whileHover={{ scale: 1.03 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-            className="hidden lg:flex items-center space-x-1.5 text-[11px] font-mono text-emerald-300 bg-slate-950/90 border border-emerald-500/50 hover:border-emerald-400/80 px-3 py-1 rounded-full shadow-inner select-none transition-colors duration-200 group"
-            title="Opisyal at Awtorisadong Oras sa Dingalan, Aurora (Philippine Standard Time UTC+8)"
-          >
-            <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0 animate-pulse" />
-            <div className="flex items-center space-x-1.5 font-bold">
-              <span className="text-emerald-400 transition-all duration-200 group-hover:drop-shadow-[0_0_6px_rgba(52,211,153,0.7)] group-hover:tracking-wide">
-                {clock.dayOfWeek}, {clock.month} {clock.dayNum}, {clock.year}
-              </span>
-              <span className="text-slate-600 font-mono">•</span>
-              <span className="text-white font-mono font-extrabold tracking-wide kinetic-text-glow">
-                {clock.timeWithSeconds}
-              </span>
+        {/* Right Section: Compact Action Pills (Fitted & Smaller so all buttons never overflow on desktop) */}
+        <div className="flex items-center space-x-1 lg:space-x-1 shrink-0">
+          {/* Live Clock: Pwedeng palitan sa Admin Account lamang */}
+          {isAdminOrSuperAdmin ? (
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.03 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+              onClick={() => setIsTimeAdjusterOpen(true)}
+              className={`hidden lg:flex items-center space-x-1 text-[9.5px] lg:text-[9px] xl:text-[10px] font-mono px-1.5 py-0.5 lg:px-1.5 lg:py-0.5 xl:px-2 xl:py-0.5 rounded-full shadow-inner select-none transition-all duration-200 cursor-pointer group shrink-0 ${
+                isDingalanTimeOverridden()
+                  ? 'text-amber-300 bg-slate-950/95 border border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.35)]'
+                  : 'text-emerald-300 bg-slate-950/90 border border-emerald-500/50 hover:border-emerald-400/80 hover:bg-slate-900'
+              }`}
+              title="Admin Control: Pindutin para palitan o i-adjust ang opisyal na oras (PST)"
+            >
+              <Clock className={`w-2.5 h-2.5 lg:w-2.5 lg:h-2.5 xl:w-3 xl:h-3 shrink-0 ${isDingalanTimeOverridden() ? 'text-amber-400 animate-pulse' : 'text-emerald-400 animate-pulse'}`} />
+              <div className="flex items-center space-x-1 font-bold">
+                <span className={`hidden 2xl:inline ${isDingalanTimeOverridden() ? 'text-amber-400' : 'text-emerald-400'}`}>
+                  {clock.dayOfWeek}, {clock.month} {clock.dayNum} •
+                </span>
+                <span className="text-white font-mono font-extrabold tracking-wide">
+                  {clock.timeWithSeconds}
+                </span>
+                <span className="ml-1 text-[8px] lg:text-[7.5px] xl:text-[8px] px-1.5 py-0.2 rounded bg-emerald-500 text-slate-950 uppercase font-black tracking-wider transition-all duration-200 shadow-sm">
+                  PALITAN
+                </span>
+                {isDingalanTimeOverridden() ? (
+                  <span className="ml-0.5 text-[7px] px-1 py-0.2 bg-amber-500/25 text-amber-200 border border-amber-400/40 rounded uppercase font-black">
+                    MANUAL
+                  </span>
+                ) : null}
+              </div>
+            </motion.button>
+          ) : (
+            <div
+              className="hidden lg:flex items-center space-x-1 text-[9.5px] lg:text-[9px] xl:text-[10px] font-mono px-1.5 py-0.5 lg:px-1.5 lg:py-0.5 xl:px-2 xl:py-0.5 rounded-full shadow-inner select-none shrink-0 text-emerald-300 bg-slate-950/90 border border-emerald-500/50"
+              title="Opisyal na Oras (PST)"
+            >
+              <Clock className="w-2.5 h-2.5 lg:w-2.5 lg:h-2.5 xl:w-3 xl:h-3 shrink-0 text-emerald-400 animate-pulse" />
+              <div className="flex items-center space-x-1 font-bold">
+                <span className="hidden 2xl:inline text-emerald-400">
+                  {clock.dayOfWeek}, {clock.month} {clock.dayNum} •
+                </span>
+                <span className="text-white font-mono font-extrabold tracking-wide">
+                  {clock.timeWithSeconds}
+                </span>
+              </div>
             </div>
-          </motion.div>
+          )}
 
-          {/* Generate Event QR Button with Kinetic Text Animation */}
+          {/* Generate Event QR Button */}
           {onOpenGenerateQrModal && (
             <motion.button
-              whileHover={{ scale: 1.07, y: -1 }}
-              whileTap={{ scale: 0.92, y: 1 }}
+              whileHover={{ scale: 1.05, y: -1 }}
+              whileTap={{ scale: 0.94 }}
               transition={{ type: 'spring', stiffness: 450, damping: 18 }}
               onClick={onOpenGenerateQrModal}
-              className="relative overflow-hidden group w-6.5 h-6.5 xs:w-7 xs:h-7 sm:w-auto sm:h-auto p-1 xs:p-1.5 sm:px-3 sm:py-1 rounded-full bg-gradient-to-r from-[#00e599] via-[#00d9b4] to-[#00d4ff] hover:from-[#00f2a5] hover:to-[#22e1ff] text-slate-950 font-mono font-bold text-[10px] sm:text-xs flex items-center justify-center space-x-1 shadow-[0_0_14px_rgba(0,229,153,0.4)] cursor-pointer shrink-0 border border-emerald-300/40 select-none"
+              className="relative overflow-hidden group px-1.5 py-0.5 lg:px-1.5 lg:py-0.5 xl:px-2 xl:py-0.5 rounded-full bg-gradient-to-r from-[#00e599] via-[#00d9b4] to-[#00d4ff] hover:from-[#00f2a5] hover:to-[#22e1ff] text-slate-950 font-mono font-bold text-[9.5px] lg:text-[9.5px] xl:text-[10.5px] flex items-center justify-center space-x-1 shadow-[0_0_10px_rgba(0,229,153,0.35)] cursor-pointer shrink-0 border border-emerald-300/40 select-none"
               title="Generate Cleanup Event QR Code & Paalala"
             >
-              <QrCode className="w-3 h-3 xs:w-3.5 xs:h-3.5 text-slate-950 shrink-0 transition-transform duration-300 group-hover:rotate-12" />
-              <span className="hidden sm:inline font-black tracking-tight group-hover:tracking-wider transition-all duration-200 group-hover:drop-shadow-[0_0_6px_rgba(255,255,255,0.7)] kinetic-text-shine">
+              <QrCode className="w-2.5 h-2.5 lg:w-2.5 lg:h-2.5 xl:w-3 xl:h-3 text-slate-950 shrink-0 transition-transform duration-300 group-hover:rotate-12" />
+              <span className="font-black tracking-tight group-hover:tracking-wider transition-all duration-200">
                 Event QR
               </span>
-              {/* Kinetic sheen sweep */}
-              <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none" />
             </motion.button>
           )}
 
-          {/* Anonymous Messages Inbox Button with Kinetic Text Glow */}
+          {/* Anonymous Messages Inbox Button */}
           {isAdminOrSuperAdmin && onOpenAnonymousInboxModal && (
             <motion.button
-              whileHover={{ scale: 1.07, y: -1 }}
-              whileTap={{ scale: 0.92, y: 1 }}
+              whileHover={{ scale: 1.05, y: -1 }}
+              whileTap={{ scale: 0.94 }}
               transition={{ type: 'spring', stiffness: 450, damping: 18 }}
               onClick={onOpenAnonymousInboxModal}
-              className="relative overflow-hidden group h-6.5 xs:h-7 sm:h-auto px-1.5 xs:px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 hover:border-amber-400 text-amber-300 font-mono font-bold text-[10px] sm:text-xs flex items-center justify-center space-x-1.5 shadow-[0_0_12px_rgba(245,158,11,0.25)] cursor-pointer shrink-0 select-none"
+              className="relative overflow-hidden group px-1.5 py-0.5 lg:px-1.5 lg:py-0.5 xl:px-2 xl:py-0.5 rounded-full bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 hover:border-amber-400 text-amber-300 font-mono font-bold text-[9.5px] lg:text-[9.5px] xl:text-[10.5px] flex items-center justify-center space-x-1 shadow-[0_0_10px_rgba(245,158,11,0.2)] cursor-pointer shrink-0 select-none"
               title="Tingnan ang mga Anonymous Messages at Reports mula sa field (Admin Only)"
             >
-              <EyeOff className="w-3 h-3 xs:w-3.5 xs:h-3.5 text-amber-400 shrink-0 transition-transform duration-300 group-hover:scale-110" />
-              <span className="hidden md:inline font-bold tracking-tight group-hover:tracking-wider transition-all duration-200 group-hover:text-amber-200 group-hover:drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]">
-                Anonymous Inbox
+              <EyeOff className="w-2.5 h-2.5 lg:w-2.5 lg:h-2.5 xl:w-3 xl:h-3 text-amber-400 shrink-0 transition-transform duration-300 group-hover:scale-110" />
+              <span className="font-bold tracking-tight">
+                <span className="hidden 2xl:inline">Anonymous Inbox</span>
+                <span className="2xl:hidden">Anon Inbox</span>
               </span>
               {anonymousMessagesCount > 0 && (
-                <motion.span
-                  animate={{ scale: [1, 1.25, 1] }}
-                  transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-                  className="px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 font-black text-[8px] xs:text-[9px] leading-none shadow-[0_0_8px_rgba(251,191,36,0.6)]"
-                >
+                <span className="px-1 py-0.2 rounded-full bg-amber-400 text-slate-950 font-black text-[7.5px] leading-none shadow-[0_0_6px_rgba(251,191,36,0.6)]">
                   {anonymousMessagesCount}
-                </motion.span>
+                </span>
               )}
-              <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
             </motion.button>
           )}
 
-          {/* Accomplishment Attendance Records Button with Kinetic Text Glow */}
+          {/* Accomplishment Attendance Records Button */}
           {isAdminOrSuperAdmin && onOpenAccomplishmentModal && (
             <motion.button
-              whileHover={{ scale: 1.07, y: -1 }}
-              whileTap={{ scale: 0.92, y: 1 }}
+              whileHover={{ scale: 1.05, y: -1 }}
+              whileTap={{ scale: 0.94 }}
               transition={{ type: 'spring', stiffness: 450, damping: 18 }}
               onClick={onOpenAccomplishmentModal}
-              className="relative overflow-hidden group h-6.5 xs:h-7 sm:h-auto px-1.5 xs:px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/50 hover:border-emerald-400 text-emerald-300 font-mono font-bold text-[10px] sm:text-xs flex items-center justify-center space-x-1.5 shadow-[0_0_12px_rgba(16,185,129,0.25)] cursor-pointer shrink-0 select-none"
+              className="relative overflow-hidden group px-1.5 py-0.5 lg:px-1.5 lg:py-0.5 xl:px-2 xl:py-0.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/50 hover:border-emerald-400 text-emerald-300 font-mono font-bold text-[9.5px] lg:text-[9.5px] xl:text-[10.5px] flex items-center justify-center space-x-1 shadow-[0_0_10px_rgba(16,185,129,0.2)] cursor-pointer shrink-0 select-none"
               title="Tingnan ang lahat ng accomplishment photos at attendance records ng mga naglinis"
             >
-              <Images className="w-3 h-3 xs:w-3.5 xs:h-3.5 text-emerald-400 shrink-0 transition-transform duration-300 group-hover:scale-110" />
-              <span className="hidden md:inline font-bold tracking-tight group-hover:tracking-wider transition-all duration-200 group-hover:text-emerald-200 group-hover:drop-shadow-[0_0_8px_rgba(52,211,153,0.8)]">
-                Accomplishment Attendance
+              <Images className="w-2.5 h-2.5 lg:w-2.5 lg:h-2.5 xl:w-3 xl:h-3 text-emerald-400 shrink-0 transition-transform duration-300 group-hover:scale-110" />
+              <span className="font-bold tracking-tight">
+                <span className="hidden 2xl:inline">Accomplishment Attendance</span>
+                <span className="2xl:hidden">Accomplishments</span>
               </span>
-              <motion.span
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{ repeat: Infinity, duration: 2.2, ease: "easeInOut" }}
-                className="px-1.5 py-0.2 rounded-full bg-emerald-400 text-slate-950 font-black text-[8px] xs:text-[9px] leading-none shadow-[0_0_8px_rgba(52,211,153,0.6)]"
-              >
+              <span className="px-1 py-0.2 rounded-full bg-emerald-400 text-slate-950 font-black text-[7.5px] leading-none shadow-[0_0_6px_rgba(52,211,153,0.6)]">
                 {attendancesCount}
-              </motion.span>
-              <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
+              </span>
             </motion.button>
           )}
 
-          {/* Log Out Button with Kinetic Text Shift */}
+          {/* Log Out Button */}
           <motion.button
-            whileHover={{ scale: 1.07, y: -1 }}
-            whileTap={{ scale: 0.92, y: 1 }}
+            whileHover={{ scale: 1.05, y: -1 }}
+            whileTap={{ scale: 0.94 }}
             transition={{ type: 'spring', stiffness: 450, damping: 18 }}
             onClick={onLogout || onOpenLoginModal}
-            className="group w-6.5 h-6.5 xs:w-7 xs:h-7 sm:w-auto sm:h-auto p-1 xs:p-1.5 sm:px-3 sm:py-1 rounded-full bg-slate-900/80 hover:bg-rose-950/80 border border-slate-700/80 hover:border-rose-500/60 text-slate-300 hover:text-rose-200 font-bold text-xs tracking-wide shadow-[0_0_10px_rgba(0,0,0,0.5)] transition-colors flex items-center justify-center space-x-1.5 shrink-0 cursor-pointer select-none"
+            className="group px-1.5 py-0.5 lg:px-1.5 lg:py-0.5 xl:px-2 xl:py-0.5 rounded-full bg-slate-900/80 hover:bg-rose-950/80 border border-slate-700/80 hover:border-rose-500/60 text-slate-300 hover:text-rose-200 font-bold text-[9.5px] lg:text-[9.5px] xl:text-[10.5px] tracking-wide shadow-[0_0_8px_rgba(0,0,0,0.5)] transition-colors flex items-center justify-center space-x-1 shrink-0 cursor-pointer select-none"
             title="Mag-log out sa system"
           >
-            <LogOut className="w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-3 sm:h-3 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-rose-400" />
-            <span className="hidden sm:inline font-bold tracking-tight group-hover:tracking-wider group-hover:translate-x-0.5 transition-all duration-200 group-hover:text-rose-300 group-hover:drop-shadow-[0_0_6px_rgba(244,63,94,0.7)]">
+            <LogOut className="w-2.5 h-2.5 lg:w-2.5 lg:h-2.5 xl:w-3 xl:h-3 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-rose-400" />
+            <span className="font-bold tracking-tight">
               Log Out
             </span>
           </motion.button>
@@ -378,6 +401,13 @@ export const Header: React.FC<HeaderProps> = ({
           );
         })}
       </div>
+
+      {isTimeAdjusterOpen && (
+        <TimeAdjusterModal
+          isOpen={isTimeAdjusterOpen}
+          onClose={() => setIsTimeAdjusterOpen(false)}
+        />
+      )}
     </header>
   );
 };

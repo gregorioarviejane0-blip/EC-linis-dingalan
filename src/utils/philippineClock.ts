@@ -35,6 +35,10 @@ export function resetDingalanTimeOverride() {
   }
 }
 
+export function isDingalanTimeOverridden(): boolean {
+  return manualTimeOverrideOffsetMs !== 0;
+}
+
 /**
  * Synchronize with the authoritative server time in Dingalan, Aurora
  */

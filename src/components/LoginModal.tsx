@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, UserRole, Beneficiary, EventQrBroadcast } from '../types';
+import { User, UserRole, Beneficiary, EventQrBroadcast, AnonymousMessage } from '../types';
 import { api } from '../services/api';
 import { INITIAL_EVENT_BROADCAST } from '../data/seedData';
 import QRCode from 'qrcode';
 import { checkEventCutoff, burnGeotagWatermark, getGpsCoordinates, detectDingalanAreaByCoordinates } from '../utils/watermarkEngine';
-import { useDingalanClock, getDingalanNow, checkIsBroadcastActive, formatPhilippineDateTime } from '../utils/philippineClock';
+import { useDingalanClock, getDingalanNow, checkIsBroadcastActive, formatPhilippineDateTime, isDingalanTimeOverridden } from '../utils/philippineClock';
 import { generateStyledLguQrDataUrl } from '../utils/qrPassGenerator';
 import { SendAnonymousMessageModal } from './SendAnonymousMessageModal';
 import { FullScreenPhotoViewer } from './FullScreenPhotoViewer';
@@ -47,6 +47,9 @@ import {
   Images,
   Trash2,
   Navigation,
+  Send,
+  HelpCircle,
+  FileText,
 } from 'lucide-react';
 import systemWallpaper from '../assets/images/dingalan_system_wallpaper.jpg';
 
@@ -127,11 +130,67 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const modalScrollRef = useRef<HTMLDivElement>(null);
 
-  // Switchable Active View: 'login' | 'event' | 'overview' | 'upload'
-  const [activeView, setActiveView] = useState<'login' | 'event' | 'overview' | 'upload'>('event');
+  // Switchable Active View: 'login' | 'event' | 'overview' | 'upload' | 'anonymous'
+  const [activeView, setActiveView] = useState<'login' | 'event' | 'overview' | 'upload' | 'anonymous'>('event');
 
-  // On computer/desktop screens (>= 1024px), ensure activeView stays on 'event', 'login', or 'upload'
-  // because the Mensahe button is hidden on computer and the system overview is already visible on the left
+  // Send Anonymous Message Form State inside Right Box
+  const [anonCategory, setAnonCategory] = useState<AnonymousMessage['category']>('report');
+  const [anonPriority, setAnonPriority] = useState<AnonymousMessage['priority']>('normal');
+  const [anonMessageText, setAnonMessageText] = useState<string>('');
+  const [anonIsSubmitting, setAnonIsSubmitting] = useState<boolean>(false);
+  const [anonIsSuccess, setAnonIsSuccess] = useState<boolean>(false);
+  const [anonErrorMessage, setAnonErrorMessage] = useState<string | null>(null);
+
+  const handleSendAnonymousMessage = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!anonMessageText.trim()) {
+      setAnonErrorMessage('Pakiusap isulat ang inyong anonymous na mensahe bago mag-submit.');
+      return;
+    }
+
+    setAnonIsSubmitting(true);
+    setAnonErrorMessage(null);
+
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const now = getDingalanNow();
+    const dtInfo = formatPhilippineDateTime(now);
+
+    const categoryLabels: Record<string, string> = {
+      report: 'Ulat / Sumbong ukol sa Gawain o Area',
+      feedback: 'Mungkahi / Rekomendasyon',
+      allowance_inquiry: 'Katanungan ukol sa Stipend / Attendance',
+      emergency: 'Kagipitan / Emergency sa Field',
+      general: 'Iba pang Kompidensiyal na Pabatid',
+    };
+
+    const payload: Omit<AnonymousMessage, 'id'> = {
+      senderAlias: `Anonymous Participant #ANON-${randomSuffix}`,
+      category: anonCategory,
+      categoryLabelTagalog: categoryLabels[anonCategory] || 'Pangkalahatang Pabatid',
+      priority: anonPriority,
+      message: anonMessageText.trim(),
+      referencedActivityTitle: eventBroadcast?.activityTitle,
+      referencedLocation: eventBroadcast
+        ? `Brgy. ${eventBroadcast.barangay} • ${eventBroadcast.targetArea}`
+        : undefined,
+      timestamp: now.toISOString(),
+      localPhTime: dtInfo.fullCombinedTagalog,
+      status: 'unread',
+    };
+
+    try {
+      const res = await api.sendAnonymousMessage(payload);
+      if (res.success) {
+        setAnonIsSuccess(true);
+      }
+    } catch (err: any) {
+      setAnonErrorMessage(err.message || 'Nagkaroon ng aberya sa pagpapadala ng anonymous message.');
+    } finally {
+      setAnonIsSubmitting(false);
+    }
+  };
+
+  // On computer/desktop screens (>= 1024px), ensure activeView stays on 'event', 'login', 'upload', or 'anonymous'
   useEffect(() => {
     const handleCheckDesktop = () => {
       if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
@@ -394,11 +453,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           }
         }
       } else {
-        const res = await api.attendance.create(payload);
-        setUploadSubmittedRecord(res);
-        setUploadIsSuccess(true);
-        if (propOnSuccessSubmitted) {
-          propOnSuccessSubmitted(res);
+        const res = await api.submitAttendanceCheckin(payload);
+        if (res.success && res.attendance) {
+          setUploadSubmittedRecord(res.attendance);
+          setUploadIsSuccess(true);
+          if (propOnSuccessSubmitted) {
+            propOnSuccessSubmitted(res.attendance);
+          }
         }
       }
     } catch (err: any) {
@@ -1175,9 +1236,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         </div>
 
         {/* Right Header Action Buttons */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
-          {/* Unified Fit-To-Screen Tab Bar with Animated Spring Indicator */}
-          <div className="grid grid-cols-4 sm:flex sm:items-center lg:flex lg:items-center gap-1 p-1 rounded-xl sm:rounded-2xl bg-slate-900/90 border border-slate-700/80 shadow-md w-full sm:w-auto relative select-none">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 sm:gap-2 lg:gap-1.5 w-full sm:w-auto max-w-full">
+          {/* Unified Fit-To-Screen Tab Bar with Animated Spring Indicator (Fitted & Smaller on Computer) */}
+          <div className="flex items-center justify-between sm:justify-start gap-1 lg:gap-0.5 p-1 lg:p-0.5 rounded-xl sm:rounded-2xl lg:rounded-xl bg-slate-900/90 border border-slate-700/80 shadow-md w-full sm:w-auto relative select-none max-w-full overflow-hidden">
             {/* Notice & QR Code Button */}
             <motion.button
               type="button"
@@ -1190,7 +1251,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   modalScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
                 }, 50);
               }}
-              className={`relative flex items-center justify-center space-x-1 sm:space-x-1.5 text-[10px] sm:text-xs font-mono font-bold px-1.5 sm:px-3.5 py-1.5 rounded-lg sm:rounded-xl transition-colors duration-200 cursor-pointer shadow-sm ${
+              className={`relative flex-1 sm:flex-initial flex items-center justify-center space-x-1 sm:space-x-1.5 lg:space-x-1 text-[10px] sm:text-xs lg:text-[10px] xl:text-[11px] font-mono font-bold px-2 sm:px-3 lg:px-2 py-1.5 lg:py-1 rounded-lg sm:rounded-xl lg:rounded-lg transition-colors duration-200 cursor-pointer shadow-sm uppercase tracking-wide ${
                 isUnfolded && activeView === 'event'
                   ? 'text-slate-950 font-black'
                   : 'text-emerald-300 hover:text-white hover:bg-slate-800/60'
@@ -1200,14 +1261,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               {isUnfolded && activeView === 'event' && (
                 <motion.div
                   layoutId="activeTabIndicator"
-                  className="absolute inset-0 rounded-lg sm:rounded-xl fluid-btn-emerald border border-emerald-300"
+                  className="absolute inset-0 rounded-lg sm:rounded-xl lg:rounded-lg fluid-btn-emerald border border-emerald-300"
                   transition={{ type: 'spring', stiffness: 500, damping: 32 }}
                 />
               )}
-              <span className="relative z-10 flex items-center space-x-1 sm:space-x-1.5">
-                <Radio className={`w-3.5 h-3.5 shrink-0 ${isUnfolded && activeView === 'event' ? 'text-slate-950 animate-pulse' : 'text-emerald-300'}`} />
-                <span className="truncate hidden xs:inline">Advisory & QR</span>
-                <span className="truncate xs:hidden">Advisory</span>
+              <span className="relative z-10 flex items-center space-x-1 sm:space-x-1.5 lg:space-x-1">
+                <Radio className={`w-3.5 h-3.5 lg:w-3 lg:h-3 shrink-0 ${isUnfolded && activeView === 'event' ? 'text-slate-950 animate-pulse' : 'text-emerald-400'}`} />
+                <span className="truncate hidden xs:inline">ADVISORY & QR</span>
+                <span className="truncate xs:hidden">ADVISORY</span>
               </span>
             </motion.button>
 
@@ -1217,7 +1278,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               whileTap={{ scale: 0.94 }}
               whileHover={{ scale: 1.02 }}
               onClick={handleAdminPortalClick}
-              className={`relative flex items-center justify-center space-x-1 sm:space-x-1.5 text-[10px] sm:text-xs font-mono font-bold px-1.5 sm:px-3.5 py-1.5 rounded-lg sm:rounded-xl transition-colors duration-200 cursor-pointer shadow-sm ${
+              className={`relative flex-1 sm:flex-initial flex items-center justify-center space-x-1 sm:space-x-1.5 lg:space-x-1 text-[10px] sm:text-xs lg:text-[10px] xl:text-[11px] font-mono font-bold px-2 sm:px-3 lg:px-2 py-1.5 lg:py-1 rounded-lg sm:rounded-xl lg:rounded-lg transition-colors duration-200 cursor-pointer shadow-sm uppercase tracking-wide ${
                 isUnfolded && activeView === 'login'
                   ? 'text-slate-950 font-black'
                   : 'text-white hover:bg-slate-800/60'
@@ -1227,47 +1288,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               {isUnfolded && activeView === 'login' && (
                 <motion.div
                   layoutId="activeTabIndicator"
-                  className="absolute inset-0 rounded-lg sm:rounded-xl bg-white border border-white shadow-[0_0_16px_rgba(255,255,255,0.45)]"
+                  className="absolute inset-0 rounded-lg sm:rounded-xl lg:rounded-lg bg-white border border-white shadow-[0_0_16px_rgba(255,255,255,0.45)]"
                   transition={{ type: 'spring', stiffness: 500, damping: 32 }}
                 />
               )}
-              <span className="relative z-10 flex items-center space-x-1 sm:space-x-1.5">
-                <ShieldCheck className={`w-3.5 h-3.5 shrink-0 ${isUnfolded && activeView === 'login' ? 'text-slate-950' : 'text-slate-200'}`} />
-                <span className="truncate hidden xs:inline">Admin Login</span>
-                <span className="truncate xs:hidden">Admin</span>
-              </span>
-            </motion.button>
-
-            {/* System Overview / Mensahe Button (SHOWN ON MOBILE/TABLET ONLY, HIDDEN ON COMPUTER) */}
-            <motion.button
-              type="button"
-              whileTap={{ scale: 0.94 }}
-              whileHover={{ scale: 1.02 }}
-              onClick={() => {
-                setIsUnfolded(true);
-                setActiveView('overview');
-                setTimeout(() => {
-                  modalScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-                }, 50);
-              }}
-              className={`relative flex lg:hidden items-center justify-center space-x-1 sm:space-x-1.5 text-[10px] sm:text-xs font-mono font-bold px-1.5 sm:px-3.5 py-1.5 rounded-lg sm:rounded-xl transition-colors duration-200 cursor-pointer shadow-sm ${
-                isUnfolded && activeView === 'overview'
-                  ? 'text-slate-950 font-black'
-                  : 'text-teal-300 hover:text-white hover:bg-slate-800/60'
-              }`}
-              title="Tingnan ang System Overview at Magpadala ng Mensahe"
-            >
-              {isUnfolded && activeView === 'overview' && (
-                <motion.div
-                  layoutId="activeTabIndicator"
-                  className="absolute inset-0 rounded-lg sm:rounded-xl bg-teal-400 border border-teal-300 shadow-[0_0_16px_rgba(45,212,191,0.55)]"
-                  transition={{ type: 'spring', stiffness: 500, damping: 32 }}
-                />
-              )}
-              <span className="relative z-10 flex items-center space-x-1 sm:space-x-1.5">
-                <EyeOff className={`w-3.5 h-3.5 shrink-0 ${isUnfolded && activeView === 'overview' ? 'text-slate-950' : 'text-teal-300'}`} />
-                <span className="truncate hidden xs:inline">Mensahe & Info</span>
-                <span className="truncate xs:hidden">Mensahe</span>
+              <span className="relative z-10 flex items-center space-x-1 sm:space-x-1.5 lg:space-x-1">
+                <ShieldCheck className={`w-3.5 h-3.5 lg:w-3 lg:h-3 shrink-0 ${isUnfolded && activeView === 'login' ? 'text-slate-950' : 'text-slate-200'}`} />
+                <span className="truncate hidden xs:inline">ADMIN LOGIN</span>
+                <span className="truncate xs:hidden">ADMIN</span>
               </span>
             </motion.button>
 
@@ -1283,7 +1311,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   modalScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
                 }, 50);
               }}
-              className={`relative flex items-center justify-center space-x-1 sm:space-x-1.5 text-[10px] sm:text-xs font-mono font-bold px-2 sm:px-3.5 py-1.5 rounded-lg sm:rounded-xl transition-all cursor-pointer overflow-hidden group select-none border border-emerald-300/60 shadow ${
+              className={`relative flex-1 sm:flex-initial flex items-center justify-center space-x-1 sm:space-x-1.5 lg:space-x-1 text-[10px] sm:text-xs lg:text-[10px] xl:text-[11px] font-mono font-bold px-2 sm:px-3 lg:px-2 py-1.5 lg:py-1 rounded-lg sm:rounded-xl lg:rounded-lg transition-all cursor-pointer overflow-hidden group select-none border border-emerald-300/60 shadow uppercase tracking-wide ${
                 isUnfolded && activeView === 'upload'
                   ? 'text-slate-950 font-black'
                   : 'fluid-btn-emerald text-slate-950 hover:scale-[1.02]'
@@ -1293,24 +1321,27 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               {isUnfolded && activeView === 'upload' && (
                 <motion.div
                   layoutId="activeTabIndicator"
-                  className="absolute inset-0 rounded-lg sm:rounded-xl bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 border border-emerald-300 shadow-[0_0_16px_rgba(16,185,129,0.7)]"
+                  className="absolute inset-0 rounded-lg sm:rounded-xl lg:rounded-lg bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 border border-emerald-300 shadow-[0_0_16px_rgba(16,185,129,0.7)]"
                   transition={{ type: 'spring', stiffness: 500, damping: 32 }}
                 />
               )}
-              <span className="relative z-10 flex items-center space-x-1 sm:space-x-1.5">
-                <Camera className="w-3.5 h-3.5 text-slate-950 shrink-0 group-hover:rotate-12 transition-transform duration-300" />
-                <span className="truncate uppercase font-black text-slate-950">Upload</span>
+              <span className="relative z-10 flex items-center space-x-1 sm:space-x-1.5 lg:space-x-1">
+                <Camera className="w-3.5 h-3.5 lg:w-3 lg:h-3 text-slate-950 shrink-0 group-hover:rotate-12 transition-transform duration-300" />
+                <span className="truncate uppercase font-black text-slate-950">UPLOAD</span>
               </span>
             </motion.button>
           </div>
 
+          {/* Official Philippine Standard Time Clock Pill (Strictly Read-Only on Login Page - Bawal Baguhin Dito) */}
           <div
-            className="hidden sm:flex items-center space-x-2 text-[11px] lg:text-xs font-mono text-emerald-300 bg-slate-900/90 border border-emerald-500/60 px-3 py-1.5 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.3)] select-none shrink-0"
-            title="Opisyal at Awtorisadong Oras sa Dingalan, Aurora (Philippine Standard Time UTC+8)"
+            className="hidden sm:flex items-center space-x-1.5 lg:space-x-1 text-[11px] lg:text-[10px] xl:text-[10.5px] font-mono px-3 py-1.5 lg:px-2.5 lg:py-1 rounded-full select-none shrink-0 bg-slate-900/90 border border-emerald-500/50 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.2)]"
+            title="Opisyal na Philippine Standard Time (PST, UTC+8) • Read-only sa Login Page"
           >
-            <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0 animate-pulse" />
-            <div className="flex items-center space-x-1.5 font-bold tracking-tight">
-              <span className="text-emerald-300 font-extrabold">{clock.dayOfWeek}, {clock.month} {clock.dayNum}, {clock.year}</span>
+            <Clock className="w-3.5 h-3.5 lg:w-3 lg:h-3 shrink-0 text-emerald-400 animate-pulse" />
+            <div className="flex items-center space-x-1 font-bold tracking-tight">
+              <span className="text-emerald-300 font-extrabold">
+                {clock.dayOfWeek}, {clock.month} {clock.dayNum}, {clock.year}
+              </span>
               <span className="text-slate-500 font-mono">•</span>
               <span className="text-white font-mono">{clock.timeWithSeconds}</span>
             </div>
@@ -1320,10 +1351,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="hidden sm:flex p-1.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-all cursor-pointer"
+              className="hidden sm:flex p-1.5 lg:p-1 rounded-xl lg:rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-all cursor-pointer"
               title="Isara o Pumunta sa System Overview"
             >
-              <X className="w-4 h-4" />
+              <X className="w-4 h-4 lg:w-3.5 lg:h-3.5" />
             </button>
           )}
         </div>
@@ -1384,10 +1415,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               </p>
               <button
                 type="button"
-                onClick={() => setIsAnonymousModalOpen(true)}
-                className="w-full py-2 sm:py-2.5 px-3.5 rounded-xl fluid-btn-emerald text-slate-950 font-mono font-black text-xs sm:text-xs xl:text-sm flex items-center justify-center space-x-2 transition-all cursor-pointer hover:scale-[1.01] active:scale-95 border border-emerald-300 shadow-[0_0_20px_rgba(16,185,129,0.45)]"
+                onClick={() => {
+                  setIsUnfolded(true);
+                  setActiveView('anonymous');
+                  setTimeout(() => {
+                    modalScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+                  }, 50);
+                }}
+                className="w-full py-2 sm:py-2.5 lg:py-1.5 xl:py-2 px-3.5 lg:px-3 rounded-xl fluid-btn-emerald text-slate-950 font-mono font-black text-xs sm:text-xs lg:text-[11px] xl:text-xs flex items-center justify-center space-x-1.5 lg:space-x-1.5 transition-all cursor-pointer hover:scale-[1.01] active:scale-95 border border-emerald-300 shadow-[0_0_20px_rgba(16,185,129,0.45)]"
               >
-                <EyeOff className="w-3.5 h-3.5 text-slate-950" />
+                <EyeOff className="w-3.5 h-3.5 lg:w-3 lg:h-3 text-slate-950" />
                 <span>Send Anonymous Message</span>
               </button>
             </div>
@@ -1420,14 +1457,604 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             <AnimatePresence mode="wait">
               {isUnfolded && (
                 <motion.div
-                  key={activeView === 'login' ? 'login' : 'event'}
+                  key={activeView}
                   initial={{ opacity: 0, y: 12, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -12, scale: 0.98 }}
                   transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
                   className="w-full"
                 >
-                  {(activeView === 'event' || activeView === 'overview') && eventBroadcast ? (
+                  {activeView === 'upload' ? (
+                    /* ========================================================================= */
+                    /* PATUNAY SA PAGDALO: UPLOAD ACCOMPLISHMENT (MATCHING USER SCREENSHOT)     */
+                    /* ========================================================================= */
+                    <div className="relative rounded-2xl sm:rounded-3xl border-2 border-emerald-500/70 shadow-[0_25px_70px_rgba(0,0,0,0.9),0_0_50px_rgba(16,185,129,0.3)] bg-slate-900/95 hover:bg-slate-900 backdrop-blur-md overflow-hidden animate-scaleIn w-full text-left flex flex-col max-h-[86vh]">
+                      {/* Hidden file inputs */}
+                      <input
+                        type="file"
+                        ref={uploadFileInputRef}
+                        onChange={handleUploadMultipleFiles}
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                      />
+                      <input
+                        type="file"
+                        ref={uploadCameraInputRef}
+                        onChange={handleUploadMultipleFiles}
+                        accept="image/*"
+                        capture="environment"
+                        className="hidden"
+                      />
+
+                      {/* Header Bar */}
+                      <div className="px-3.5 sm:px-6 py-2.5 sm:py-3.5 border-b border-slate-800 bg-slate-950/90 flex items-center justify-between shrink-0">
+                        <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
+                          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 shadow-md shrink-0">
+                            <Camera className="w-4 h-4 sm:w-5 sm:h-5 text-slate-950" />
+                          </div>
+                          <div className="min-w-0">
+                            <span className="text-[9px] sm:text-[10px] font-mono font-extrabold uppercase tracking-widest text-emerald-400 block truncate">
+                              LINIS DINGALAN • VERIFIED QR ATTENDANCE
+                            </span>
+                            <h3 className="text-xs sm:text-base lg:text-lg font-black text-white tracking-tight leading-tight uppercase truncate">
+                              PATUNAY SA PAGDALO: UPLOAD ACCOMPLISHMENT
+                            </h3>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setActiveView('login')}
+                            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 font-mono text-[10px] sm:text-xs font-bold transition-all cursor-pointer uppercase tracking-wider"
+                          >
+                            ADMIN LOGIN
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setActiveView('event')}
+                            className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer shrink-0"
+                            title="ISARA AT BUMALIK SA ADVISORY"
+                          >
+                            <X className="w-4 h-4 sm:w-5 sm:h-5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Body Content */}
+                      <div className="p-3.5 sm:p-5 overflow-y-auto space-y-3.5 sm:space-y-4 flex-1 min-h-0 text-left">
+                        {uploadIsSuccess ? (
+                          <div className="text-center py-6 space-y-3.5 animate-scaleIn">
+                            <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.4)]">
+                              <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10 text-emerald-400" />
+                            </div>
+                            <div className="space-y-1">
+                              <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase tracking-wider">
+                                ATTENDANCE & PROOF RECORDED
+                              </span>
+                              <h4 className="text-xl sm:text-2xl font-black text-white uppercase">
+                                MATAGUMPAY NA NA-UPLOAD ANG ACCOMPLISHMENT!
+                              </h4>
+                              <p className="text-xs text-slate-300 max-w-md mx-auto uppercase font-medium">
+                                ANG {uploadPhotos.length} NA PATUNAY NA LARAWAN NI <strong className="text-white">{uploadFullName}</strong> AY NAISUMITE NA SA SYSTEM.
+                              </p>
+                            </div>
+
+                            <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 text-xs font-mono text-left space-y-1.5 max-w-md mx-auto uppercase">
+                              <div className="flex justify-between">
+                                <span className="text-slate-400">ATTENDEE:</span>
+                                <span className="text-white font-bold">{uploadFullName}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-slate-400">LUGAR NA NILINIS:</span>
+                                <span className="text-emerald-400 font-bold">{uploadCleanedArea}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-slate-400">BADGE CODE:</span>
+                                <span className="text-cyan-300 font-bold">{uploadBeneBadge}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-slate-400">MGA LARAWAN:</span>
+                                <span className="text-emerald-400 font-bold">{uploadPhotos.length} LARAWAN</span>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row gap-2.5 max-w-md mx-auto pt-2 w-full">
+                              {uploadPhotos.length > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setUploadFullscreenIndex(0)}
+                                  className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-emerald-500/40 text-emerald-300 font-black text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer uppercase tracking-wider"
+                                >
+                                  <Images className="w-4 h-4 text-emerald-400" />
+                                  <span>I-FULLSCREEN ANG LARAWAN ({uploadPhotos.length})</span>
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setUploadIsSuccess(false);
+                                  setUploadPhotos([]);
+                                  setUploadNotes('');
+                                  setActiveView('event');
+                                }}
+                                className="w-full py-2.5 rounded-xl fluid-btn-emerald text-slate-950 font-black text-xs cursor-pointer shadow-lg uppercase tracking-wider"
+                              >
+                                TAPOS NA (BUMALIK SA ADVISORY)
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            {/* CUT-OFF WARNING BANNER (Matching the screenshot exactly with CAPITAL LETTERS) */}
+                            {uploadCutoffInfo.isExpired ? (
+                              <div className="p-3.5 sm:p-4 rounded-2xl bg-rose-950/90 border-2 border-rose-500/80 text-rose-200 text-xs font-sans space-y-1.5 shadow-[0_0_30px_rgba(244,63,94,0.35)]">
+                                <div className="flex items-center space-x-2 font-mono font-black text-rose-300 text-xs sm:text-sm uppercase">
+                                  <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-rose-400 shrink-0" />
+                                  <span>TAPOS NA ANG NAKATAKDANG ORAS NG EVENT (CUT-OFF REACHED)</span>
+                                </div>
+                                <p className="leading-relaxed text-slate-200 text-[11px] sm:text-xs uppercase font-medium">
+                                  NAKALIPAS NA ANG ITINAKDANG ORAS NG EVENT ({uploadCutoffInfo.endTimeFormatted || '5:10 PM'}). AYON SA PATAKARAN NG LGU, HINDI NA TATANGGAPIN ANG ACCOMPLISHMENT ATTENDANCE O MGA LARAWAN MATAPOS ANG NAKATAKDANG CUT-OFF TIME.
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="p-2.5 sm:p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-[11px] font-mono flex items-center justify-between uppercase">
+                                <span className="flex items-center gap-1.5">
+                                  <Clock className="w-3.5 h-3.5 text-emerald-400" />
+                                  <span>EVENT CUT-OFF: <strong>{uploadCutoffInfo.endTimeFormatted || '5:10 PM'}</strong></span>
+                                </span>
+                                <span className="text-emerald-400 font-bold hidden xs:inline">BUKAS PARA SA SUBMISSION</span>
+                              </div>
+                            )}
+
+                            {uploadErrorMessage && (
+                              <div className="p-3 rounded-xl bg-rose-950/80 border border-rose-500/50 text-rose-200 text-xs flex items-center space-x-2 uppercase font-mono font-bold">
+                                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                                <span>{uploadErrorMessage}</span>
+                              </div>
+                            )}
+
+                            {/* ========================================================================= */}
+                            {/* FIELD 1: FULL NAME NG BENEPISYARYO / ATTENDEE */}
+                            {/* ========================================================================= */}
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <label className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wide flex items-center space-x-1.5">
+                                  <UserCheck className="w-4 h-4 text-emerald-400" />
+                                  <span>1. FULL NAME NG BENEPISYARYO / ATTENDEE <span className="text-rose-400">*</span></span>
+                                </label>
+                                <span className="text-[10px] font-mono text-emerald-400 uppercase font-semibold">KAYO ANG MAGPAPASYA NG ILALAGAY</span>
+                              </div>
+
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  value={uploadFullName}
+                                  onChange={(e) => setUploadFullName(e.target.value)}
+                                  placeholder="DANILO BAUTISTA"
+                                  className="w-full px-4 py-2.5 sm:py-3 rounded-xl bg-slate-950/80 border border-slate-700 focus:border-emerald-400 text-white text-xs sm:text-sm font-sans font-bold shadow-inner uppercase"
+                                />
+                                <Edit3 className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                              </div>
+                            </div>
+
+                            {/* ========================================================================= */}
+                            {/* FIELD 2: LUGAR KUNG SAANG AREA NAKAPAGLINIS */}
+                            {/* ========================================================================= */}
+                            <div className="space-y-1.5 pt-0.5">
+                              <div className="flex items-center justify-between">
+                                <label className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wide flex items-center space-x-1.5">
+                                  <Calendar className="w-4 h-4 text-cyan-400" />
+                                  <span>2. LUGAR KUNG SAANG AREA NAKAPAGLINIS <span className="text-rose-400">*</span></span>
+                                </label>
+                                <span className="text-[10px] font-mono text-cyan-400 uppercase font-semibold">KAYO ANG MAGPAPASYA NG ILALAGAY</span>
+                              </div>
+
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  value={uploadCleanedArea}
+                                  onChange={(e) => setUploadCleanedArea(e.target.value)}
+                                  placeholder="DINGALAN FEEDER PORT & PALTIC COASTAL CLEANLINESS OPERATION..."
+                                  className="w-full px-4 py-2.5 sm:py-3 rounded-xl bg-slate-950/80 border border-slate-700 focus:border-cyan-400 text-white text-xs sm:text-sm font-sans font-bold shadow-inner uppercase"
+                                />
+                                <MapPin className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                              </div>
+                            </div>
+
+                            {/* ========================================================================= */}
+                            {/* FIELD 3: ACCOMPLISHMENT PICTURES (KAHIT ILANG PICTURE) */}
+                            {/* ========================================================================= */}
+                            <div className="space-y-2 pt-0.5">
+                              <div className="flex items-center justify-between">
+                                <label className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wide flex items-center space-x-1.5">
+                                  <Images className="w-4 h-4 text-emerald-400" />
+                                  <span>3. ACCOMPLISHMENT PICTURES (KAHIT ILANG PICTURE) <span className="text-rose-400">*</span></span>
+                                </label>
+                                <span className="text-[10px] font-mono text-cyan-400 font-bold uppercase">
+                                  {uploadPhotos.length} LARAWAN NA-UPLOAD
+                                </span>
+                              </div>
+
+                              {/* Action Buttons: Fitted 100% inside container */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 w-full">
+                                <button
+                                  type="button"
+                                  onClick={() => uploadFileInputRef.current?.click()}
+                                  className="w-full p-2.5 sm:p-3.5 rounded-xl border-2 border-dashed border-emerald-500/50 hover:border-emerald-400 bg-emerald-950/25 hover:bg-emerald-950/40 flex flex-col items-center justify-center space-y-1 transition-all cursor-pointer group uppercase text-center"
+                                >
+                                  <div className="flex items-center space-x-1.5 text-emerald-300 font-black text-xs sm:text-sm group-hover:scale-105 transition-transform">
+                                    <Upload className="w-4 h-4 text-emerald-400 shrink-0" />
+                                    <span>PUMILI NG MGA LARAWAN</span>
+                                  </div>
+                                  <span className="text-[9.5px] sm:text-[10px] text-slate-400 font-mono uppercase">
+                                    (KAHIT ILANG PICTURE / WALANG LIMIT)
+                                  </span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => uploadCameraInputRef.current?.click()}
+                                  className="w-full p-2.5 sm:p-3.5 rounded-xl border-2 border-slate-700 hover:border-cyan-400 bg-slate-950/60 hover:bg-slate-950/80 flex flex-col items-center justify-center space-y-1 transition-all cursor-pointer group uppercase text-center"
+                                >
+                                  <div className="flex items-center space-x-1.5 text-cyan-300 font-black text-xs sm:text-sm group-hover:scale-105 transition-transform">
+                                    <Camera className="w-4 h-4 text-cyan-400 shrink-0" />
+                                    <span>KUMUHA NG CAMERA SNAPSHOT</span>
+                                  </div>
+                                  <span className="text-[9.5px] sm:text-[10px] text-slate-400 font-mono uppercase">
+                                    (DIRECT CAMERA WITH REALTIME GPS)
+                                  </span>
+                                </button>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={handleUploadSamplePhotos}
+                                disabled={uploadIsProcessing}
+                                className="w-full py-2 px-3 rounded-lg bg-slate-950/60 hover:bg-slate-900 border border-slate-800 text-slate-300 hover:text-emerald-300 text-[10.5px] sm:text-[11px] font-mono font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer uppercase"
+                              >
+                                <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                <span>MAG-LOAD NG SAMPLE CLEANUP PHOTOS PARA SA TEST</span>
+                              </button>
+
+                              {/* Thumbnail previews */}
+                              {uploadPhotos.length > 0 && (
+                                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-1">
+                                  {uploadPhotos.map((photo, idx) => (
+                                    <div key={idx} className="relative group rounded-xl overflow-hidden border border-emerald-500/50 bg-slate-950 aspect-square">
+                                      <img
+                                        src={photo}
+                                        alt={`Upload ${idx + 1}`}
+                                        onClick={() => setUploadFullscreenIndex(idx)}
+                                        className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => setUploadPhotos((prev) => prev.filter((_, i) => i !== idx))}
+                                        className="absolute top-1 right-1 p-1 rounded-md bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-500/50 cursor-pointer opacity-80 hover:opacity-100 transition-opacity"
+                                      >
+                                        <Trash2 className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* ========================================================================= */}
+                            {/* FIELD 4: ULAT SA GINAWANG PAGLILINIS */}
+                            {/* ========================================================================= */}
+                            <div className="space-y-1.5 pt-0.5">
+                              <label className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wide block">
+                                4. ULAT SA GINAWANG PAGLILINIS (CLEANUP ACCOMPLISHMENT NOTES)
+                              </label>
+                              <textarea
+                                rows={2}
+                                value={uploadNotes}
+                                onChange={(e) => setUploadNotes(e.target.value)}
+                                placeholder="HALIMBAWA: NILINIS ANG TABING-DAGAT SA BRGY. PALTIC, NAKAKOLEKTA NG 4 SAKO NG PLASTIC WASTE KASAMA ANG MGA KAPWA BENEPISYARYO..."
+                                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-slate-700 focus:border-emerald-400 text-white text-xs sm:text-sm font-sans shadow-inner resize-none uppercase"
+                              />
+                            </div>
+
+                            {/* BOTTOM SUBMISSION BUTTON: FITTED 100% INSIDE */}
+                            <div className="pt-1 w-full">
+                              {uploadCutoffInfo.isExpired ? (
+                                <button
+                                  type="button"
+                                  onClick={handleUploadSubmit}
+                                  disabled={uploadIsProcessing}
+                                  className="w-full py-3 px-4 rounded-xl bg-rose-950/90 hover:bg-rose-900/90 border-2 border-rose-500/70 text-rose-200 font-mono font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg active:scale-95 uppercase tracking-wide"
+                                >
+                                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                                  <span>ISARA NA ANG SUBMISSION (NAKALIPAS NA ANG CUT-OFF)</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={handleUploadSubmit}
+                                  disabled={uploadIsProcessing}
+                                  className="w-full py-3 px-4 rounded-xl fluid-btn-emerald text-slate-950 font-mono font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg active:scale-95 uppercase tracking-wide"
+                                >
+                                  <Upload className="w-4 h-4 text-slate-950 shrink-0" />
+                                  <span>{uploadIsProcessing ? 'PINA-PROSESO ANG ACCOMPLISHMENT...' : 'I-SUMITE ANG PATUNAY SA PAGDALO (SUBMIT)'}</span>
+                                </button>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Fullscreen Photo Viewer */}
+                      {uploadFullscreenIndex !== null && (
+                        <FullScreenPhotoViewer
+                          isOpen={uploadFullscreenIndex !== null}
+                          onClose={() => setUploadFullscreenIndex(null)}
+                          photos={uploadPhotos}
+                          initialIndex={uploadFullscreenIndex}
+                          beneficiaryName={uploadFullName}
+                          beneficiaryCode={uploadBeneBadge}
+                          activityTitle={uploadCleanedArea}
+                        />
+                      )}
+                    </div>
+                  ) : activeView === 'anonymous' ? (
+                    /* ========================================================================= */
+                    /* ANONYMOUS MESSAGE CARD (FITS INSIDE LOGIN BOX AREA AS REQUESTED)          */
+                    /* ========================================================================= */
+                    <div className="relative rounded-2xl sm:rounded-3xl border-2 border-amber-500/70 shadow-[0_25px_70px_rgba(0,0,0,0.9),0_0_50px_rgba(245,158,11,0.25)] bg-slate-900/95 hover:bg-slate-900 backdrop-blur-md overflow-hidden animate-scaleIn w-full text-left flex flex-col max-h-[86vh]">
+                      {/* Header Bar */}
+                      <div className="px-3.5 sm:px-6 py-2.5 sm:py-3.5 border-b border-slate-800 bg-slate-950/90 flex items-center justify-between shrink-0">
+                        <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-tr from-amber-400 to-yellow-300 flex items-center justify-center text-slate-950 shadow-md shrink-0">
+                            <EyeOff className="w-4 h-4 text-slate-950" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center space-x-1.5">
+                              <span className="px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-mono font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 uppercase tracking-widest">
+                                100% ANONYMOUS & CONFIDENTIAL
+                              </span>
+                            </div>
+                            <h3 className="text-xs sm:text-sm lg:text-base font-black text-white tracking-tight uppercase truncate">
+                              MAGPADALA NG ANONYMOUS MESSAGE SA ADMIN
+                            </h3>
+                          </div>
+                        </div>
+
+                        {/* Top Action Buttons */}
+                        <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={handleAdminPortalClick}
+                            className="px-2 sm:px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 hover:text-white font-mono text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 uppercase"
+                            title="Lumipat sa Admin Login"
+                          >
+                            <ShieldCheck className="w-3.5 h-3.5 text-slate-300" />
+                            <span className="hidden xs:inline">ADMIN LOGIN</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setActiveView('event')}
+                            className="p-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-all cursor-pointer"
+                            title="Bumalik sa Advisory"
+                          >
+                            <X className="w-4 h-4 text-slate-400 hover:text-white" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Card Body */}
+                      <div className="p-3.5 sm:p-5 lg:p-6 overflow-y-auto space-y-3.5 sm:space-y-4 flex-1">
+                        {anonIsSuccess ? (
+                          <div className="text-center py-6 sm:py-8 space-y-3.5 sm:space-y-4 animate-scaleIn">
+                            <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center text-emerald-400 shadow-[0_0_30px_rgba(16,185,129,0.4)]">
+                              <CheckCircle2 className="w-7 h-7 sm:w-8 sm:h-8" />
+                            </div>
+
+                            <div className="space-y-1.5 max-w-md mx-auto">
+                              <span className="px-3 py-1 rounded-full text-[10px] sm:text-xs font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase">
+                                Ligtas na Naisumite sa Admin Inbox
+                              </span>
+                              <h4 className="text-base sm:text-xl font-black text-white uppercase">
+                                Matagumpay na Naipadala ang Anonymous Message!
+                              </h4>
+                              <p className="text-xs text-slate-300 leading-relaxed font-sans">
+                                Ang inyong ulat ay ligtas nang nakarating sa <strong className="text-white">Admin Inbox</strong>. Hindi kailanman malalaman o maipapakita sa Admin ang inyong pangalan o pagkakakilanlan.
+                              </p>
+                            </div>
+
+                            <div className="p-3 sm:p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 text-xs font-mono text-left space-y-1 max-w-md mx-auto">
+                              <div className="flex justify-between text-slate-400">
+                                <span>SENDER ALIAS:</span>
+                                <span className="text-emerald-400 font-bold uppercase">ANONYMOUS (PROTECTED)</span>
+                              </div>
+                              <div className="flex justify-between text-slate-400">
+                                <span>ACCESS PERMISSION:</span>
+                                <span className="text-emerald-300 font-bold uppercase">ADMIN ACCOUNTS ONLY</span>
+                              </div>
+                              <div className="flex justify-between text-slate-400">
+                                <span>STATUS:</span>
+                                <span className="text-cyan-300 font-bold uppercase">QUEUED FOR ADMIN REVIEW</span>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto pt-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setAnonIsSuccess(false);
+                                  setAnonMessageText('');
+                                  setAnonCategory('report');
+                                  setAnonPriority('normal');
+                                  setAnonErrorMessage(null);
+                                }}
+                                className="flex-1 py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white font-mono font-bold text-xs uppercase cursor-pointer"
+                              >
+                                MAGPADALA MULI NG MENSAHE
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setActiveView('event')}
+                                className="flex-1 py-2.5 px-3 rounded-xl fluid-btn-emerald text-slate-950 font-mono font-black text-xs uppercase cursor-pointer shadow-lg"
+                              >
+                                BUMALIK SA ADVISORY
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-3.5 sm:space-y-4">
+                            {/* Privacy Assurance Banner */}
+                            <div className="p-2.5 sm:p-3 rounded-xl bg-amber-950/30 border border-amber-500/40 text-amber-200 text-xs flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                <EyeOff className="w-4 h-4 text-amber-400 shrink-0" />
+                                <span className="font-sans font-medium text-[11px] sm:text-xs">
+                                  Ang inyong mensahe ay direktang matatanggap ng Admin nang walang profile o pangalan.
+                                </span>
+                              </div>
+                              <span className="font-mono text-[9px] sm:text-[10px] uppercase font-black bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/40 text-amber-300 shrink-0">
+                                Ligtas at Kumpidensiyal
+                              </span>
+                            </div>
+
+                            {anonErrorMessage && (
+                              <div className="p-3 rounded-xl bg-rose-950/80 border border-rose-500/50 text-rose-200 text-xs flex items-center space-x-2 uppercase font-mono font-bold">
+                                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                                <span>{anonErrorMessage}</span>
+                              </div>
+                            )}
+
+                            {/* 1. Category Selector */}
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wide flex items-center space-x-1.5">
+                                <FileText className="w-4 h-4 text-amber-400" />
+                                <span>1. URI O PAKSA NG ANONYMOUS MESSAGE <span className="text-rose-400">*</span></span>
+                              </label>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {[
+                                  { id: 'report', label: 'ULAT / SUMBONG UKOL SA GAWAIN O AREA', desc: 'May napansing iregularidad o basura na naiwan', icon: AlertCircle },
+                                  { id: 'feedback', label: 'MUNGKAHI / REKOMENDASYON', desc: 'Mga ideya para mas mapaganda ang programa', icon: Sparkles },
+                                  { id: 'allowance_inquiry', label: 'KATANUNGAN UKOL SA STIPEND / ATTENDANCE', desc: 'Ligtas na magtanong ukol sa allowance o log', icon: HelpCircle },
+                                  { id: 'emergency', label: 'KAGIPITAN / EMERGENCY SA FIELD', desc: 'Agarang pabatid para sa tulong ng Admin sa field', icon: ShieldCheck },
+                                  { id: 'general', label: 'IBA PANG KOMPIDENSIYAL NA PABATID', desc: 'Pangkalahatang mensahe direkta sa Admin', icon: FileText },
+                                ].map((cat) => {
+                                  const Icon = cat.icon;
+                                  const isSelected = anonCategory === cat.id;
+                                  return (
+                                    <div
+                                      key={cat.id}
+                                      onClick={() => setAnonCategory(cat.id as any)}
+                                      className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-start space-x-2.5 ${
+                                        isSelected
+                                          ? 'bg-amber-500/20 border-amber-400 text-white shadow-[0_0_15px_rgba(245,158,11,0.25)]'
+                                          : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-950'
+                                      }`}
+                                    >
+                                      <div
+                                        className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                                          isSelected ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-slate-400'
+                                        }`}
+                                      >
+                                        <Icon className="w-3.5 h-3.5" />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="font-bold text-xs uppercase leading-tight">{cat.label}</p>
+                                        <p className="text-[10px] text-slate-400 leading-snug mt-0.5 line-clamp-1">
+                                          {cat.desc}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            {/* 2. Priority Selector */}
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wide flex items-center justify-between">
+                                <span>2. ANTAS NG KAHALAGAHAN (PRIORITY)</span>
+                                <span className="text-[10px] text-slate-400 font-mono">PUMILI NG ANGKOP NA ANTAS</span>
+                              </label>
+
+                              <div className="grid grid-cols-3 gap-2 text-xs font-mono">
+                                {[
+                                  { id: 'normal', label: 'NORMAL / KARANIWAN', color: 'emerald' },
+                                  { id: 'urgent', label: 'MATAAS (URGENT)', color: 'rose' },
+                                  { id: 'confidential', label: 'KUMPIDENSIYAL', color: 'purple' },
+                                ].map((p) => {
+                                  const isSelected = anonPriority === p.id;
+                                  return (
+                                    <button
+                                      key={p.id}
+                                      type="button"
+                                      onClick={() => setAnonPriority(p.id as any)}
+                                      className={`py-2 px-2.5 rounded-xl border text-center font-bold transition-all cursor-pointer uppercase ${
+                                        isSelected
+                                          ? p.id === 'urgent'
+                                            ? 'bg-rose-500/25 border-rose-400 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.3)]'
+                                            : p.id === 'confidential'
+                                            ? 'bg-purple-500/25 border-purple-400 text-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.3)]'
+                                            : 'bg-emerald-500/25 border-emerald-400 text-emerald-300'
+                                          : 'bg-slate-950/60 border-slate-800 text-slate-400'
+                                      }`}
+                                    >
+                                      {p.label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            {/* 3. Message Textarea */}
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wide flex items-center justify-between">
+                                <span>3. NILALAMAN NG ANONYMOUS MENSAHE <span className="text-rose-400">*</span></span>
+                                <span className="text-[10px] font-mono text-amber-400 uppercase font-semibold">100% PROTEKTADO ANG SENDER</span>
+                              </label>
+
+                              <textarea
+                                value={anonMessageText}
+                                onChange={(e) => setAnonMessageText(e.target.value)}
+                                placeholder="ISULAT DITO ANG INYONG ULAT, OBSERBASYON, MUNGKAHI, O MENSAHE PARA SA ADMIN. HUWAG MAG-ALALA, WALANG MAKAKAALAM KUNG SINO ANG NAGPADALA NITO..."
+                                rows={4}
+                                className="w-full px-4 py-3 rounded-2xl bg-slate-950/90 border border-slate-700 focus:border-amber-400 text-white placeholder-slate-500 text-xs sm:text-sm font-sans leading-relaxed shadow-inner"
+                              />
+                            </div>
+
+                            {/* Submit & Cancel Buttons */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 font-mono">
+                              <button
+                                type="button"
+                                onClick={() => setActiveView('event')}
+                                className="py-2.5 sm:py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold transition-all cursor-pointer border border-slate-700 uppercase"
+                              >
+                                BUMALIK SA ADVISORY
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={handleSendAnonymousMessage}
+                                disabled={anonIsSubmitting || !anonMessageText.trim()}
+                                className="py-2.5 sm:py-3 rounded-xl fluid-btn-amber text-slate-950 text-xs font-black transition-all cursor-pointer flex items-center justify-center space-x-2 disabled:opacity-50 border border-amber-300/40 shadow-lg active:scale-95 uppercase"
+                              >
+                                {anonIsSubmitting ? (
+                                  <>
+                                    <span className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                                    <span>PINAPADALA ANG ANONYMOUS REPORT...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Send className="w-4 h-4 text-slate-950 shrink-0" />
+                                    <span>IPADALA SA ADMIN (SEND ANONYMOUS)</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (activeView === 'event' || activeView === 'overview') && eventBroadcast ? (
                 /* ========================================================================= */
                 /* EVENT BROADCAST CARD: ENLARGED PROPORTIONED PRO CARD                     */
                 /* ========================================================================= */
@@ -1797,17 +2424,17 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       {/* Main Login Submit Button */}
                       <div className="pt-2">
                         {isLoading ? (
-                          <div className="w-full py-3.5 sm:py-4 rounded-xl bg-slate-900 border border-emerald-500/50 text-emerald-300 font-mono text-sm sm:text-base font-bold flex items-center justify-center space-x-2.5 shadow-inner">
-                            <span className="w-5 h-5 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+                          <div className="w-full py-2.5 sm:py-3.5 lg:py-2.5 rounded-xl bg-slate-900 border border-emerald-500/50 text-emerald-300 font-mono text-xs sm:text-sm font-bold flex items-center justify-center space-x-2 shadow-inner">
+                            <span className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
                             <span>Logging in to system...</span>
                           </div>
                         ) : (
                           <button
                             type="submit"
-                            className="w-full py-3.5 sm:py-4 px-4 rounded-xl fluid-btn-emerald text-sm sm:text-base lg:text-lg font-mono text-slate-950 font-black flex items-center justify-center space-x-2.5 transition-all duration-300 active:scale-95 cursor-pointer shadow-[0_0_20px_rgba(16,185,129,0.4)] border-2 border-emerald-300 hover:shadow-[0_0_30px_rgba(16,185,129,0.8)] hover:scale-[1.02] relative overflow-hidden group"
+                            className="w-full py-3 sm:py-3.5 lg:py-2.5 px-4 lg:px-3.5 rounded-xl fluid-btn-emerald text-xs sm:text-sm lg:text-sm font-mono text-slate-950 font-black flex items-center justify-center space-x-2 transition-all duration-300 active:scale-95 cursor-pointer shadow-[0_0_20px_rgba(16,185,129,0.4)] border-2 border-emerald-300 hover:shadow-[0_0_30px_rgba(16,185,129,0.8)] hover:scale-[1.02] relative overflow-hidden group"
                           >
                             <span className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 pointer-events-none" />
-                            <ShieldCheck className="w-5 h-5 text-slate-950 shrink-0 animate-pulse" />
+                            <ShieldCheck className="w-4 h-4 lg:w-4 lg:h-4 text-slate-950 shrink-0 animate-pulse" />
                             <span className="relative z-10 tracking-wider">LOG IN TO SYSTEM</span>
                           </button>
                         )}

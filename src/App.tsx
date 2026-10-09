@@ -34,12 +34,13 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { EventQrBroadcast, AnonymousMessage } from './types';
 import { checkEventCutoff } from './utils/watermarkEngine';
 import { checkIsBroadcastActive } from './utils/philippineClock';
+import adminCoastalWallpaper from './assets/images/dingalan_admin_coastal_bg_1791530836184.jpg';
 import mountainViewWallpaper from './assets/images/dingalan_mountain_view_1791439053773.jpg';
 import systemWallpaper from './assets/images/dingalan_system_wallpaper.jpg';
 import { db } from './firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 
-const DINGALAN_SYSTEM_BG = mountainViewWallpaper || systemWallpaper;
+const DINGALAN_SYSTEM_BG = adminCoastalWallpaper || mountainViewWallpaper || systemWallpaper;
 
 const isBroadcastActive = (broadcast: any): boolean => {
   return checkIsBroadcastActive(broadcast);
@@ -762,12 +763,12 @@ export default function App() {
   return (
     <div className="relative min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-white">
       {/* ========================================================================= */}
-      {/* FULL SYSTEM DASHBOARD BACKGROUND: DINGALAN MOUNTAIN VIEW SCENIC PICTURE   */}
+      {/* FULL SYSTEM DASHBOARD BACKGROUND: DINGALAN ADMIN & SUPERADMIN VIVID PHOTO */}
       {/* ========================================================================= */}
       <div className="fixed inset-0 w-full h-full pointer-events-none select-none z-0 overflow-hidden bg-slate-950 flex items-center justify-center">
         <img
-          src={mountainViewWallpaper}
-          alt="Dingalan Aurora Mountain View Admin Background"
+          src={isAdminOrSuperAdmin ? (adminCoastalWallpaper || systemWallpaper) : (mountainViewWallpaper || systemWallpaper)}
+          alt="Dingalan Aurora Admin & SuperAdmin Background"
           referrerPolicy="no-referrer"
           className="absolute inset-0 w-full h-full object-cover object-[center_35%] scale-100 transition-all duration-700 filter contrast-[1.08] saturate-[1.2] brightness-[0.98]"
           style={{ imageRendering: '-webkit-optimize-contrast', transform: 'translateZ(0)' }}
