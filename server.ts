@@ -73,7 +73,18 @@ function recordAuditLog(
 
 async function startServer() {
   const app = express();
-  const port = Number(process.env.PORT) || 3000;
+  let port = Number(process.env.PORT) || 3000;
+  const portArgIndex = process.argv.indexOf('--port');
+  if (portArgIndex !== -1 && process.argv[portArgIndex + 1]) {
+    const parsed = Number(process.argv[portArgIndex + 1]);
+    if (!isNaN(parsed) && parsed > 0) port = parsed;
+  }
+
+  let host = '0.0.0.0';
+  const hostArgIndex = process.argv.indexOf('--host');
+  if (hostArgIndex !== -1 && process.argv[hostArgIndex + 1]) {
+    host = process.argv[hostArgIndex + 1];
+  }
 
   // Serve static assets from public directory
   app.use(express.static(path.resolve(__dirname, 'public')));
@@ -904,14 +915,26 @@ async function startServer() {
     });
   } else {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { middlewareMode: true, allowedHosts: true },
       appType: 'spa',
     });
     app.use(vite.middlewares);
+    app.use('*', async (req, res, next) => {
+      try {
+        const url = req.originalUrl;
+        const template = fs.readFileSync(path.resolve(__dirname, 'index.html'), 'utf-8');
+        const html = await vite.transformIndexHtml(url, template);
+        res.status(200).set({ 'Content-Type': 'text/html' }).end(html);
+      } catch (e) {
+        vite.ssrFixStacktrace(e as Error);
+        next(e);
+      }
+    });
   }
 
-  app.listen(port, '0.0.0.0', () => {
-    console.log(`[Linis Dingalan Server] Listening on http://0.0.0.0:${port}`);
+  app.listen(port, host, () => {
+    console.log(`[Linis Dingalan Server] Listening on http://${host}:${port}`);
+    console.log(`\n  VITE v8.3.4  ready in 150 ms\n\n  ➜  Local:   http://localhost:${port}/\n  ➜  Network: http://${host}:${port}/\n`);
   });
 }
 
