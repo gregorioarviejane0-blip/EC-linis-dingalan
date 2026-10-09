@@ -16,7 +16,6 @@ import { FieldAttendancePortal } from './components/FieldAttendancePortal';
 import { BeneficiaryMasterlist } from './components/BeneficiaryMasterlist';
 import { ActivityManagement } from './components/ActivityManagement';
 import { ReportsView } from './components/ReportsView';
-import { AuditTrailView } from './components/AuditTrailView';
 import { StoragePruningView } from './components/StoragePruningView';
 import { ArchitectureDocsView } from './components/ArchitectureDocsView';
 import { LoginModal } from './components/LoginModal';
@@ -914,17 +913,6 @@ export default function App() {
                 attendances={attendances}
                 beneficiaries={beneficiaries}
                 currentUser={currentUser}
-              />
-            </div>
-          )}
-
-          {/* TAB 6: AUDIT TRAIL */}
-          {activeTab === 'audit' && (
-            <div className="w-full max-w-full overflow-hidden px-1.5 xs:px-2 sm:px-4 md:px-6 py-2 sm:py-3">
-              <AuditTrailView
-                auditLogs={auditLogs}
-                currentUser={currentUser}
-                onSwitchToSuperadmin={() => handleSwitchRole('superadmin')}
               />
             </div>
           )}

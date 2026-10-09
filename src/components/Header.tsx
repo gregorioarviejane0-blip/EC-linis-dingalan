@@ -188,7 +188,6 @@ export const Header: React.FC<HeaderProps> = ({
             { id: 'beneficiaries', label: 'Masterlist', icon: Users },
             { id: 'activities', label: 'Programs', icon: Calendar },
             { id: 'reports', label: 'Reports', icon: FileText },
-            { id: 'audit', label: 'Audit', icon: Terminal },
             { id: 'storage', label: 'Prune', icon: HardDrive },
             { id: 'architecture', label: 'DDL', icon: Cpu },
           ].map((tab) => {
@@ -295,12 +294,12 @@ export const Header: React.FC<HeaderProps> = ({
               whileTap={{ scale: 0.94 }}
               transition={{ type: 'spring', stiffness: 450, damping: 18 }}
               onClick={onOpenGenerateQrModal}
-              className="relative overflow-hidden group px-1.5 py-0.5 lg:px-1.5 lg:py-0.5 xl:px-2 xl:py-0.5 rounded-full bg-gradient-to-r from-[#00e599] via-[#00d9b4] to-[#00d4ff] hover:from-[#00f2a5] hover:to-[#22e1ff] text-slate-950 font-mono font-bold text-[9.5px] lg:text-[9.5px] xl:text-[10.5px] flex items-center justify-center space-x-1 shadow-[0_0_10px_rgba(0,229,153,0.35)] cursor-pointer shrink-0 border border-emerald-300/40 select-none"
+              className="relative overflow-hidden group px-2 py-1 sm:px-2.5 sm:py-0.5 rounded-full bg-gradient-to-r from-[#00e599] via-[#00d9b4] to-[#00d4ff] hover:from-[#00f2a5] hover:to-[#22e1ff] text-slate-950 font-mono font-bold text-[9.5px] sm:text-[10px] xl:text-[10.5px] flex items-center justify-center space-x-1 shadow-[0_0_10px_rgba(0,229,153,0.35)] cursor-pointer shrink-0 border border-emerald-300/40 select-none"
               title="Generate Cleanup Event QR Code & Paalala"
             >
-              <QrCode className="w-2.5 h-2.5 lg:w-2.5 lg:h-2.5 xl:w-3 xl:h-3 text-slate-950 shrink-0 transition-transform duration-300 group-hover:rotate-12" />
+              <QrCode className="w-3 h-3 sm:w-2.5 sm:h-2.5 xl:w-3 xl:h-3 text-slate-950 shrink-0 transition-transform duration-300 group-hover:rotate-12" />
               <span className="font-black tracking-tight group-hover:tracking-wider transition-all duration-200">
-                Event QR
+                <span className="hidden sm:inline">Event </span>QR
               </span>
             </motion.button>
           )}
@@ -312,16 +311,15 @@ export const Header: React.FC<HeaderProps> = ({
               whileTap={{ scale: 0.94 }}
               transition={{ type: 'spring', stiffness: 450, damping: 18 }}
               onClick={onOpenAnonymousInboxModal}
-              className="relative overflow-hidden group px-1.5 py-0.5 lg:px-1.5 lg:py-0.5 xl:px-2 xl:py-0.5 rounded-full bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 hover:border-amber-400 text-amber-300 font-mono font-bold text-[9.5px] lg:text-[9.5px] xl:text-[10.5px] flex items-center justify-center space-x-1 shadow-[0_0_10px_rgba(245,158,11,0.2)] cursor-pointer shrink-0 select-none"
+              className="relative overflow-hidden group px-1.5 xs:px-2 py-1 sm:px-2.5 sm:py-0.5 rounded-full bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 hover:border-amber-400 text-amber-300 font-mono font-bold text-[9.5px] sm:text-[10px] xl:text-[10.5px] flex items-center justify-center space-x-1 shadow-[0_0_10px_rgba(245,158,11,0.2)] cursor-pointer shrink-0 select-none"
               title="Tingnan ang mga Anonymous Messages at Reports mula sa field (Admin Only)"
             >
-              <EyeOff className="w-2.5 h-2.5 lg:w-2.5 lg:h-2.5 xl:w-3 xl:h-3 text-amber-400 shrink-0 transition-transform duration-300 group-hover:scale-110" />
-              <span className="font-bold tracking-tight">
-                <span className="hidden 2xl:inline">Anonymous Inbox</span>
-                <span className="2xl:hidden">Anon Inbox</span>
+              <EyeOff className="w-3 h-3 sm:w-2.5 sm:h-2.5 xl:w-3 xl:h-3 text-amber-400 shrink-0 transition-transform duration-300 group-hover:scale-110" />
+              <span className="font-bold tracking-tight hidden sm:inline">
+                <span className="hidden 2xl:inline">Anonymous </span>Inbox
               </span>
               {anonymousMessagesCount > 0 && (
-                <span className="px-1 py-0.2 rounded-full bg-amber-400 text-slate-950 font-black text-[7.5px] leading-none shadow-[0_0_6px_rgba(251,191,36,0.6)]">
+                <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 font-black text-[8px] leading-none shadow-[0_0_6px_rgba(251,191,36,0.6)]">
                   {anonymousMessagesCount}
                 </span>
               )}
@@ -335,15 +333,14 @@ export const Header: React.FC<HeaderProps> = ({
               whileTap={{ scale: 0.94 }}
               transition={{ type: 'spring', stiffness: 450, damping: 18 }}
               onClick={onOpenAccomplishmentModal}
-              className="relative overflow-hidden group px-1.5 py-0.5 lg:px-1.5 lg:py-0.5 xl:px-2 xl:py-0.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/50 hover:border-emerald-400 text-emerald-300 font-mono font-bold text-[9.5px] lg:text-[9.5px] xl:text-[10.5px] flex items-center justify-center space-x-1 shadow-[0_0_10px_rgba(16,185,129,0.2)] cursor-pointer shrink-0 select-none"
+              className="relative overflow-hidden group px-1.5 xs:px-2 py-1 sm:px-2.5 sm:py-0.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/50 hover:border-emerald-400 text-emerald-300 font-mono font-bold text-[9.5px] sm:text-[10px] xl:text-[10.5px] flex items-center justify-center space-x-1 shadow-[0_0_10px_rgba(16,185,129,0.2)] cursor-pointer shrink-0 select-none"
               title="Tingnan ang lahat ng accomplishment photos at attendance records ng mga naglinis"
             >
-              <Images className="w-2.5 h-2.5 lg:w-2.5 lg:h-2.5 xl:w-3 xl:h-3 text-emerald-400 shrink-0 transition-transform duration-300 group-hover:scale-110" />
-              <span className="font-bold tracking-tight">
-                <span className="hidden 2xl:inline">Accomplishment Attendance</span>
-                <span className="2xl:hidden">Accomplishments</span>
+              <Images className="w-3 h-3 sm:w-2.5 sm:h-2.5 xl:w-3 xl:h-3 text-emerald-400 shrink-0 transition-transform duration-300 group-hover:scale-110" />
+              <span className="font-bold tracking-tight hidden sm:inline">
+                <span className="hidden 2xl:inline">Accomplishment </span>Records
               </span>
-              <span className="px-1 py-0.2 rounded-full bg-emerald-400 text-slate-950 font-black text-[7.5px] leading-none shadow-[0_0_6px_rgba(52,211,153,0.6)]">
+              <span className="px-1.5 py-0.2 rounded-full bg-emerald-400 text-slate-950 font-black text-[8px] leading-none shadow-[0_0_6px_rgba(52,211,153,0.6)]">
                 {attendancesCount}
               </span>
             </motion.button>
@@ -355,11 +352,11 @@ export const Header: React.FC<HeaderProps> = ({
             whileTap={{ scale: 0.94 }}
             transition={{ type: 'spring', stiffness: 450, damping: 18 }}
             onClick={onLogout || onOpenLoginModal}
-            className="group px-1.5 py-0.5 lg:px-1.5 lg:py-0.5 xl:px-2 xl:py-0.5 rounded-full bg-slate-900/80 hover:bg-rose-950/80 border border-slate-700/80 hover:border-rose-500/60 text-slate-300 hover:text-rose-200 font-bold text-[9.5px] lg:text-[9.5px] xl:text-[10.5px] tracking-wide shadow-[0_0_8px_rgba(0,0,0,0.5)] transition-colors flex items-center justify-center space-x-1 shrink-0 cursor-pointer select-none"
+            className="group px-1.5 xs:px-2 py-1 sm:px-2.5 sm:py-0.5 rounded-full bg-slate-900/80 hover:bg-rose-950/80 border border-slate-700/80 hover:border-rose-500/60 text-slate-300 hover:text-rose-200 font-bold text-[9.5px] sm:text-[10px] xl:text-[10.5px] tracking-wide shadow-[0_0_8px_rgba(0,0,0,0.5)] transition-colors flex items-center justify-center space-x-1 shrink-0 cursor-pointer select-none"
             title="Mag-log out sa system"
           >
-            <LogOut className="w-2.5 h-2.5 lg:w-2.5 lg:h-2.5 xl:w-3 xl:h-3 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-rose-400" />
-            <span className="font-bold tracking-tight">
+            <LogOut className="w-3 h-3 sm:w-2.5 sm:h-2.5 xl:w-3 xl:h-3 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-rose-400" />
+            <span className="font-bold tracking-tight hidden sm:inline">
               Log Out
             </span>
           </motion.button>
@@ -374,7 +371,6 @@ export const Header: React.FC<HeaderProps> = ({
           { id: 'beneficiaries', label: 'Masterlist', icon: Users },
           { id: 'activities', label: 'Programs', icon: Calendar },
           { id: 'reports', label: 'Reports', icon: FileText },
-          { id: 'audit', label: 'Audit', icon: Terminal },
           { id: 'storage', label: 'Prune', icon: HardDrive },
           { id: 'architecture', label: 'DDL', icon: Cpu },
         ].map((tab) => {

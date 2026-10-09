@@ -138,11 +138,11 @@ export const SendAnonymousMessageModal: React.FC<SendAnonymousMessageModalProps>
   };
 
   return (
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-6 bg-slate-950/92 backdrop-blur-xl overflow-y-auto animate-fadeIn select-none">
-      <div className="relative w-full max-w-xl bg-slate-900 border-2 border-amber-500/60 rounded-3xl shadow-[0_25px_80px_rgba(0,0,0,0.95),0_0_50px_rgba(245,158,11,0.25)] overflow-hidden my-auto flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-[10000] flex items-start sm:items-center justify-center p-2 xs:p-3 sm:p-6 bg-slate-950/92 backdrop-blur-xl overflow-y-auto animate-fadeIn select-none">
+      <div className="relative w-full max-w-xl bg-slate-900 border-2 border-amber-500/60 rounded-2xl sm:rounded-3xl shadow-[0_25px_80px_rgba(0,0,0,0.95),0_0_50px_rgba(245,158,11,0.25)] overflow-hidden my-2 sm:my-auto flex flex-col max-h-[calc(100dvh-20px)] sm:max-h-[92vh]">
         
         {/* Header Bar */}
-        <div className="px-5 py-4 border-b border-slate-800 bg-slate-950/90 flex items-center justify-between">
+        <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-slate-800 bg-slate-950/95 flex items-center justify-between shrink-0 sticky top-0 z-20">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 shadow-lg shrink-0">
               <EyeOff className="w-5 h-5 text-slate-950" />
@@ -168,7 +168,7 @@ export const SendAnonymousMessageModal: React.FC<SendAnonymousMessageModalProps>
         </div>
 
         {/* Modal Body */}
-        <div className="p-5 overflow-y-auto space-y-4 flex-1 text-left">
+        <div className="p-3 sm:p-5 overflow-y-auto space-y-3 sm:space-y-4 flex-1 text-left min-h-0 overscroll-contain pb-10 sm:pb-6 scrollbar-thin">
           {isSuccess ? (
             <div className="text-center py-8 space-y-4 animate-scaleIn">
               <div className="w-16 h-16 mx-auto rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center text-emerald-400 shadow-[0_0_30px_rgba(16,185,129,0.4)]">
@@ -308,8 +308,8 @@ export const SendAnonymousMessageModal: React.FC<SendAnonymousMessageModalProps>
                   value={messageText}
                   onChange={(e) => setMessageText(e.target.value)}
                   placeholder="Isulat dito ang inyong ulat, obserbasyon, mungkahi, o mensahe para sa Admin. Huwag mag-alala, walang makakaalam kung sino ang nagpadala nito..."
-                  rows={4}
-                  className="w-full px-4 py-3 rounded-2xl bg-slate-950/90 border border-slate-700 focus:border-amber-400 text-white placeholder-slate-500 text-xs sm:text-sm font-sans leading-relaxed shadow-inner"
+                  rows={3}
+                  className="w-full px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-2xl bg-slate-950/90 border border-slate-700 focus:border-amber-400 text-white placeholder-slate-500 text-xs sm:text-sm font-sans leading-relaxed shadow-inner"
                 />
               </div>
 

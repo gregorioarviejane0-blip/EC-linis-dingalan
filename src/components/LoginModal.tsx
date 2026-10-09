@@ -50,6 +50,7 @@ import {
   Send,
   HelpCircle,
   FileText,
+  Info,
 } from 'lucide-react';
 import systemWallpaper from '../assets/images/dingalan_system_wallpaper.jpg';
 
@@ -1083,7 +1084,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   return (
     <div
       ref={modalScrollRef}
-      className="fixed inset-0 z-50 w-screen h-screen max-h-screen overflow-hidden bg-transparent font-sans text-slate-100 flex flex-col justify-between"
+      className="fixed inset-0 z-50 w-screen h-[100dvh] overflow-y-auto bg-transparent font-sans text-slate-100 flex flex-col justify-between"
     >
       {/* ========================================================================= */}
       {/* CINEMATIC DINGALAN LIGHTHOUSE VIDEO CLIP (PANNING TO THE RIGHT)           */}
@@ -1271,6 +1272,43 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               </span>
             </motion.button>
 
+            {/* Mobile App Only: Info / Overview / Anonymous Tab Button */}
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.94 }}
+              whileHover={{ scale: 1.02 }}
+              onClick={() => {
+                setIsUnfolded(true);
+                setActiveView('overview');
+                setTimeout(() => {
+                  modalScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+                }, 50);
+              }}
+              className={`lg:hidden relative flex-1 sm:flex-initial flex items-center justify-center space-x-1 sm:space-x-1.5 text-[10px] sm:text-xs font-mono font-bold px-2 sm:px-3 py-1.5 lg:py-1 rounded-lg sm:rounded-xl transition-colors duration-200 cursor-pointer shadow-sm uppercase tracking-wide ${
+                isUnfolded && (activeView === 'overview' || activeView === 'anonymous')
+                  ? 'text-slate-950 font-black'
+                  : 'text-emerald-300 hover:text-white hover:bg-slate-800/60'
+              }`}
+              title="Pindutin para makita ang Linis Dingalan EC Management Overview o Anonymous Message"
+            >
+              {isUnfolded && (activeView === 'overview' || activeView === 'anonymous') && (
+                <motion.div
+                  layoutId="activeTabIndicator"
+                  className="absolute inset-0 rounded-lg sm:rounded-xl fluid-btn-emerald border border-emerald-300 shadow-[0_0_14px_rgba(16,185,129,0.5)]"
+                  transition={{ type: 'spring', stiffness: 500, damping: 32 }}
+                />
+              )}
+              <span className="relative z-10 flex items-center space-x-1 sm:space-x-1.5">
+                {activeView === 'anonymous' ? (
+                  <EyeOff className="w-3.5 h-3.5 shrink-0 text-slate-950" />
+                ) : (
+                  <Info className={`w-3.5 h-3.5 shrink-0 ${isUnfolded && activeView === 'overview' ? 'text-slate-950' : 'text-emerald-400'}`} />
+                )}
+                <span className="truncate hidden xs:inline">{activeView === 'anonymous' ? 'ANON MSG' : 'EC INFO'}</span>
+                <span className="truncate xs:hidden">{activeView === 'anonymous' ? 'ANON' : 'INFO'}</span>
+              </span>
+            </motion.button>
+
             {/* Admin Login Button */}
             <motion.button
               type="button"
@@ -1362,15 +1400,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       {/* ========================================================================= */}
       {/* MAIN CENTER HERO CONTAINER (FITS 100% INTO WHOLE SCREEN MOBILE & DESKTOP) */}
       {/* ========================================================================= */}
-      <div className="relative z-10 w-full max-w-[1750px] mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 xl:px-12 flex-1 min-h-0 flex items-center justify-center overflow-y-auto lg:overflow-hidden my-auto py-1 sm:py-2">
-        <div className="w-full flex flex-col lg:grid lg:grid-cols-12 gap-4 sm:gap-5 lg:gap-6 xl:gap-8 items-center justify-center">
+      <div className="relative z-10 w-full max-w-[1750px] mx-auto px-2 xs:px-3 sm:px-6 lg:px-8 xl:px-12 flex-1 min-h-0 flex flex-col items-center justify-start lg:justify-center overflow-y-visible lg:overflow-y-auto my-0 lg:my-auto py-2 sm:py-3 pb-32 sm:pb-8 overscroll-contain">
+        <div className="w-full flex flex-col lg:grid lg:grid-cols-12 gap-3 sm:gap-5 lg:gap-6 xl:gap-8 items-center lg:items-center justify-start lg:justify-center">
           
           {/* --------------------------------------------------------------------- */}
           {/* LEFT SIDE: HERO TYPOGRAPHY & BRANDING (KEPT VISIBLE ON DESKTOP ALWAYS)*/}
           {/* --------------------------------------------------------------------- */}
           <div className={`text-left space-y-2 sm:space-y-2.5 lg:space-y-2.5 xl:space-y-3 w-full lg:col-span-5 xl:col-span-5 ${activeView === 'overview' ? 'block' : 'hidden lg:block'}`}>
             <div className="space-y-1 sm:space-y-1.5 lg:space-y-2">
-              <h1 className="text-2xl sm:text-3xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-black text-white tracking-tight leading-[1.08] drop-shadow-[0_4px_24px_rgba(0,0,0,0.95)]">
+              <h1 className="text-xl xs:text-2xl sm:text-3xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-black text-white tracking-tight leading-[1.08] drop-shadow-[0_4px_24px_rgba(0,0,0,0.95)]">
                 <span className="hero-pro-title block font-black">
                   Linis Dingalan
                 </span>
@@ -1378,40 +1416,43 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   EC Management
                 </span>
               </h1>
-              <p className="text-xs sm:text-sm lg:text-xs xl:text-sm text-slate-100 font-medium leading-relaxed max-w-xl drop-shadow-[0_2px_12px_rgba(0,0,0,0.98)] text-left tracking-[-0.01em]">
+              <p className="text-[11px] xs:text-xs sm:text-sm lg:text-xs xl:text-sm text-slate-100 font-medium leading-relaxed max-w-xl drop-shadow-[0_2px_12px_rgba(0,0,0,0.98)] text-left tracking-[-0.01em]">
                 Innovation in Action Project of Municipal Environment and Natural Resources Office in Collaboration with Public Employment Service Office.
               </p>
-              <div className="w-full sm:w-auto inline-flex items-center justify-center sm:justify-start space-x-2 px-3.5 py-1.5 rounded-full bg-slate-950/70 border border-emerald-400/60 hero-badge-animated text-emerald-300 text-[10px] sm:text-xs font-mono font-extrabold tracking-wider shadow-lg backdrop-blur-md">
+              <div className="w-full sm:w-auto inline-flex items-center justify-center sm:justify-start space-x-2 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full bg-slate-950/70 border border-emerald-400/60 hero-badge-animated text-emerald-300 text-[9.5px] sm:text-xs font-mono font-extrabold tracking-wider shadow-lg backdrop-blur-md">
                 <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0 animate-twinkle" />
                 <span className="leading-tight">PESO & MENRO INTEGRATED OPERATIONS PLATFORM</span>
               </div>
             </div>
 
             {/* Feature Card */}
-            <div className="p-3 sm:p-3.5 lg:p-3 xl:p-4 rounded-2xl bg-slate-950/70 hover:bg-slate-950/80 border border-slate-700/70 hover:border-emerald-500/60 backdrop-blur-xl shadow-2xl space-y-2 max-w-xl hero-card-pro transition-all">
-              <p className="text-xs sm:text-xs xl:text-sm text-slate-100 leading-relaxed font-sans text-left font-normal">
+            <div className="p-2.5 sm:p-3.5 lg:p-3 xl:p-4 rounded-2xl bg-slate-950/70 hover:bg-slate-950/80 border border-slate-700/70 hover:border-emerald-500/60 backdrop-blur-xl shadow-xl space-y-1.5 sm:space-y-2 max-w-xl hero-card-pro transition-all">
+              <p className="text-[11px] xs:text-xs xl:text-sm text-slate-100 leading-relaxed font-sans text-left font-normal">
                 Activity-based participants' inventory monitoring with photographic compliance and real-time GPS watermarking across 11 coastal and river Barangays with Offline First to Online Sync Feature.
               </p>
-              <div className="flex items-center justify-between sm:justify-start space-x-4 pt-2 border-t border-slate-800/80 text-xs font-mono text-emerald-400">
+              <div className="flex items-center justify-between sm:justify-start space-x-4 pt-1.5 sm:pt-2 border-t border-slate-800/80 text-xs font-mono text-emerald-400">
                 <span className="flex items-center space-x-2">
                   <Building2 className="w-3.5 h-3.5 shrink-0 text-emerald-400 animate-pulse" />
-                  <span className="font-bold tracking-wider uppercase text-[11px]">11 Coastal Barangays Covered</span>
+                  <span className="font-bold tracking-wider uppercase text-[10px] sm:text-[11px]">11 Coastal Barangays Covered</span>
                 </span>
               </div>
             </div>
 
-            {/* Anonymous Citizen & Participant Reporting Box */}
-            <div className="p-3 sm:p-3.5 lg:p-3 xl:p-4 rounded-2xl bg-slate-950/75 hover:bg-slate-950/85 border border-emerald-500/60 hover:border-emerald-400 backdrop-blur-xl shadow-2xl space-y-2 max-w-xl hero-card-pro transition-all">
-              <div className="flex items-center justify-between">
+            {/* Anonymous Citizen & Participant Reporting Box (Hidden on Mobile) */}
+            <div
+              id="anonymous-reporting-content-box"
+              className="hidden lg:block p-3 sm:p-3.5 lg:p-3 xl:p-4 rounded-2xl bg-slate-950/85 hover:bg-slate-950/95 border-2 border-emerald-400/90 hover:border-emerald-300 backdrop-blur-xl shadow-[0_0_30px_rgba(16,185,129,0.35)] space-y-2 sm:space-y-2.5 max-w-xl hero-card-pro transition-all text-left"
+            >
+              <div className="flex flex-wrap xs:flex-nowrap items-center justify-between gap-1.5">
                 <div className="flex items-center space-x-2 text-emerald-300 font-mono font-extrabold text-xs sm:text-xs xl:text-sm tracking-wide">
                   <EyeOff className="w-4 h-4 text-emerald-400 shrink-0 animate-pulse" />
                   <span className="kinetic-text-glow">CONFIDENTIAL MESSAGE TO ADMIN</span>
                 </div>
-                <span className="text-[9.5px] sm:text-[10px] font-mono font-black text-emerald-300 bg-emerald-500/25 px-2.5 py-0.5 rounded-full border border-emerald-500/50 uppercase tracking-wider shadow-[0_0_12px_rgba(16,185,129,0.3)]">
+                <span className="text-[9px] xs:text-[9.5px] sm:text-[10px] font-mono font-black text-emerald-300 bg-emerald-500/25 px-2.5 py-0.5 rounded-full border border-emerald-500/50 uppercase tracking-wider shadow-[0_0_12px_rgba(16,185,129,0.3)] shrink-0">
                   100% Anonymous
                 </span>
               </div>
-              <p className="text-xs sm:text-xs xl:text-sm text-slate-100 leading-relaxed font-sans text-left">
+              <p className="text-[11px] xs:text-xs xl:text-sm text-slate-100 leading-relaxed font-sans text-left font-normal">
                 Want to report about work, waste, suggestions or inquiries? You can send an anonymous message. Only the Admin account can view this and your identity remains confidential.
               </p>
               <button
@@ -1423,15 +1464,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     modalScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
                   }, 50);
                 }}
-                className="w-full py-2 sm:py-2.5 lg:py-2 xl:py-2.5 px-3.5 lg:px-3 rounded-xl fluid-btn-emerald text-slate-950 font-mono font-black text-xs sm:text-xs lg:text-[11px] xl:text-xs flex items-center justify-center space-x-2 transition-all cursor-pointer hover:scale-[1.01] active:scale-95 border-2 border-emerald-300 shadow-[0_0_25px_rgba(16,185,129,0.5)] uppercase tracking-wider"
+                className="w-full py-2.5 sm:py-2.5 lg:py-2 xl:py-2.5 px-3.5 lg:px-3 rounded-xl fluid-btn-emerald text-slate-950 font-mono font-black text-xs sm:text-xs lg:text-[11px] xl:text-xs flex items-center justify-center space-x-2 transition-all cursor-pointer hover:scale-[1.01] active:scale-95 border-2 border-emerald-300 shadow-[0_0_25px_rgba(16,185,129,0.5)] uppercase tracking-wider select-none"
               >
-                <EyeOff className="w-3.5 h-3.5 lg:w-3 lg:h-3 text-slate-950" />
-                <span>Send Anonymous Message</span>
+                <EyeOff className="w-3.5 h-3.5 lg:w-3 lg:h-3 text-slate-950 shrink-0" />
+                <span className="truncate">Send Anonymous Message</span>
               </button>
             </div>
 
             {/* Mobile quick switcher to Admin Login if in Overview mode */}
-            <div className="flex sm:hidden items-center justify-between pt-1 px-1 text-[11px] font-mono">
+            <div className="flex lg:hidden items-center justify-between pt-1 px-1 text-[11px] font-mono">
               <button
                 type="button"
                 onClick={() => setActiveView('login')}
@@ -1454,7 +1495,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           {/* --------------------------------------------------------------------- */}
           {/* RIGHT SIDE: POP-UP LOGIN BOX / BROADCAST CARD (ENLARGED FOR HIGH VISIBILITY) */}
           {/* --------------------------------------------------------------------- */}
-          <div className={`w-full max-w-full lg:max-w-3xl xl:max-w-4xl mx-auto self-center lg:col-span-7 xl:col-span-7 ${activeView === 'overview' ? 'hidden lg:block' : 'block'}`}>
+          <div className={`w-full max-w-full lg:max-w-3xl xl:max-w-4xl mx-auto self-start lg:self-center lg:col-span-7 xl:col-span-7 ${activeView === 'overview' ? 'hidden lg:block' : 'block'}`}>
             <AnimatePresence mode="wait">
               {isUnfolded && (
                 <motion.div
@@ -1469,7 +1510,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     /* ========================================================================= */
                     /* PATUNAY SA PAGDALO: UPLOAD ACCOMPLISHMENT (MATCHING USER SCREENSHOT)     */
                     /* ========================================================================= */
-                    <div className="relative rounded-2xl sm:rounded-3xl border-2 border-emerald-500/70 shadow-[0_25px_70px_rgba(0,0,0,0.9),0_0_50px_rgba(16,185,129,0.3)] bg-slate-900/95 hover:bg-slate-900 backdrop-blur-md overflow-hidden animate-scaleIn w-full text-left flex flex-col max-h-[86vh]">
+                    <div className="relative rounded-2xl sm:rounded-3xl border-2 border-emerald-500/70 shadow-[0_25px_70px_rgba(0,0,0,0.9),0_0_50px_rgba(16,185,129,0.3)] bg-slate-900/95 hover:bg-slate-900 backdrop-blur-md overflow-hidden animate-scaleIn w-full text-left flex flex-col h-auto max-h-none sm:max-h-[85vh] my-1 sm:my-0">
                       {/* Hidden file inputs */}
                       <input
                         type="file"
@@ -1803,9 +1844,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     /* ========================================================================= */
                     /* ANONYMOUS MESSAGE CARD (FITS INSIDE LOGIN BOX AREA AS REQUESTED)          */
                     /* ========================================================================= */
-                    <div className="relative rounded-2xl sm:rounded-3xl border-2 border-amber-500/70 shadow-[0_25px_70px_rgba(0,0,0,0.9),0_0_50px_rgba(245,158,11,0.25)] bg-slate-900/95 hover:bg-slate-900 backdrop-blur-md overflow-hidden animate-scaleIn w-full text-left flex flex-col max-h-[86vh]">
+                    <div className="relative rounded-2xl sm:rounded-3xl border-2 border-amber-500/70 shadow-[0_25px_70px_rgba(0,0,0,0.9),0_0_50px_rgba(245,158,11,0.25)] bg-slate-900/95 hover:bg-slate-900 backdrop-blur-md overflow-hidden animate-scaleIn w-full text-left flex flex-col h-auto max-h-none sm:max-h-[86vh] my-1 sm:my-0">
                       {/* Header Bar */}
-                      <div className="px-3.5 sm:px-6 py-2.5 sm:py-3.5 border-b border-slate-800 bg-slate-950/90 flex items-center justify-between shrink-0">
+                      <div className="px-3 sm:px-6 py-2.5 sm:py-3.5 border-b border-slate-800 bg-slate-950/95 flex items-center justify-between shrink-0 sticky top-0 z-20">
                         <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
                           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-tr from-amber-400 to-yellow-300 flex items-center justify-center text-slate-950 shadow-md shrink-0">
                             <EyeOff className="w-4 h-4 text-slate-950" />
@@ -1845,7 +1886,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       </div>
 
                       {/* Card Body */}
-                      <div className="p-3.5 sm:p-5 lg:p-6 overflow-y-auto space-y-3.5 sm:space-y-4 flex-1">
+                      <div className="p-3 sm:p-5 lg:p-6 overflow-y-auto space-y-3 sm:space-y-4 flex-1 min-h-0 overscroll-contain pb-28 sm:pb-6 scrollbar-thin">
                         {anonIsSuccess ? (
                           <div className="text-center py-6 sm:py-8 space-y-3.5 sm:space-y-4 animate-scaleIn">
                             <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center text-emerald-400 shadow-[0_0_30px_rgba(16,185,129,0.4)]">
@@ -1903,9 +1944,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                             </div>
                           </div>
                         ) : (
-                          <div className="space-y-3.5 sm:space-y-4">
+                          <div className="space-y-3 sm:space-y-4">
                             {/* Privacy Assurance Banner */}
-                            <div className="p-2.5 sm:p-3 rounded-xl bg-amber-950/30 border border-amber-500/40 text-amber-200 text-xs flex items-center justify-between">
+                            <div className="p-2 sm:p-3 rounded-xl bg-amber-950/30 border border-amber-500/40 text-amber-200 text-xs flex items-center justify-between">
                               <div className="flex items-center space-x-2">
                                 <EyeOff className="w-4 h-4 text-amber-400 shrink-0" />
                                 <span className="font-sans font-medium text-[11px] sm:text-xs">
@@ -1918,20 +1959,20 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                             </div>
 
                             {anonErrorMessage && (
-                              <div className="p-3 rounded-xl bg-rose-950/80 border border-rose-500/50 text-rose-200 text-xs flex items-center space-x-2 uppercase font-mono font-bold">
+                              <div className="p-2.5 sm:p-3 rounded-xl bg-rose-950/80 border border-rose-500/50 text-rose-200 text-xs flex items-center space-x-2 uppercase font-mono font-bold">
                                 <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
                                 <span>{anonErrorMessage}</span>
                               </div>
                             )}
 
                             {/* 1. Category Selector */}
-                            <div className="space-y-1.5">
+                            <div className="space-y-1 sm:space-y-1.5">
                               <label className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wide flex items-center space-x-1.5">
-                                <FileText className="w-4 h-4 text-amber-400" />
+                                <FileText className="w-3.5 h-3.5 text-amber-400" />
                                 <span>1. URI O PAKSA NG ANONYMOUS MESSAGE <span className="text-rose-400">*</span></span>
                               </label>
 
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2">
                                 {[
                                   { id: 'report', label: 'ULAT / SUMBONG UKOL SA GAWAIN O AREA', desc: 'May napansing iregularidad o basura na naiwan', icon: AlertCircle },
                                   { id: 'feedback', label: 'MUNGKAHI / REKOMENDASYON', desc: 'Mga ideya para mas mapaganda ang programa', icon: Sparkles },
@@ -1945,22 +1986,22 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                                     <div
                                       key={cat.id}
                                       onClick={() => setAnonCategory(cat.id as any)}
-                                      className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-start space-x-2.5 ${
+                                      className={`p-2 sm:p-2.5 rounded-xl border transition-all cursor-pointer flex items-start space-x-2 sm:space-x-2.5 ${
                                         isSelected
                                           ? 'bg-amber-500/20 border-amber-400 text-white shadow-[0_0_15px_rgba(245,158,11,0.25)]'
                                           : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-950'
                                       }`}
                                     >
                                       <div
-                                        className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                                        className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
                                           isSelected ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-slate-400'
                                         }`}
                                       >
-                                        <Icon className="w-3.5 h-3.5" />
+                                        <Icon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                                       </div>
                                       <div className="min-w-0">
-                                        <p className="font-bold text-xs uppercase leading-tight">{cat.label}</p>
-                                        <p className="text-[10px] text-slate-400 leading-snug mt-0.5 line-clamp-1">
+                                        <p className="font-bold text-[11px] sm:text-xs uppercase leading-tight truncate sm:whitespace-normal">{cat.label}</p>
+                                        <p className="text-[9.5px] sm:text-[10px] text-slate-400 leading-snug mt-0.5 line-clamp-1">
                                           {cat.desc}
                                         </p>
                                       </div>
@@ -1971,13 +2012,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                             </div>
 
                             {/* 2. Priority Selector */}
-                            <div className="space-y-1.5">
+                            <div className="space-y-1 sm:space-y-1.5">
                               <label className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wide flex items-center justify-between">
                                 <span>2. ANTAS NG KAHALAGAHAN (PRIORITY)</span>
                                 <span className="text-[10px] text-slate-400 font-mono">PUMILI NG ANGKOP NA ANTAS</span>
                               </label>
 
-                              <div className="grid grid-cols-3 gap-2 text-xs font-mono">
+                              <div className="grid grid-cols-3 gap-1.5 sm:gap-2 text-xs font-mono">
                                 {[
                                   { id: 'normal', label: 'NORMAL / KARANIWAN', color: 'emerald' },
                                   { id: 'urgent', label: 'MATAAS (URGENT)', color: 'rose' },
@@ -1989,7 +2030,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                                       key={p.id}
                                       type="button"
                                       onClick={() => setAnonPriority(p.id as any)}
-                                      className={`py-2 px-2.5 rounded-xl border text-center font-bold transition-all cursor-pointer uppercase ${
+                                      className={`py-1.5 sm:py-2 px-1.5 sm:px-2.5 rounded-xl border text-center font-bold text-[10px] sm:text-xs transition-all cursor-pointer uppercase ${
                                         isSelected
                                           ? p.id === 'urgent'
                                             ? 'bg-rose-500/25 border-rose-400 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.3)]'
@@ -2007,7 +2048,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                             </div>
 
                             {/* 3. Message Textarea */}
-                            <div className="space-y-1.5">
+                            <div className="space-y-1 sm:space-y-1.5">
                               <label className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wide flex items-center justify-between">
                                 <span>3. NILALAMAN NG ANONYMOUS MENSAHE <span className="text-rose-400">*</span></span>
                                 <span className="text-[10px] font-mono text-amber-400 uppercase font-semibold">100% PROTEKTADO ANG SENDER</span>
@@ -2017,13 +2058,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                                 value={anonMessageText}
                                 onChange={(e) => setAnonMessageText(e.target.value)}
                                 placeholder="ISULAT DITO ANG INYONG ULAT, OBSERBASYON, MUNGKAHI, O MENSAHE PARA SA ADMIN. HUWAG MAG-ALALA, WALANG MAKAKAALAM KUNG SINO ANG NAGPADALA NITO..."
-                                rows={4}
-                                className="w-full px-4 py-3 rounded-2xl bg-slate-950/90 border border-slate-700 focus:border-amber-400 text-white placeholder-slate-500 text-xs sm:text-sm font-sans leading-relaxed shadow-inner"
+                                rows={3}
+                                className="w-full px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-2xl bg-slate-950/90 border border-slate-700 focus:border-amber-400 text-white placeholder-slate-500 text-xs sm:text-sm font-sans leading-relaxed shadow-inner"
                               />
                             </div>
 
                             {/* Submit & Cancel Buttons */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 font-mono">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 pt-1 font-mono">
                               <button
                                 type="button"
                                 onClick={() => setActiveView('event')}
@@ -2206,15 +2247,44 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     </div>
                   )}
 
-                  {/* Bottom Author Row */}
-                  <div className="text-xs sm:text-sm font-mono text-slate-400 pt-2 text-right border-t border-white/10 flex items-center justify-between">
-                    <span className="text-emerald-300 font-semibold flex items-center gap-1.5">
-                      <Clock className="w-4 h-4 text-emerald-400 shrink-0" />
-                      <span>{eventTimeLeft.formatted} remaining</span>
-                    </span>
-                    <span className="truncate">
-                      Broadcasted by: <strong className="text-emerald-400">{eventBroadcast.sentByAdminName || 'Admin Officer'}</strong>
-                    </span>
+                  {/* Bottom Author Row - Responsive on Mobile & Desktop */}
+                  <div className="text-[11px] sm:text-xs md:text-sm font-mono text-slate-400 pt-2.5 border-t border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-2">
+                    <div className="flex items-center gap-1.5 text-emerald-300 font-bold whitespace-nowrap shrink-0">
+                      <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0 animate-pulse" />
+                      <span className="bg-emerald-950/70 border border-emerald-500/30 px-2 py-0.5 rounded text-emerald-300 font-mono tracking-wider whitespace-nowrap">
+                        {eventTimeLeft.formatted}
+                      </span>
+                      <span className="text-emerald-400/80 font-normal text-[10px] sm:text-xs">remaining</span>
+                    </div>
+                    <div className="text-[10.5px] sm:text-xs text-slate-300 truncate sm:text-right">
+                      Broadcasted by: <strong className="text-emerald-400 font-bold">{eventBroadcast.sentByAdminName || 'Admin Officer'}</strong>
+                    </div>
+                  </div>
+
+                  {/* Mobile Quick Anonymous Reporting Box inside Advisory */}
+                  <div className="lg:hidden p-2.5 rounded-xl bg-slate-900/95 border-2 border-amber-500/60 flex items-center justify-between gap-2 shadow-lg">
+                    <div className="flex items-center space-x-2 min-w-0">
+                      <div className="w-7 h-7 rounded-lg bg-amber-500/20 flex items-center justify-center shrink-0">
+                        <EyeOff className="w-4 h-4 text-amber-400 animate-pulse" />
+                      </div>
+                      <div className="min-w-0 text-left">
+                        <p className="text-[10px] font-mono font-bold text-amber-300 uppercase leading-none">Confidential Message to Admin</p>
+                        <p className="text-[9.5px] text-slate-300 truncate mt-0.5">100% Anonymous & Protected</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUnfolded(true);
+                        setActiveView('anonymous');
+                        setTimeout(() => {
+                          modalScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+                        }, 50);
+                      }}
+                      className="px-2.5 py-1.5 rounded-lg fluid-btn-amber text-slate-950 font-mono font-black text-[10px] uppercase shrink-0 active:scale-95 shadow cursor-pointer border border-amber-300"
+                    >
+                      Mag-message
+                    </button>
                   </div>
                 </div>
               ) : activeView === 'event' ? (
@@ -2320,6 +2390,32 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       <span>Live Scheduler Active • Auto-updates upon broadcast</span>
                     </div>
                     <span className="text-slate-400 font-semibold">Dingalan LGU</span>
+                  </div>
+
+                  {/* Mobile Quick Anonymous Reporting Box inside Public Advisory */}
+                  <div className="lg:hidden p-2.5 rounded-xl bg-slate-900/95 border-2 border-amber-500/60 flex items-center justify-between gap-2 shadow-lg">
+                    <div className="flex items-center space-x-2 min-w-0">
+                      <div className="w-7 h-7 rounded-lg bg-amber-500/20 flex items-center justify-center shrink-0">
+                        <EyeOff className="w-4 h-4 text-amber-400 animate-pulse" />
+                      </div>
+                      <div className="min-w-0 text-left">
+                        <p className="text-[10px] font-mono font-bold text-amber-300 uppercase leading-none">Confidential Message to Admin</p>
+                        <p className="text-[9.5px] text-slate-300 truncate mt-0.5">100% Anonymous & Protected</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUnfolded(true);
+                        setActiveView('anonymous');
+                        setTimeout(() => {
+                          modalScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+                        }, 50);
+                      }}
+                      className="px-2.5 py-1.5 rounded-lg fluid-btn-amber text-slate-950 font-mono font-black text-[10px] uppercase shrink-0 active:scale-95 shadow cursor-pointer border border-amber-300"
+                    >
+                      Mag-message
+                    </button>
                   </div>
                 </div>
               ) : (
@@ -2478,7 +2574,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       {/* ========================================================================= */}
       {/* BOTTOM FOOTER BAR (SLIM FIT TO NEVER GET PUSHED OFF THE SCREEN)            */}
       {/* ========================================================================= */}
-      <div className="relative z-10 w-full px-3 sm:px-6 lg:px-10 xl:px-14 py-2 sm:py-2.5 text-center sm:text-left flex flex-col sm:flex-row items-center justify-between text-[10px] sm:text-[11px] font-mono text-slate-300 border-t border-white/10 bg-slate-950/40 backdrop-blur-md gap-1.5 shrink-0">
+      <div className="relative z-10 w-full px-3 sm:px-6 lg:px-10 xl:px-14 py-2 sm:py-2.5 text-center sm:text-left hidden sm:flex flex-col sm:flex-row items-center justify-between text-[10px] sm:text-[11px] font-mono text-slate-300 border-t border-white/10 bg-slate-950/40 backdrop-blur-md gap-1.5 shrink-0">
         <div className="drop-shadow text-center sm:text-left">
           Linis Dingalan EC Management Platform • PESO & MENRO Operations • Municipality of Dingalan, Aurora
         </div>
