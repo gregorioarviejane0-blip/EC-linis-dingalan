@@ -4,11 +4,12 @@ import { User, UserRole, Beneficiary, EventQrBroadcast } from '../types';
 import { api } from '../services/api';
 import { INITIAL_EVENT_BROADCAST } from '../data/seedData';
 import QRCode from 'qrcode';
-import { checkEventCutoff } from '../utils/watermarkEngine';
-import { useDingalanClock, getDingalanNow, checkIsBroadcastActive } from '../utils/philippineClock';
+import { checkEventCutoff, burnGeotagWatermark, getGpsCoordinates, detectDingalanAreaByCoordinates } from '../utils/watermarkEngine';
+import { useDingalanClock, getDingalanNow, checkIsBroadcastActive, formatPhilippineDateTime } from '../utils/philippineClock';
 import { generateStyledLguQrDataUrl } from '../utils/qrPassGenerator';
 import { SendAnonymousMessageModal } from './SendAnonymousMessageModal';
-import dingalanBgImg from '../assets/images/dingalan_lighthouse_natural_drone_1791512687510.jpg';
+import { FullScreenPhotoViewer } from './FullScreenPhotoViewer';
+import dingalanBgImg from '../assets/images/dingalan_wide_full_drone_1791526093260.jpg';
 import {
   Lock,
   Mail,
@@ -41,6 +42,11 @@ import {
   RefreshCw,
   CheckCircle2,
   Calendar,
+  Edit3,
+  UserCheck,
+  Images,
+  Trash2,
+  Navigation,
 } from 'lucide-react';
 import systemWallpaper from '../assets/images/dingalan_system_wallpaper.jpg';
 
@@ -86,6 +92,9 @@ interface LoginModalProps {
   currentUser: User;
   users?: User[];
   activities?: any[];
+  beneficiaries?: Beneficiary[];
+  onSubmitAttendance?: (payload: any) => Promise<{ success: boolean; attendance: any }>;
+  onSuccessSubmitted?: (attendance: any) => void;
   onClose?: () => void;
   onOpenRegisterModal?: () => void;
   onOpenUploadAccomplishment?: (beneficiary?: Beneficiary) => void;
@@ -98,6 +107,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   isOpen,
   onLogin,
   onClose,
+  currentUser,
+  users: propUsers = [],
+  beneficiaries: propBeneficiaries = [],
+  onSubmitAttendance: propOnSubmitAttendance,
+  onSuccessSubmitted: propOnSuccessSubmitted,
   onOpenRegisterModal,
   onOpenUploadAccomplishment,
   onOpenScanQrModal,
@@ -113,10 +127,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const modalScrollRef = useRef<HTMLDivElement>(null);
 
-  // Switchable Active View: Defaults to 'event' (Paalala at Patnubay Box automatic na bubungad sa initial load)
-  const [activeView, setActiveView] = useState<'login' | 'event' | 'overview'>('event');
+  // Switchable Active View: 'login' | 'event' | 'overview' | 'upload'
+  const [activeView, setActiveView] = useState<'login' | 'event' | 'overview' | 'upload'>('event');
 
-  // On computer/desktop screens (>= 1024px), ensure activeView stays on 'event' or 'login'
+  // On computer/desktop screens (>= 1024px), ensure activeView stays on 'event', 'login', or 'upload'
   // because the Mensahe button is hidden on computer and the system overview is already visible on the left
   useEffect(() => {
     const handleCheckDesktop = () => {
@@ -160,6 +174,239 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     } catch {}
     return null;
   }, [allActivities]);
+
+  // Default beneficiary for Upload form (defaults to Danilo Bautista if not found)
+  const defaultUploadBene = useMemo(() => {
+    if (propBeneficiaries && propBeneficiaries.length > 0) {
+      const match = propBeneficiaries.find((b) => `${b.firstName} ${b.lastName}`.toLowerCase().includes('danilo'));
+      return match || propBeneficiaries[0];
+    }
+    return {
+      id: 'ben-001',
+      beneCode: 'LD-BEN-2025-0101',
+      firstName: 'Danilo',
+      lastName: 'Bautista',
+      barangay: 'Paltic',
+      assignedCluster: 'Municipal Administrator',
+      contactNumber: '0917-123-4567',
+      qrHash: 'qr-verified',
+    } as Beneficiary;
+  }, [propBeneficiaries]);
+
+  // Upload Accomplishment Form State (Matching the user's uploaded picture)
+  const [uploadFullName, setUploadFullName] = useState<string>('Danilo Bautista');
+  const [uploadCleanedArea, setUploadCleanedArea] = useState<string>('Dingalan Feeder Port & Paltic Coastal Cleanliness Operation (Dingalan Feeder Port & Seawall Area)');
+  const [uploadBeneBadge, setUploadBeneBadge] = useState<string>('LD-BEN-2025-0101');
+  const [uploadPhotos, setUploadPhotos] = useState<string[]>([]);
+  const [uploadNotes, setUploadNotes] = useState<string>('');
+  
+  const [uploadGpsCoords, setUploadGpsCoords] = useState<{
+    latitude: number;
+    longitude: number;
+    accuracy: number;
+    altitude: number | null;
+  } | null>(null);
+  const [uploadRealtimeArea, setUploadRealtimeArea] = useState<string>('Brgy. Paltic (Dingalan Feeder Port & Seawall Area)');
+  const [uploadGpsLoading, setUploadGpsLoading] = useState(false);
+  const [uploadIsProcessing, setUploadIsProcessing] = useState(false);
+  const [uploadErrorMessage, setUploadErrorMessage] = useState<string | null>(null);
+  const [uploadIsSuccess, setUploadIsSuccess] = useState(false);
+  const [uploadSubmittedRecord, setUploadSubmittedRecord] = useState<any | null>(null);
+  const [uploadFullscreenIndex, setUploadFullscreenIndex] = useState<number | null>(null);
+
+  const uploadFileInputRef = useRef<HTMLInputElement | null>(null);
+  const uploadCameraInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Validate cutoff info for event / upload
+  const uploadCutoffInfo = checkEventCutoff(propEventBroadcast || propActivities?.[0], propEventBroadcast);
+
+  const refreshUploadGps = async () => {
+    setUploadGpsLoading(true);
+    try {
+      const targetBrgy = defaultUploadBene?.barangay || 'Paltic';
+      const coords = await getGpsCoordinates(targetBrgy);
+      setUploadGpsCoords(coords);
+      const detected = detectDingalanAreaByCoordinates(coords.latitude, coords.longitude);
+      setUploadRealtimeArea(detected);
+    } catch (err) {
+      console.warn('Realtime GPS error', err);
+    } finally {
+      setUploadGpsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeView === 'upload') {
+      if (defaultUploadBene) {
+        setUploadFullName(`${defaultUploadBene.firstName} ${defaultUploadBene.lastName}`);
+        setUploadBeneBadge(defaultUploadBene.beneCode || 'LD-BEN-2025-0101');
+      }
+      refreshUploadGps();
+    }
+  }, [activeView, defaultUploadBene]);
+
+  const handleApplyUploadRealtimeGpsArea = () => {
+    if (uploadRealtimeArea) {
+      setUploadCleanedArea(uploadRealtimeArea);
+    }
+  };
+
+  const handleUploadMultipleFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploadIsProcessing(true);
+    setUploadErrorMessage(null);
+
+    const fileList = Array.from(files);
+    const newPhotos: string[] = [];
+
+    for (const file of fileList) {
+      try {
+        const rawData = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (event) => resolve(event.target?.result as string);
+          reader.onerror = (err) => reject(err);
+          reader.readAsDataURL(file);
+        });
+
+        const coords = uploadGpsCoords || (await getGpsCoordinates(defaultUploadBene?.barangay || 'Paltic'));
+        const watermarked = await burnGeotagWatermark(
+          rawData,
+          {
+            beneficiaryName: uploadFullName || `${defaultUploadBene.firstName} ${defaultUploadBene.lastName}`,
+            beneficiaryCode: uploadBeneBadge || defaultUploadBene.beneCode,
+            activityTitle: uploadCleanedArea || 'Linis Dingalan Environmental Compliance Program',
+            assignedArea: uploadCleanedArea || uploadRealtimeArea,
+            barangay: defaultUploadBene.barangay || 'Paltic',
+            verifiedByOfficer: currentUser.name,
+          },
+          1280,
+          0.82,
+          coords
+        );
+        newPhotos.push(watermarked.watermarkedDataUrl);
+      } catch (err: any) {
+        console.error('Failed to process photo', err);
+      }
+    }
+
+    if (newPhotos.length > 0) {
+      setUploadPhotos((prev) => [...prev, ...newPhotos]);
+    }
+    setUploadIsProcessing(false);
+    if (e.target) e.target.value = '';
+  };
+
+  const handleUploadSamplePhotos = async () => {
+    setUploadIsProcessing(true);
+    const sampleImages = [
+      'https://images.unsplash.com/photo-1618477461853-cf6ed80faba5?w=1000&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=1000&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1595278069441-2cf29f8005a4?w=1000&auto=format&fit=crop&q=80',
+    ];
+
+    const coords = uploadGpsCoords || (await getGpsCoordinates(defaultUploadBene?.barangay || 'Paltic'));
+    const generated: string[] = [];
+
+    for (const url of sampleImages) {
+      try {
+        const watermarked = await burnGeotagWatermark(
+          url,
+          {
+            beneficiaryName: uploadFullName || `${defaultUploadBene.firstName} ${defaultUploadBene.lastName}`,
+            beneficiaryCode: uploadBeneBadge || defaultUploadBene.beneCode,
+            activityTitle: uploadCleanedArea || 'Linis Dingalan Environmental Compliance Program',
+            assignedArea: uploadCleanedArea || uploadRealtimeArea,
+            barangay: defaultUploadBene.barangay || 'Paltic',
+            verifiedByOfficer: currentUser.name,
+          },
+          1280,
+          0.82,
+          coords
+        );
+        generated.push(watermarked.watermarkedDataUrl);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    setUploadPhotos((prev) => [...prev, ...generated]);
+    setUploadIsProcessing(false);
+  };
+
+  const handleUploadSubmit = async () => {
+    if (uploadCutoffInfo.isExpired) {
+      setUploadErrorMessage(`Hindi na maaaring magpasa ng accomplishment attendance dahil tapos na ang nakatakdang oras ng event (${uploadCutoffInfo.endTimeFormatted}).`);
+      return;
+    }
+
+    if (!uploadFullName.trim()) {
+      setUploadErrorMessage('Pakiusap ilagay ang inyong Full Name sa Number 1.');
+      return;
+    }
+
+    if (!uploadCleanedArea.trim()) {
+      setUploadErrorMessage('Pakiusap ilagay kung saang area kayo nakapaglinis sa Number 2.');
+      return;
+    }
+
+    if (uploadPhotos.length === 0) {
+      setUploadErrorMessage('Pakiusap mag-upload ng kahit isang (1) accomplishment picture bilang patunay sa pagdalo.');
+      return;
+    }
+
+    setUploadIsProcessing(true);
+    setUploadErrorMessage(null);
+
+    try {
+      const coords = uploadGpsCoords || (await getGpsCoordinates(defaultUploadBene?.barangay || 'Paltic'));
+
+      const payload = {
+        activity_id: propEventBroadcast?.activityId || 'act-001',
+        activity_title: uploadCleanedArea || 'Linis Dingalan Environmental Compliance Program',
+        beneficiary_id: defaultUploadBene.id,
+        beneficiary_name: uploadFullName.trim(),
+        beneficiary_code: uploadBeneBadge,
+        phone_number: defaultUploadBene.contactNumber,
+        barangay: defaultUploadBene.barangay || 'Paltic',
+        department: defaultUploadBene.assignedCluster,
+        qr_signature: defaultUploadBene.qrHash || 'qr-verified',
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        accuracy_meters: coords.accuracy,
+        altitude_meters: coords.altitude || 10,
+        location_description: uploadCleanedArea.trim(),
+        photo_watermarked: uploadPhotos[0],
+        accomplishment_photos: uploadPhotos,
+        photo_size_kb: Math.round(uploadPhotos[0].length / 1024),
+        notes: uploadNotes.trim() || `Patunay ng paglilinis ni ${uploadFullName.trim()} sa ${uploadCleanedArea.trim()}.`,
+        accomplishment_notes: uploadNotes.trim() || `Patunay ng paglilinis ni ${uploadFullName.trim()} sa ${uploadCleanedArea.trim()}.`,
+      };
+
+      if (propOnSubmitAttendance) {
+        const res = await propOnSubmitAttendance(payload);
+        if (res.success && res.attendance) {
+          setUploadSubmittedRecord(res.attendance);
+          setUploadIsSuccess(true);
+          if (propOnSuccessSubmitted) {
+            propOnSuccessSubmitted(res.attendance);
+          }
+        }
+      } else {
+        const res = await api.attendance.create(payload);
+        setUploadSubmittedRecord(res);
+        setUploadIsSuccess(true);
+        if (propOnSuccessSubmitted) {
+          propOnSuccessSubmitted(res);
+        }
+      }
+    } catch (err: any) {
+      setUploadErrorMessage(err.message || 'Nagkaroon ng error sa pag-upload ng accomplishment pictures.');
+    } finally {
+      setUploadIsProcessing(false);
+    }
+  };
 
   // Filter strictly scheduled and ongoing activities from the Programs list (excluding completed/cancelled)
   const scheduledActivities = useMemo(() => {
@@ -779,18 +1026,31 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       className="fixed inset-0 z-50 w-screen h-screen max-h-screen overflow-hidden bg-transparent font-sans text-slate-100 flex flex-col justify-between"
     >
       {/* ========================================================================= */}
-      {/* STATIC HIGH-RESOLUTION DINGALAN LIGHTHOUSE BACKGROUND IMAGE (NO VIDEO)     */}
+      {/* CINEMATIC DINGALAN LIGHTHOUSE VIDEO CLIP (PANNING TO THE RIGHT)           */}
       {/* ========================================================================= */}
       <div className="fixed inset-0 w-full h-full pointer-events-none select-none z-0 overflow-hidden bg-slate-950 flex items-center justify-center">
-        <img
-          src={dingalanBgImg}
-          alt="Dingalan Background"
-          className="absolute inset-0 w-full h-full object-cover object-center filter contrast-[1.08] saturate-[1.2] brightness-[1.02]"
-          style={{ imageRendering: '-webkit-optimize-contrast', transform: 'translateZ(0)' }}
-        />
+        <video
+          ref={videoRef}
+          autoPlay
+          loop
+          muted
+          playsInline
+          poster={dingalanBgImg}
+          className="absolute inset-0 w-full h-full object-cover object-center filter contrast-[1.08] saturate-[1.25] brightness-[1.02]"
+          style={{ transform: 'translateZ(0)' }}
+        >
+          <source src="/dingalan_bg_video.mp4" type="video/mp4" />
+          <source src="/api/video/background" type="video/mp4" />
+          <source src="/dingalan_bg_video.webm" type="video/webm" />
+          <img
+            src={dingalanBgImg}
+            alt="Dingalan Background"
+            className="absolute inset-0 w-full h-full object-cover object-center"
+          />
+        </video>
 
         {/* Ambient overlay - cinematic clarity with legible contrast */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-black/10 to-black/30 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/15 to-black/35 pointer-events-none" />
       </div>
 
       {/* ========================================================================= */}
@@ -1017,13 +1277,26 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               whileTap={{ scale: 0.94 }}
               whileHover={{ scale: 1.03 }}
               onClick={() => {
-                if (onOpenUploadAccomplishment) {
-                  onOpenUploadAccomplishment();
-                }
+                setIsUnfolded(true);
+                setActiveView('upload');
+                setTimeout(() => {
+                  modalScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+                }, 50);
               }}
-              className="relative flex items-center justify-center space-x-1 sm:space-x-1.5 text-[10px] sm:text-xs font-mono font-bold px-2 sm:px-3.5 py-1.5 rounded-lg sm:rounded-xl fluid-btn-emerald text-slate-950 shadow transition-all cursor-pointer overflow-hidden group select-none border border-emerald-300/60"
+              className={`relative flex items-center justify-center space-x-1 sm:space-x-1.5 text-[10px] sm:text-xs font-mono font-bold px-2 sm:px-3.5 py-1.5 rounded-lg sm:rounded-xl transition-all cursor-pointer overflow-hidden group select-none border border-emerald-300/60 shadow ${
+                isUnfolded && activeView === 'upload'
+                  ? 'text-slate-950 font-black'
+                  : 'fluid-btn-emerald text-slate-950 hover:scale-[1.02]'
+              }`}
               title="Pindutin para mag-upload ng Attendance Pictures"
             >
+              {isUnfolded && activeView === 'upload' && (
+                <motion.div
+                  layoutId="activeTabIndicator"
+                  className="absolute inset-0 rounded-lg sm:rounded-xl bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 border border-emerald-300 shadow-[0_0_16px_rgba(16,185,129,0.7)]"
+                  transition={{ type: 'spring', stiffness: 500, damping: 32 }}
+                />
+              )}
               <span className="relative z-10 flex items-center space-x-1 sm:space-x-1.5">
                 <Camera className="w-3.5 h-3.5 text-slate-950 shrink-0 group-hover:rotate-12 transition-transform duration-300" />
                 <span className="truncate uppercase font-black text-slate-950">Upload</span>
@@ -1059,36 +1332,36 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       {/* ========================================================================= */}
       {/* MAIN CENTER HERO CONTAINER (FITS 100% INTO WHOLE SCREEN MOBILE & DESKTOP) */}
       {/* ========================================================================= */}
-      <div className="relative z-10 w-full max-w-[1750px] mx-auto px-2 xs:px-3 sm:px-6 lg:px-10 xl:px-14 flex-1 min-h-0 flex items-center justify-center overflow-y-auto lg:overflow-hidden my-auto py-0.5 sm:py-2">
-        <div className="w-full flex flex-col lg:grid lg:grid-cols-12 gap-2 sm:gap-5 lg:gap-6 xl:gap-8 items-center justify-center">
+      <div className="relative z-10 w-full max-w-[1750px] mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 xl:px-12 flex-1 min-h-0 flex items-center justify-center overflow-y-auto lg:overflow-hidden my-auto py-1 sm:py-2">
+        <div className="w-full flex flex-col lg:grid lg:grid-cols-12 gap-4 sm:gap-5 lg:gap-6 xl:gap-8 items-center justify-center">
           
           {/* --------------------------------------------------------------------- */}
-          {/* LEFT SIDE: HERO TYPOGRAPHY & BRANDING (SHOWN ON DESKTOP & OVERVIEW VIEW) */}
+          {/* LEFT SIDE: HERO TYPOGRAPHY & BRANDING (KEPT VISIBLE ON DESKTOP ALWAYS)*/}
           {/* --------------------------------------------------------------------- */}
-          <div className={`lg:col-span-6 xl:col-span-6 text-left space-y-2 sm:space-y-3 w-full ${activeView === 'overview' ? 'block' : 'hidden lg:block'}`}>
-            <div className="space-y-1.5 sm:space-y-2">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-4xl xl:text-5xl font-black text-white tracking-tight leading-[1.1] drop-shadow-[0_4px_16px_rgba(0,0,0,0.9)]">
+          <div className={`text-left space-y-2 sm:space-y-2.5 lg:space-y-2.5 xl:space-y-3 w-full lg:col-span-5 xl:col-span-5 ${activeView === 'overview' ? 'block' : 'hidden lg:block'}`}>
+            <div className="space-y-1 sm:space-y-1.5 lg:space-y-2">
+              <h1 className="text-2xl sm:text-3xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-black text-white tracking-tight leading-[1.08] drop-shadow-[0_4px_20px_rgba(0,0,0,0.9)]">
                 Linis Dingalan <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400">
                   EC Management
                 </span>
               </h1>
-              <p className="text-xs sm:text-sm lg:text-sm text-slate-100 font-medium leading-relaxed max-w-xl drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] text-left">
+              <p className="text-xs sm:text-sm lg:text-xs xl:text-sm text-slate-100 font-medium leading-relaxed max-w-xl drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)] text-left">
                 Innovation in Action Project of Municipal Environment and Natural Resources Office in Collaboration with Public Employment Service Office.
               </p>
-              <div className="w-full sm:w-auto inline-flex items-center justify-center sm:justify-start space-x-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[9px] sm:text-[10px] lg:text-[11px] font-mono font-bold tracking-wide shadow-md backdrop-blur-md">
+              <div className="w-full sm:w-auto inline-flex items-center justify-center sm:justify-start space-x-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 text-[10px] sm:text-xs font-mono font-bold tracking-wide shadow-lg backdrop-blur-md">
                 <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                 <span className="leading-tight">PESO & MENRO INTEGRATED OPERATIONS PLATFORM</span>
               </div>
             </div>
 
             {/* Feature Card */}
-            <div className="p-2.5 sm:p-3 lg:p-3.5 rounded-2xl bg-slate-950/50 hover:bg-slate-950/60 border border-slate-700/60 backdrop-blur-xl shadow-xl space-y-1.5 max-w-xl transition-colors">
-              <p className="text-[11px] sm:text-xs text-slate-200 leading-relaxed font-sans text-left">
+            <div className="p-2.5 sm:p-3 lg:p-3 xl:p-3.5 rounded-2xl bg-slate-950/60 hover:bg-slate-950/70 border border-slate-700/60 backdrop-blur-xl shadow-xl space-y-1.5 max-w-xl transition-colors">
+              <p className="text-xs sm:text-xs xl:text-sm text-slate-100 leading-relaxed font-sans text-left">
                 Activity-based participants' inventory monitoring with photographic compliance and real-time GPS watermarking across 11 coastal and river Barangays with Offline First to Online Sync Feature.
               </p>
-              <div className="flex items-center justify-between sm:justify-start space-x-4 pt-1.5 border-t border-slate-800 text-[11px] font-mono text-emerald-400">
-                <span className="flex items-center space-x-1.5">
+              <div className="flex items-center justify-between sm:justify-start space-x-4 pt-1.5 border-t border-slate-800 text-xs font-mono text-emerald-400">
+                <span className="flex items-center space-x-2">
                   <Building2 className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
                   <span className="font-semibold tracking-wide">11 Coastal Barangays Covered</span>
                 </span>
@@ -1096,23 +1369,23 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             </div>
 
             {/* Anonymous Citizen & Participant Reporting Box */}
-            <div className="p-2.5 sm:p-3 lg:p-3.5 rounded-2xl bg-slate-950/55 hover:bg-slate-950/65 border border-emerald-500/40 backdrop-blur-xl shadow-xl space-y-1.5 max-w-xl transition-all">
+            <div className="p-2.5 sm:p-3 lg:p-3 xl:p-3.5 rounded-2xl bg-slate-950/65 hover:bg-slate-950/75 border border-emerald-500/50 backdrop-blur-xl shadow-xl space-y-1.5 max-w-xl transition-all">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-1.5 text-emerald-300 font-mono font-bold text-[11px] sm:text-xs">
+                <div className="flex items-center space-x-2 text-emerald-300 font-mono font-bold text-xs sm:text-xs xl:text-sm">
                   <EyeOff className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                   <span>CONFIDENTIAL MESSAGE TO ADMIN</span>
                 </div>
-                <span className="text-[8.5px] sm:text-[9.5px] font-mono font-black text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/40 uppercase">
+                <span className="text-[9.5px] sm:text-[10px] font-mono font-black text-emerald-300 bg-emerald-500/25 px-2 py-0.5 rounded-full border border-emerald-500/50 uppercase">
                   100% Anonymous
                 </span>
               </div>
-              <p className="text-[11px] sm:text-xs text-slate-300 leading-snug font-sans text-left">
+              <p className="text-xs sm:text-xs xl:text-sm text-slate-200 leading-relaxed font-sans text-left">
                 Want to report about work, waste, suggestions or inquiries? You can send an anonymous message. Only the Admin account can view this and your identity remains confidential.
               </p>
               <button
                 type="button"
                 onClick={() => setIsAnonymousModalOpen(true)}
-                className="w-full py-2.5 px-3 rounded-xl fluid-btn-emerald text-slate-950 font-mono font-black text-[11px] sm:text-xs flex items-center justify-center space-x-2 transition-all cursor-pointer hover:scale-[1.01] active:scale-95 border border-emerald-300 shadow-[0_0_20px_rgba(16,185,129,0.5)]"
+                className="w-full py-2 sm:py-2.5 px-3.5 rounded-xl fluid-btn-emerald text-slate-950 font-mono font-black text-xs sm:text-xs xl:text-sm flex items-center justify-center space-x-2 transition-all cursor-pointer hover:scale-[1.01] active:scale-95 border border-emerald-300 shadow-[0_0_20px_rgba(16,185,129,0.45)]"
               >
                 <EyeOff className="w-3.5 h-3.5 text-slate-950" />
                 <span>Send Anonymous Message</span>
@@ -1141,9 +1414,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           </div>
 
           {/* --------------------------------------------------------------------- */}
-          {/* RIGHT SIDE: POP-UP LOGIN BOX / BROADCAST CARD (FITS WHOLE SCREEN)     */}
+          {/* RIGHT SIDE: POP-UP LOGIN BOX / BROADCAST CARD (ENLARGED FOR HIGH VISIBILITY) */}
           {/* --------------------------------------------------------------------- */}
-          <div className={`lg:col-span-6 xl:col-span-6 w-full max-w-full lg:max-w-xl xl:max-w-2xl mx-auto self-center ${activeView === 'overview' ? 'hidden lg:block' : 'block'}`}>
+          <div className={`w-full max-w-full lg:max-w-3xl xl:max-w-4xl mx-auto self-center lg:col-span-7 xl:col-span-7 ${activeView === 'overview' ? 'hidden lg:block' : 'block'}`}>
             <AnimatePresence mode="wait">
               {isUnfolded && (
                 <motion.div
@@ -1156,114 +1429,113 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 >
                   {(activeView === 'event' || activeView === 'overview') && eventBroadcast ? (
                 /* ========================================================================= */
-                /* EVENT BROADCAST CARD: FITS 100% ON MOBILE AND DESKTOP WITHOUT CUTOFFS     */
+                /* EVENT BROADCAST CARD: ENLARGED PROPORTIONED PRO CARD                     */
                 /* ========================================================================= */
-                <div className="relative rounded-2xl lg:rounded-3xl border-2 border-emerald-400/80 shadow-[0_0_35px_rgba(16,185,129,0.35),inset_0_0_15px_rgba(16,185,129,0.15)] bg-slate-950/85 hover:bg-slate-950/90 backdrop-blur-md p-2.5 xs:p-3 sm:p-4 lg:p-4 xl:p-5 space-y-1.5 sm:space-y-2.5 transition-all duration-300 hover:border-emerald-300 animate-scaleIn w-full">
+                <div className="relative rounded-2xl sm:rounded-3xl border-2 border-emerald-400/80 shadow-[0_0_50px_rgba(16,185,129,0.4),inset_0_0_20px_rgba(16,185,129,0.15)] bg-slate-950/92 hover:bg-slate-950/96 backdrop-blur-md p-4 sm:p-6 lg:p-7 space-y-3 sm:space-y-4 transition-all duration-300 hover:border-emerald-300 animate-scaleIn w-full text-left">
                   {/* Top Bar inside Card */}
-                  <div className="flex items-center justify-between border-b border-white/10 pb-1.5 gap-2">
-                    <div className="flex items-center space-x-1.5 min-w-0">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
-                      <span className="px-2 py-0.5 rounded-full text-[8.5px] sm:text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase tracking-wider flex items-center gap-1 backdrop-blur-sm truncate">
-                        <Radio className="w-3 h-3 text-emerald-400 animate-pulse shrink-0" />
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2.5 sm:pb-3 gap-2">
+                    <div className="flex items-center space-x-2.5 min-w-0">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
+                      <span className="px-3.5 py-1 rounded-full text-xs sm:text-sm font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase tracking-wider flex items-center gap-2 backdrop-blur-sm truncate">
+                        <Radio className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 animate-pulse shrink-0" />
                         <span className="truncate">Admin Guidelines & Advisory</span>
                       </span>
                     </div>
 
-                    <div className="flex items-center space-x-1.5 shrink-0">
-                      <span className="text-[9px] font-mono text-emerald-300 font-bold hidden xs:inline">
+                    <div className="flex items-center space-x-2 shrink-0">
+                      <span className="text-xs sm:text-sm font-mono text-emerald-300 font-bold px-2.5 py-1 rounded-lg bg-emerald-950/60 border border-emerald-500/30">
                         {eventBroadcast.startTime} PST
                       </span>
                       <button
                         type="button"
                         onClick={() => setIsUnfolded(false)}
-                        className="p-1 rounded-lg bg-slate-900/70 hover:bg-slate-800 border border-slate-700/60 text-slate-300 hover:text-white transition-all cursor-pointer"
+                        className="p-1.5 sm:p-2 rounded-lg bg-slate-900/70 hover:bg-slate-800 border border-slate-700/60 text-slate-300 hover:text-white transition-all cursor-pointer"
                         title="Close Notice"
                       >
-                        <X className="w-3.5 h-3.5 text-slate-400 hover:text-emerald-400" />
+                        <X className="w-4 h-4 text-slate-400 hover:text-emerald-400" />
                       </button>
                     </div>
                   </div>
 
                   {/* Title & Location */}
-                  <div className="space-y-0.5 text-left">
-                    <h3 className="text-xs xs:text-sm sm:text-base lg:text-lg xl:text-xl font-black text-white leading-tight drop-shadow-md">
+                  <div className="space-y-1.5 text-left">
+                    <h3 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-black text-white leading-tight drop-shadow-md">
                       {eventBroadcast.activityTitle}
                     </h3>
-                    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[10px] sm:text-xs font-mono">
-                      <p className="text-emerald-300 font-semibold flex items-center gap-1 drop-shadow">
-                        <MapPin className="w-3 h-3 text-emerald-400 shrink-0" />
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs sm:text-sm lg:text-[14px] font-mono">
+                      <p className="text-emerald-300 font-semibold flex items-center gap-1.5 drop-shadow">
+                        <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 shrink-0" />
                         <span className="truncate">Brgy. {eventBroadcast.barangay} • {eventBroadcast.targetArea}</span>
                       </p>
-                      <p className="text-cyan-300 font-medium flex items-center gap-1 drop-shadow">
-                        <Clock className="w-3 h-3 text-cyan-400 shrink-0" />
+                      <p className="text-cyan-300 font-medium flex items-center gap-1.5 drop-shadow">
+                        <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-400 shrink-0" />
                         <span>{eventBroadcast.startTime} – {eventBroadcast.estimatedEndTime} ({eventBroadcast.totalHours})</span>
                       </p>
                     </div>
                   </div>
 
-                  {/* Event QR Code Box & Attendance Upload */}
-                  <div className="p-1.5 sm:p-2.5 rounded-xl bg-slate-950/70 border border-emerald-400/50 backdrop-blur-md shadow-md flex flex-row items-center gap-2 sm:gap-3.5 animate-fadeIn">
-                    <div className="p-1 bg-white rounded-lg shadow-sm border border-emerald-400/40 flex flex-col items-center shrink-0">
+                  {/* Event QR Code Box & Attendance Upload (Enlarged) */}
+                  <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-950/70 border border-emerald-400/50 backdrop-blur-md shadow-md flex flex-row items-center gap-4 sm:gap-5 animate-fadeIn">
+                    <div className="p-2 bg-white rounded-xl shadow-md border border-emerald-400/40 flex flex-col items-center shrink-0">
                       {eventQrUrl || eventBroadcast.qrDataUrl ? (
                         <div className="relative inline-flex items-center justify-center">
                           <img
                             src={eventQrUrl || eventBroadcast.qrDataUrl}
                             alt="Official Event Attendance QR Code"
-                            className="w-14 h-14 sm:w-20 sm:h-20 lg:w-22 lg:h-22 object-contain"
+                            className="w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 object-contain"
                           />
                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
-                            <div className="w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full bg-white p-0.5 border border-emerald-600 shadow-sm flex items-center justify-center">
+                            <div className="w-6 h-6 rounded-full bg-white p-0.5 border border-emerald-600 shadow-sm flex items-center justify-center">
                               <div className="w-full h-full rounded-full bg-[#022c22] flex flex-col items-center justify-center text-center p-0.2 border border-amber-400">
-                                <span className="text-[3.5px] sm:text-[5.5px] font-black text-emerald-300 leading-none">LGU</span>
+                                <span className="text-[5px] font-black text-emerald-300 leading-none">LGU</span>
                               </div>
                             </div>
                           </div>
                         </div>
                       ) : (
-                        <div className="w-14 h-14 sm:w-20 sm:h-20 flex items-center justify-center bg-slate-100 rounded-md">
+                        <div className="w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center bg-slate-100 rounded-md">
                           <QrCode className="w-10 h-10 text-slate-800" />
                         </div>
                       )}
-                      <span className="text-[6.5px] sm:text-[7.5px] font-mono font-black text-slate-900 mt-0.5 uppercase tracking-tight">
+                      <span className="text-[8.5px] sm:text-[9.5px] font-mono font-black text-slate-900 mt-1 uppercase tracking-tight">
                         SCAN ATTENDANCE
                       </span>
                     </div>
 
-                    <div className="space-y-1 text-left flex-1 min-w-0 w-full">
-                      <div className="inline-flex items-center space-x-1 px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[7.5px] sm:text-[9.5px] font-mono font-bold">
-                        <QrCode className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
+                    <div className="space-y-2 text-left flex-1 min-w-0 w-full">
+                      <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] sm:text-xs font-mono font-bold">
+                        <QrCode className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                         <span>EVENT ATTENDANCE QR CODE</span>
                       </div>
-                      <p className="text-[9px] sm:text-[11px] text-slate-200 font-sans leading-tight">
-                        I-scan sa mobile camera o i-tap para mag-upload ng attendance:
+                      <p className="text-xs sm:text-sm text-slate-200 font-sans leading-relaxed">
+                        I-scan sa camera ng mobile phone o pindutin upang mag-upload:
                       </p>
                       
                       <button
                         type="button"
                         onClick={() => {
-                          if (onOpenUploadAccomplishment) {
-                            onOpenUploadAccomplishment();
-                          }
+                          setIsUnfolded(true);
+                          setActiveView('upload');
                         }}
-                        className="w-full py-2 px-3 rounded-lg sm:rounded-xl fluid-btn-emerald text-slate-950 font-mono font-black text-[10px] sm:text-xs flex items-center justify-center space-x-1.5 transition-all cursor-pointer border border-emerald-300 active:scale-95 shadow-[0_0_20px_rgba(16,185,129,0.5)]"
+                        className="w-full py-2 sm:py-2.5 px-3.5 rounded-xl fluid-btn-emerald text-slate-950 font-mono font-black text-xs sm:text-sm flex items-center justify-center space-x-2 transition-all cursor-pointer border border-emerald-300 active:scale-95 shadow-[0_0_18px_rgba(16,185,129,0.55)]"
                       >
-                        <Camera className="w-3.5 h-3.5 text-slate-950 shrink-0" />
+                        <Camera className="w-4 h-4 text-slate-950 shrink-0" />
                         <span className="uppercase font-black truncate tracking-wide">Upload Attendance Photo</span>
-                        <Upload className="w-3 h-3 text-slate-950 shrink-0" />
+                        <Upload className="w-3.5 h-3.5 text-slate-950 shrink-0" />
                       </button>
                     </div>
                   </div>
 
-                  {/* 3-Column Compact Reminder Grid (3 columns on both Mobile and Desktop to NEVER overflow vertically) */}
-                  <div className="grid grid-cols-3 gap-1 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-mono text-slate-300 text-left">
+                  {/* 3-Column Compact Reminder Grid (Enlarged) */}
+                  <div className="grid grid-cols-3 gap-2.5 text-xs sm:text-sm font-mono text-slate-300 text-left">
                     {eventBroadcast.requiredTools && (
-                      <div className="bg-slate-950/60 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-white/10 backdrop-blur-sm flex flex-col justify-between">
+                      <div className="bg-slate-950/60 p-2.5 sm:p-3 rounded-xl border border-white/10 backdrop-blur-sm flex flex-col justify-between">
                         <div>
-                          <div className="flex items-center space-x-1 text-slate-400 font-bold text-[7.5px] sm:text-[8.5px] uppercase tracking-wider mb-0.5">
-                            <Wrench className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-emerald-400 shrink-0" />
+                          <div className="flex items-center space-x-1 text-slate-400 font-bold text-[9px] sm:text-[10px] uppercase tracking-wider mb-0.5">
+                            <Wrench className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                             <span className="truncate">Tools:</span>
                           </div>
-                          <span className="text-white text-[8.5px] sm:text-[10.5px] leading-tight block line-clamp-3 hover:line-clamp-none">
+                          <span className="text-white text-xs sm:text-sm leading-snug block line-clamp-2 hover:line-clamp-none">
                             {eventBroadcast.requiredTools}
                           </span>
                         </div>
@@ -1271,13 +1543,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     )}
 
                     {eventBroadcast.waterTumblerReminder && (
-                      <div className="bg-slate-950/60 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-white/10 backdrop-blur-sm flex flex-col justify-between">
+                      <div className="bg-slate-950/60 p-2.5 sm:p-3 rounded-xl border border-white/10 backdrop-blur-sm flex flex-col justify-between">
                         <div>
-                          <div className="flex items-center space-x-1 text-slate-400 font-bold text-[7.5px] sm:text-[8.5px] uppercase tracking-wider mb-0.5">
-                            <Coffee className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-cyan-400 shrink-0" />
+                          <div className="flex items-center space-x-1 text-slate-400 font-bold text-[9px] sm:text-[10px] uppercase tracking-wider mb-0.5">
+                            <Coffee className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                             <span className="truncate">Hydration:</span>
                           </div>
-                          <span className="text-white text-[8.5px] sm:text-[10.5px] leading-tight block line-clamp-3 hover:line-clamp-none">
+                          <span className="text-white text-xs sm:text-sm leading-snug block line-clamp-2 hover:line-clamp-none">
                             {eventBroadcast.waterTumblerReminder}
                           </span>
                         </div>
@@ -1285,13 +1557,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     )}
 
                     {eventBroadcast.recommendedAttire && (
-                      <div className="bg-slate-950/60 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-white/10 backdrop-blur-sm flex flex-col justify-between">
+                      <div className="bg-slate-950/60 p-2.5 sm:p-3 rounded-xl border border-white/10 backdrop-blur-sm flex flex-col justify-between">
                         <div>
-                          <div className="flex items-center space-x-1 text-slate-400 font-bold text-[7.5px] sm:text-[8.5px] uppercase tracking-wider mb-0.5">
-                            <Shirt className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-teal-400 shrink-0" />
+                          <div className="flex items-center space-x-1 text-slate-400 font-bold text-[9px] sm:text-[10px] uppercase tracking-wider mb-0.5">
+                            <Shirt className="w-3.5 h-3.5 text-teal-400 shrink-0" />
                             <span className="truncate">Attire:</span>
                           </div>
-                          <span className="text-white text-[8.5px] sm:text-[10.5px] leading-tight block line-clamp-3 hover:line-clamp-none">
+                          <span className="text-white text-xs sm:text-sm leading-snug block line-clamp-2 hover:line-clamp-none">
                             {eventBroadcast.recommendedAttire}
                           </span>
                         </div>
@@ -1301,15 +1573,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
                   {/* Additional LGU Admin Notes */}
                   {eventBroadcast.additionalNotes && (
-                    <div className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-slate-950/45 border border-emerald-500/25 text-[9.5px] sm:text-[11px] font-sans text-slate-200 leading-snug text-left">
-                      <strong className="text-emerald-300 font-semibold">Admin Notes:</strong> {eventBroadcast.additionalNotes}
+                    <div className="p-2.5 sm:p-3 rounded-xl bg-slate-950/50 border border-emerald-500/25 text-xs sm:text-sm font-sans text-slate-100 leading-snug text-left">
+                      <strong className="text-emerald-300 font-bold">Admin Notes:</strong> {eventBroadcast.additionalNotes}
                     </div>
                   )}
 
                   {/* Bottom Author Row */}
-                  <div className="text-[8.5px] sm:text-[10px] font-mono text-slate-400 pt-1 text-right border-t border-white/10 flex items-center justify-between">
-                    <span className="text-emerald-300 font-semibold flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-emerald-400 shrink-0" />
+                  <div className="text-xs sm:text-sm font-mono text-slate-400 pt-2 text-right border-t border-white/10 flex items-center justify-between">
+                    <span className="text-emerald-300 font-semibold flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-emerald-400 shrink-0" />
                       <span>{eventTimeLeft.formatted} remaining</span>
                     </span>
                     <span className="truncate">
@@ -1319,15 +1591,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 </div>
               ) : activeView === 'event' ? (
                 /* ========================================================================= */
-                /* NO ACTIVE SCHEDULE: COMPACT PROFESSIONAL ADVISORY CARD                   */
+                /* NO ACTIVE SCHEDULE: ENLARGED PROFESSIONAL ADVISORY CARD                   */
                 /* ========================================================================= */
-                <div className="relative rounded-2xl lg:rounded-3xl border-2 border-slate-700/80 shadow-[0_0_40px_rgba(0,0,0,0.7),inset_0_0_20px_rgba(16,185,129,0.1)] bg-slate-950/80 hover:bg-slate-950/85 backdrop-blur-md p-3.5 sm:p-5 space-y-2.5 sm:space-y-3 transition-all duration-300 hover:border-slate-600 animate-scaleIn w-full text-left">
+                <div className="relative rounded-2xl sm:rounded-3xl border-2 border-slate-700/80 shadow-[0_0_50px_rgba(0,0,0,0.8),inset_0_0_20px_rgba(16,185,129,0.12)] bg-slate-950/90 hover:bg-slate-950/95 backdrop-blur-md p-4 sm:p-6 lg:p-7 space-y-3 sm:space-y-4 transition-all duration-300 hover:border-slate-600 animate-scaleIn w-full text-left">
                   {/* Top Bar inside Card */}
-                  <div className="flex items-center justify-between border-b border-white/10 pb-2 gap-2">
-                    <div className="flex items-center space-x-2 min-w-0">
-                      <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shrink-0" />
-                      <span className="px-2.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 uppercase tracking-wider flex items-center gap-1.5 backdrop-blur-sm truncate">
-                        <ShieldCheck className="w-3 h-3 text-cyan-400 shrink-0" />
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2.5 sm:pb-3 gap-2">
+                    <div className="flex items-center space-x-2.5 min-w-0">
+                      <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shrink-0" />
+                      <span className="px-3.5 py-1 rounded-full text-xs sm:text-sm font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 uppercase tracking-wider flex items-center gap-2 backdrop-blur-sm truncate">
+                        <ShieldCheck className="w-4 h-4 text-cyan-400 shrink-0" />
                         <span className="truncate">Public Advisory • PESO & MENRO Operations</span>
                       </span>
                     </div>
@@ -1335,83 +1607,91 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     <div className="flex items-center space-x-2 shrink-0">
                       <button
                         type="button"
+                        onClick={() => setActiveView('login')}
+                        className="px-2.5 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 font-mono text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Admin Login</span>
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => setIsUnfolded(false)}
-                        className="p-1 rounded-lg bg-slate-900/70 hover:bg-slate-800 border border-slate-700/60 text-slate-300 hover:text-white transition-all cursor-pointer"
+                        className="p-1.5 sm:p-2 rounded-lg bg-slate-900/70 hover:bg-slate-800 border border-slate-700/60 text-slate-300 hover:text-white transition-all cursor-pointer"
                         title="Close Notice"
                       >
-                        <X className="w-3.5 h-3.5 text-slate-400 hover:text-white" />
+                        <X className="w-4 h-4 text-slate-400 hover:text-white" />
                       </button>
                     </div>
                   </div>
 
                   {/* Official Notice Header */}
-                  <div className="space-y-1 text-left">
-                    <div className="inline-flex items-center space-x-1.5 px-2 py-0.5 rounded-full bg-slate-900 border border-slate-700 text-[9px] font-mono font-bold text-slate-400">
-                      <Clock className="w-3 h-3 text-slate-400 shrink-0" />
+                  <div className="space-y-1.5 text-left">
+                    <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-slate-900 border border-slate-700 text-[10px] sm:text-xs font-mono font-bold text-slate-300">
+                      <Clock className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                       <span>OFFICIAL STATUS: NO SCHEDULE RECORDED FOR TODAY</span>
                     </div>
-                    <h3 className="text-sm sm:text-lg lg:text-xl font-black text-white leading-tight drop-shadow-md">
+                    <h3 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-black text-white leading-tight drop-shadow-md">
                       No Official Work Program Scheduled for Today
                     </h3>
-                    <p className="text-[11px] sm:text-xs font-mono text-emerald-300 flex items-center gap-1.5">
-                      <MapPin className="w-3 h-3 text-emerald-400 shrink-0" />
-                      <span>Municipality of Dingalan, Aurora • Environmental Compliance Platform</span>
+                    <p className="text-xs sm:text-sm lg:text-[14px] font-mono text-emerald-300 flex items-center gap-1.5">
+                      <MapPin className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span>Municipality of Dingalan, Aurora • Environmental Compliance</span>
                     </p>
                   </div>
 
-                  {/* Professional Notice Statement Box */}
-                  <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-[11px] sm:text-xs font-sans space-y-1.5 text-slate-200 leading-relaxed shadow-inner">
+                  {/* Professional Notice Statement Box (Enlarged) */}
+                  <div className="p-3.5 sm:p-4.5 rounded-2xl bg-slate-900/95 border border-slate-800/90 text-xs sm:text-sm lg:text-[14.5px] font-sans space-y-2 text-slate-100 leading-relaxed shadow-inner">
                     <p>
-                      Please be advised that <strong>there are currently no active field operations, coastal cleanup drives, or official environmental compliance activities scheduled for today</strong>.
+                      Please be advised that <strong className="text-white">there are currently no active field operations, coastal cleanup drives, or official environmental compliance activities scheduled for today</strong>.
                     </p>
-                    <p className="text-[10.5px] sm:text-[11px] text-slate-400 leading-snug">
-                      All verified beneficiaries, field supervisors, and participating workers will automatically receive the official event QR code and operational guidelines here as soon as a new schedule is broadcasted by the PESO & MENRO Operations Administrator.
+                    <p className="text-[11.5px] sm:text-xs lg:text-[13px] text-slate-300 leading-normal">
+                      All verified beneficiaries and supervisors will automatically receive the official event QR code and guidelines here once broadcasted by the Administrator.
                     </p>
                   </div>
 
-                  {/* Most Recent Program / Last Event Date Box */}
-                  <div className="p-2.5 rounded-xl bg-slate-900/90 border border-emerald-500/30 text-[11px] font-mono space-y-1 text-left shadow-md">
+                  {/* Most Recent Program / Last Event Date Box (Enlarged) */}
+                  <div className="p-3 sm:p-4 rounded-xl bg-slate-900/90 border border-emerald-500/35 text-xs sm:text-sm font-mono space-y-1.5 text-left shadow-md">
                     <div className="flex items-center justify-between">
-                      <span className="text-[9.5px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
-                        <Calendar className="w-3 h-3 text-emerald-400 shrink-0" />
-                        Most Recent Program / Last Event Date:
+                      <span className="text-[10px] sm:text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <Calendar className="w-4 h-4 text-emerald-400 shrink-0" />
+                        Most Recent Completed Record:
                       </span>
-                      <span className="text-[8.5px] text-slate-400 font-mono font-semibold bg-slate-800 px-1.5 py-0.5 rounded-md border border-slate-700">
-                        Completed Record
+                      <span className="text-[9.5px] sm:text-[10.5px] text-slate-300 font-mono font-semibold bg-slate-800 px-2.5 py-0.5 rounded-md border border-slate-700">
+                        Record
                       </span>
                     </div>
-                    <div className="text-white font-bold text-xs">
+                    <div className="text-white font-bold text-xs sm:text-sm lg:text-[15px] truncate">
                       {lastCompletedEvent ? (
                         <span>
                           {lastCompletedEvent.title} — <span className="text-emerald-300 font-mono">{lastCompletedEvent.date}</span> (Brgy. {lastCompletedEvent.barangay})
                         </span>
                       ) : (
                         <span>
-                          Dingalan Coastal Cleanliness & Environmental Compliance Operation — <span className="text-emerald-300 font-mono">October 06, 2026</span> (Brgy. Paltic)
+                          Dingalan Coastal Cleanliness Operation — <span className="text-emerald-300 font-mono">October 06, 2026</span> (Brgy. Paltic)
                         </span>
                       )}
                     </div>
                   </div>
 
-                  {/* Assistance & Office Hours Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10.5px] font-mono text-slate-300">
-                    <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800 space-y-0.5">
-                      <span className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider block">Office Operations:</span>
-                      <span className="text-white text-[10.5px]">Monday to Friday: 8:00 AM – 5:00 PM PST</span>
+                  {/* Assistance & Office Hours Grid (Enlarged) */}
+                  <div className="grid grid-cols-2 gap-2.5 text-xs sm:text-sm font-mono text-slate-300">
+                    <div className="p-2.5 sm:p-3.5 rounded-xl bg-slate-900/70 border border-slate-800 space-y-1">
+                      <span className="text-[9.5px] sm:text-[10.5px] text-emerald-400 font-bold uppercase tracking-wider block">Office Operations:</span>
+                      <span className="text-white text-xs sm:text-sm lg:text-[14px] truncate block font-medium">Mon–Fri: 8:00 AM – 5:00 PM</span>
                     </div>
-                    <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800 space-y-0.5">
-                      <span className="text-[9px] text-cyan-400 font-bold uppercase tracking-wider block">Operations Center:</span>
-                      <span className="text-white text-[10.5px]">Barangay Poblacion, Dingalan, Aurora</span>
+                    <div className="p-2.5 sm:p-3.5 rounded-xl bg-slate-900/70 border border-slate-800 space-y-1">
+                      <span className="text-[9.5px] sm:text-[10.5px] text-cyan-400 font-bold uppercase tracking-wider block">Operations Center:</span>
+                      <span className="text-white text-xs sm:text-sm lg:text-[14px] truncate block font-medium">Brgy. Poblacion, Dingalan</span>
                     </div>
                   </div>
 
                   {/* Live Monitoring Badge */}
-                  <div className="pt-1.5 border-t border-white/10 flex items-center justify-between text-[9.5px] sm:text-[10px] font-mono text-slate-400">
-                    <div className="flex items-center space-x-1.5 text-emerald-400">
+                  <div className="pt-2 sm:pt-2.5 border-t border-white/10 flex items-center justify-between text-[10.5px] sm:text-xs lg:text-sm font-mono text-slate-400">
+                    <div className="flex items-center space-x-2 text-emerald-400">
                       <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                      <span>Live Scheduler Active • Automatically updates when a schedule is posted</span>
+                      <span>Live Scheduler Active • Auto-updates upon broadcast</span>
                     </div>
-                    <span className="text-slate-500">Dingalan LGU</span>
+                    <span className="text-slate-400 font-semibold">Dingalan LGU</span>
                   </div>
                 </div>
               ) : (
@@ -1435,47 +1715,47 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   </button>
 
                   {/* LEFT SIDE FORM PANEL */}
-                  <div className="md:col-span-7 p-3.5 sm:p-5 lg:p-6 flex flex-col justify-between space-y-3 sm:space-y-4 relative z-10 animate-fadeIn">
+                  <div className="md:col-span-7 p-5 sm:p-7 lg:p-8 xl:p-10 flex flex-col justify-between space-y-4 sm:space-y-5 lg:space-y-6 relative z-10 animate-fadeIn">
                     {/* Top Badge */}
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[10.5px] sm:text-xs font-mono font-bold w-fit">
-                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                      <div className="flex items-center space-x-2 px-3.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs sm:text-sm font-mono font-bold w-fit">
+                        <ShieldCheck className="w-4 h-4 text-emerald-400" />
                         <span>ADMIN PORTAL</span>
                       </div>
                     </div>
 
                     {/* Error Banner */}
                     {errorMessage && (
-                      <div className="p-2.5 rounded-xl bg-rose-950/90 border border-rose-500/60 text-rose-200 text-xs font-semibold flex items-start space-x-2 animate-fadeIn">
-                        <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-0.5" />
+                      <div className="p-3 rounded-xl bg-rose-950/90 border border-rose-500/60 text-rose-200 text-xs sm:text-sm font-semibold flex items-start space-x-2.5 animate-fadeIn">
+                        <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                         <span>{errorMessage}</span>
                       </div>
                     )}
 
                     {/* Pending Notice Banner */}
                     {pendingNotice && (
-                      <div className="p-2.5 rounded-xl bg-amber-950/90 border border-amber-500/60 text-amber-200 text-xs space-y-1 animate-fadeIn">
-                        <div className="flex items-center space-x-1.5 font-bold text-amber-300 font-mono text-[11px]">
-                          <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <div className="p-3 rounded-xl bg-amber-950/90 border border-amber-500/60 text-amber-200 text-xs sm:text-sm space-y-1 animate-fadeIn">
+                        <div className="flex items-center space-x-2 font-bold text-amber-300 font-mono text-xs sm:text-sm">
+                          <Clock className="w-4 h-4 text-amber-400 shrink-0" />
                           <span>ACCOUNT PENDING</span>
                         </div>
-                        <p className="leading-tight text-[11px]">{pendingNotice}</p>
+                        <p className="leading-tight text-xs sm:text-sm">{pendingNotice}</p>
                       </div>
                     )}
 
                     {/* Form Heading */}
-                    <div className="text-left space-y-0.5">
-                      <h2 className="text-xl sm:text-2xl lg:text-3xl font-black text-white tracking-tight">
+                    <div className="text-left space-y-1">
+                      <h2 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-black text-white tracking-tight">
                         Login
                       </h2>
                     </div>
 
                     {/* Form Fields */}
-                    <form onSubmit={handleLoginSubmit} className="space-y-3 sm:space-y-4">
+                    <form onSubmit={handleLoginSubmit} className="space-y-4 sm:space-y-5 lg:space-y-6">
                       {/* Underlined Username/Email Field */}
-                      <div className="space-y-0.5 text-left">
-                        <div className="flex items-center border-b-2 border-slate-400/60 hover:border-emerald-400 focus-within:border-emerald-300 transition-colors py-1.5">
-                          <UserIcon className="w-4 h-4 text-emerald-300 mr-2 shrink-0" />
+                      <div className="space-y-1 text-left">
+                        <div className="flex items-center border-b-2 border-slate-400/60 hover:border-emerald-400 focus-within:border-emerald-300 transition-colors py-2 sm:py-2.5 lg:py-3">
+                          <UserIcon className="w-5 h-5 text-emerald-300 mr-3 shrink-0" />
                           <input
                             type="text"
                             autoComplete="username"
@@ -1484,15 +1764,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder="Username"
                             style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff', backgroundColor: 'transparent' }}
-                            className="w-full bg-transparent text-white placeholder-slate-300 text-sm font-medium font-sans focus:outline-none"
+                            className="w-full bg-transparent text-white placeholder-slate-300 text-base sm:text-lg lg:text-xl font-medium font-sans focus:outline-none"
                           />
                         </div>
                       </div>
 
                       {/* Underlined Password Field */}
-                      <div className="space-y-0.5 text-left">
-                        <div className="flex items-center border-b-2 border-slate-400/60 hover:border-emerald-400 focus-within:border-emerald-300 transition-colors py-1.5">
-                          <Lock className="w-4 h-4 text-emerald-300 mr-2 shrink-0" />
+                      <div className="space-y-1 text-left">
+                        <div className="flex items-center border-b-2 border-slate-400/60 hover:border-emerald-400 focus-within:border-emerald-300 transition-colors py-2 sm:py-2.5 lg:py-3">
+                          <Lock className="w-5 h-5 text-emerald-300 mr-3 shrink-0" />
                           <input
                             type={showPassword ? 'text' : 'password'}
                             autoComplete="current-password"
@@ -1501,14 +1781,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="Password"
                             style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff', backgroundColor: 'transparent' }}
-                            className="w-full bg-transparent text-white placeholder-slate-300 text-sm font-medium font-sans focus:outline-none"
+                            className="w-full bg-transparent text-white placeholder-slate-300 text-base sm:text-lg lg:text-xl font-medium font-sans focus:outline-none"
                           />
                           <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="text-slate-300 hover:text-emerald-300 transition-colors cursor-pointer ml-2"
+                            className="text-slate-300 hover:text-emerald-300 transition-colors cursor-pointer ml-3"
                           >
-                            {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                           </button>
                         </div>
                       </div>
@@ -1517,17 +1797,17 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       {/* Main Login Submit Button */}
                       <div className="pt-2">
                         {isLoading ? (
-                          <div className="w-full py-3 rounded-xl bg-slate-900 border border-emerald-500/50 text-emerald-300 font-mono text-xs font-bold flex items-center justify-center space-x-2 shadow-inner">
-                            <span className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+                          <div className="w-full py-3.5 sm:py-4 rounded-xl bg-slate-900 border border-emerald-500/50 text-emerald-300 font-mono text-sm sm:text-base font-bold flex items-center justify-center space-x-2.5 shadow-inner">
+                            <span className="w-5 h-5 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
                             <span>Logging in to system...</span>
                           </div>
                         ) : (
                           <button
                             type="submit"
-                            className="w-full py-2.5 px-3 rounded-xl fluid-btn-emerald text-xs sm:text-sm font-mono text-slate-950 font-black flex items-center justify-center space-x-2 transition-all duration-300 active:scale-95 cursor-pointer shadow-[0_0_15px_rgba(16,185,129,0.4)] border-2 border-emerald-300 hover:shadow-[0_0_25px_rgba(16,185,129,0.8)] hover:scale-[1.02] relative overflow-hidden group"
+                            className="w-full py-3.5 sm:py-4 px-4 rounded-xl fluid-btn-emerald text-sm sm:text-base lg:text-lg font-mono text-slate-950 font-black flex items-center justify-center space-x-2.5 transition-all duration-300 active:scale-95 cursor-pointer shadow-[0_0_20px_rgba(16,185,129,0.4)] border-2 border-emerald-300 hover:shadow-[0_0_30px_rgba(16,185,129,0.8)] hover:scale-[1.02] relative overflow-hidden group"
                           >
                             <span className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 pointer-events-none" />
-                            <ShieldCheck className="w-4 h-4 text-slate-950 shrink-0 animate-pulse" />
+                            <ShieldCheck className="w-5 h-5 text-slate-950 shrink-0 animate-pulse" />
                             <span className="relative z-10 tracking-wider">LOG IN TO SYSTEM</span>
                           </button>
                         )}
@@ -1536,7 +1816,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   </div>
 
                   {/* RIGHT SIDE DIAGONAL GREEN PANEL */}
-                  <div className="md:col-span-5 relative hidden md:flex flex-col justify-center items-center p-4 text-center text-white overflow-hidden min-h-[300px]">
+                  <div className="md:col-span-5 relative hidden md:flex flex-col justify-center items-center p-6 lg:p-8 xl:p-10 text-center text-white overflow-hidden min-h-[360px] lg:min-h-[440px] xl:min-h-[480px]">
                     {/* Diagonal Green Panel Background */}
                     <div
                       className="absolute inset-0 bg-gradient-to-br from-emerald-500/75 via-emerald-600/60 to-teal-900/65 backdrop-blur-sm shadow-[inset_0_0_30px_rgba(0,0,0,0.2)]"
@@ -1544,15 +1824,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     />
 
                     {/* Right Side Overlay Content */}
-                    <div className="relative z-10 pl-4 space-y-2">
-                      <h2 className="text-xl lg:text-2xl xl:text-3xl font-extrabold text-white tracking-tight uppercase drop-shadow-md leading-tight">
+                    <div className="relative z-10 pl-4 space-y-3">
+                      <h2 className="text-2xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-black text-white tracking-tight uppercase drop-shadow-md leading-tight">
                         WELCOME BACK!
                       </h2>
-                      <p className="text-xs text-emerald-100 font-medium leading-relaxed max-w-xs drop-shadow">
+                      <p className="text-sm lg:text-base xl:text-lg text-emerald-100 font-semibold leading-relaxed max-w-xs drop-shadow">
                         Already a Member? Please Login.
                       </p>
 
-                      <div className="pt-2 border-t border-emerald-400/30 text-[9.5px] font-mono text-emerald-200">
+                      <div className="pt-3 border-t border-emerald-400/30 text-xs lg:text-sm font-mono text-emerald-200">
                         Linis Dingalan EC Management <br />
                         PESO & MENRO Operations
                       </div>

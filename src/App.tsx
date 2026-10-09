@@ -1090,6 +1090,12 @@ export default function App() {
           currentUser={currentUser}
           users={allUsers}
           activities={activities}
+          beneficiaries={beneficiaries}
+          onSubmitAttendance={handleSubmitAttendance}
+          onSuccessSubmitted={(att) => {
+            setAttendances((prev) => [att, ...prev.filter((a) => a.id !== att.id)]);
+            showToast(`Nai-upload ang accomplishment pictures ni ${att.beneficiaryName}!`, 'success');
+          }}
           onLogin={(userOrRole) => {
             handleLogin(userOrRole);
             setIsLoginModalOpen(false);

@@ -258,20 +258,20 @@ export const EventQrNoticeModal: React.FC<EventQrNoticeModalProps> = ({
   const activeQrCodeUrl = currentEvent.qrDataUrl || generatedQrMap[currentEvent.id];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 bg-slate-950/85 backdrop-blur-md overflow-y-auto animate-fadeIn">
-      <div className="relative w-full max-w-4xl bg-slate-900 border-2 border-emerald-500/60 rounded-2xl sm:rounded-3xl shadow-[0_25px_70px_rgba(0,0,0,0.9),0_0_50px_rgba(16,185,129,0.25)] overflow-hidden my-auto flex flex-col max-h-[95vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 lg:p-6 bg-slate-950/85 backdrop-blur-md overflow-y-auto animate-fadeIn">
+      <div className="relative w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl bg-slate-900 border-2 border-emerald-500/60 rounded-2xl sm:rounded-3xl shadow-[0_25px_70px_rgba(0,0,0,0.9),0_0_50px_rgba(16,185,129,0.25)] overflow-hidden my-auto flex flex-col max-h-[92vh]">
         
         {/* Header Bar */}
-        <div className="px-3.5 sm:px-6 py-3 sm:py-4 border-b border-slate-800 bg-slate-950/90 flex items-center justify-between shrink-0">
+        <div className="px-3.5 sm:px-6 py-2.5 sm:py-3.5 border-b border-slate-800 bg-slate-950/90 flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-2.5 sm:space-x-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 shadow-md shrink-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 shadow-md shrink-0">
               <QrCode className="w-4 h-4 sm:w-5 sm:h-5 text-slate-950" />
             </div>
             <div>
               <span className="text-[9px] sm:text-[10px] font-mono font-extrabold uppercase tracking-widest text-emerald-400 block">
                 Official Admin Advisory (PESO / MENRO)
               </span>
-              <h3 className="text-sm sm:text-lg font-black text-white tracking-tight leading-tight">
+              <h3 className="text-sm sm:text-base lg:text-lg font-black text-white tracking-tight leading-tight">
                 Event QR Code & Cleanup Guidelines
               </h3>
             </div>
@@ -285,7 +285,7 @@ export const EventQrNoticeModal: React.FC<EventQrNoticeModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="p-3.5 sm:p-6 overflow-y-auto space-y-4 sm:space-y-5 flex-1 min-h-0 text-left">
+        <div className="p-3 sm:p-5 lg:p-6 overflow-y-auto space-y-3 sm:space-y-4 flex-1 min-h-0 text-left">
           
           {/* ========================================================================= */}
           {/* HISTORY NG MGA EVENT NA PAALALA (WITH GREEN CIRCLE ICON ON ACTIVE EVENTS) */}

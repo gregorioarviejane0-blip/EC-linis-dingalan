@@ -83,16 +83,16 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-// Normalize URL path: if a serverless rewrite strips /api, re-attach /api so Express routes match
+// Serve static assets from public directory FIRST so media files are served directly
+app.use(express.static(path.resolve(__dirname, 'public')));
+
+// Normalize URL path: if a serverless rewrite on Vercel strips /api, re-attach /api so Express routes match
 app.use((req: Request, res: Response, next: NextFunction) => {
-  if (!req.url.startsWith('/api') && !req.url.startsWith('/_')) {
+  if (process.env.VERCEL === '1' && !req.url.startsWith('/api') && !req.url.startsWith('/_') && !req.url.includes('.')) {
     req.url = '/api' + req.url;
   }
   next();
 });
-
-// Serve static assets from public directory
-app.use(express.static(path.resolve(__dirname, 'public')));
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
