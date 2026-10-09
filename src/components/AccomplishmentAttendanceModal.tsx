@@ -731,18 +731,8 @@ export const AccomplishmentAttendanceModal: React.FC<AccomplishmentAttendanceMod
               )}
             </div>
 
-            {/* Bottom Close Bar with Anonymous Report Button */}
-            <div className="px-6 py-3 border-t border-slate-800 bg-slate-950/90 flex flex-wrap items-center justify-between gap-2">
-              <button
-                type="button"
-                onClick={() => setIsAnonymousSendOpen(true)}
-                className="px-3.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 hover:text-white text-xs font-mono font-bold flex items-center space-x-1.5 transition-all cursor-pointer shadow-md"
-                title="Mag-send ng Anonymous Report o Feedback sa Admin ukol sa larawang ito"
-              >
-                <EyeOff className="w-3.5 h-3.5 text-amber-400" />
-                <span>Mag-send ng Anonymous Message sa Admin</span>
-              </button>
-
+            {/* Bottom Close Bar */}
+            <div className="px-6 py-3 border-t border-slate-800 bg-slate-950/90 flex items-center justify-end">
               <button
                 type="button"
                 onClick={() => setSelectedRecordForPhotos(null)}

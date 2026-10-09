@@ -766,13 +766,26 @@ export default function App() {
       {/* FULL SYSTEM DASHBOARD BACKGROUND: DINGALAN ADMIN & SUPERADMIN VIVID PHOTO */}
       {/* ========================================================================= */}
       <div className="fixed inset-0 w-full h-full pointer-events-none select-none z-0 overflow-hidden bg-slate-950 flex items-center justify-center">
-        <img
-          src={isAdminOrSuperAdmin ? (adminCoastalWallpaper || systemWallpaper) : (mountainViewWallpaper || systemWallpaper)}
-          alt="Dingalan Aurora Admin & SuperAdmin Background"
-          referrerPolicy="no-referrer"
-          className="absolute inset-0 w-full h-full object-cover object-[center_35%] scale-100 transition-all duration-700 filter contrast-[1.08] saturate-[1.2] brightness-[0.98]"
-          style={{ imageRendering: '-webkit-optimize-contrast', transform: 'translateZ(0)' }}
-        />
+        {isAdminOrSuperAdmin ? (
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover object-center animate-slow-pan-left filter contrast-[1.1] saturate-[1.2] brightness-[0.96]"
+          >
+            <source src="/dingalan_admin_bg_video.mp4" type="video/mp4" />
+            <source src="/dingalan_admin_bg_video.webm" type="video/webm" />
+          </video>
+        ) : (
+          <img
+            src={mountainViewWallpaper || systemWallpaper}
+            alt="Dingalan Aurora Mountain View"
+            referrerPolicy="no-referrer"
+            className="absolute inset-0 w-full h-full object-cover object-[center_35%] scale-100 transition-all duration-700 filter contrast-[1.08] saturate-[1.2] brightness-[0.98]"
+            style={{ imageRendering: '-webkit-optimize-contrast', transform: 'translateZ(0)' }}
+          />
+        )}
 
         {/* Optimized Minimal Ambient Overlay for Text Readability While Keeping Full View Vivid */}
         <div className="absolute inset-0 bg-slate-950/20 pointer-events-none" />

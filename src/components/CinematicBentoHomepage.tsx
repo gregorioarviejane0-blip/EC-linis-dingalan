@@ -26,6 +26,8 @@ import {
   Shirt,
   Coffee,
   Calendar,
+  Edit3,
+  Save,
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { useDingalanClock } from '../utils/philippineClock';
@@ -68,6 +70,17 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
   const [radarAngle, setRadarAngle] = useState(0);
   const [watermarkSimulated, setWatermarkSimulated] = useState(false);
   const [activeSector, setActiveSector] = useState<'paltic' | 'aplaya' | 'ibona' | 'poblacion'>('paltic');
+
+  const isAdminOrSuperAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin';
+  const [isEditingBanner, setIsEditingBanner] = useState(false);
+  const [bannerTitle, setBannerTitle] = useState(() => localStorage.getItem('dingalan_banner_title') || 'Linis Dingalan EC Management');
+  const [bannerSubtitle, setBannerSubtitle] = useState(() => localStorage.getItem('dingalan_banner_subtitle') || 'Innovation in Action Project of MENRO in Collaboration with PESO. Activity-based participants inventory monitoring with photographic compliance and real-time GPS watermarking across 11 coastal & river Barangays.');
+
+  const handleSaveBanner = () => {
+    localStorage.setItem('dingalan_banner_title', bannerTitle);
+    localStorage.setItem('dingalan_banner_subtitle', bannerSubtitle);
+    setIsEditingBanner(false);
+  };
 
   // Featured sample beneficiary
   const featuredBene = beneficiaries[0] || {
@@ -191,18 +204,76 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
               </div>
             </div>
 
-            {/* Main Title & Subtitle in Full Widescreen Width */}
-            <div className="max-w-5xl">
-              <h1 className="text-xl xs:text-2xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-[1.1] drop-shadow-xl">
-                Linis Dingalan{' '}
-                <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
-                  EC Management
-                </span>
-              </h1>
+            {/* Main Title & Subtitle in Full Widescreen Width with Professional Shimmer Animation & Admin-Only Edit */}
+            <div className="max-w-5xl relative">
+              {isAdminOrSuperAdmin && (
+                <div className="absolute top-0 right-0 z-20">
+                  {!isEditingBanner ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingBanner(true)}
+                      className="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/50 text-emerald-300 text-[11px] font-mono font-bold flex items-center space-x-1 transition-all cursor-pointer shadow-md"
+                      title="Baguhin ang content na ito (Admin Exclusive)"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Baguhin ang Content</span>
+                    </button>
+                  ) : (
+                    <div className="flex items-center space-x-2 bg-slate-950/90 p-2 rounded-xl border border-emerald-500/60 shadow-xl">
+                      <button
+                        type="button"
+                        onClick={handleSaveBanner}
+                        className="px-3 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-mono font-bold flex items-center space-x-1 cursor-pointer"
+                      >
+                        <Save className="w-3.5 h-3.5" />
+                        <span>I-save</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingBanner(false)}
+                        className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono cursor-pointer"
+                      >
+                        Kanselahin
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
-              <p className="mt-1.5 sm:mt-2 text-[11px] sm:text-sm text-slate-200 font-normal leading-relaxed drop-shadow max-w-4xl">
-                Innovation in Action Project of MENRO in Collaboration with PESO. Activity-based participants' inventory monitoring with photographic compliance and real-time GPS watermarking across 11 coastal & river Barangays.
-              </p>
+              {!isEditingBanner ? (
+                <>
+                  <h1 className="text-xl xs:text-2xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-[1.1] drop-shadow-2xl font-sans">
+                    <span className="bg-gradient-to-r from-white via-emerald-200 to-cyan-200 bg-clip-text text-transparent animate-professional-shimmer">
+                      {bannerTitle}
+                    </span>
+                  </h1>
+
+                  <p className="mt-2 text-xs sm:text-sm text-slate-100 font-medium leading-relaxed drop-shadow-lg max-w-4xl font-sans bg-slate-950/40 p-3 rounded-xl border border-white/10 backdrop-blur-md">
+                    {bannerSubtitle}
+                  </p>
+                </>
+              ) : (
+                <div className="space-y-3 pt-4">
+                  <div>
+                    <label className="block text-[11px] font-mono text-emerald-400 mb-1">Banner Title (Admin Editable Only):</label>
+                    <input
+                      type="text"
+                      value={bannerTitle}
+                      onChange={(e) => setBannerTitle(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-emerald-500/60 text-white text-sm font-sans focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-mono text-emerald-400 mb-1">Banner Description (Admin Editable Only):</label>
+                    <textarea
+                      rows={3}
+                      value={bannerSubtitle}
+                      onChange={(e) => setBannerSubtitle(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-emerald-500/60 text-white text-sm font-sans focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Primary Call-To-Action Button (Deduplicated: Field Terminal when logged in, Login when not logged in) */}
               <div className="mt-3 sm:mt-4 flex flex-wrap items-center gap-2.5 sm:gap-3 w-full sm:w-auto">

@@ -1371,46 +1371,48 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           {/* --------------------------------------------------------------------- */}
           <div className={`text-left space-y-2 sm:space-y-2.5 lg:space-y-2.5 xl:space-y-3 w-full lg:col-span-5 xl:col-span-5 ${activeView === 'overview' ? 'block' : 'hidden lg:block'}`}>
             <div className="space-y-1 sm:space-y-1.5 lg:space-y-2">
-              <h1 className="text-2xl sm:text-3xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-black text-white tracking-tight leading-[1.08] drop-shadow-[0_4px_20px_rgba(0,0,0,0.9)]">
-                Linis Dingalan <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400">
+              <h1 className="text-2xl sm:text-3xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-black text-white tracking-tight leading-[1.08] drop-shadow-[0_4px_24px_rgba(0,0,0,0.95)]">
+                <span className="hero-pro-title block font-black">
+                  Linis Dingalan
+                </span>
+                <span className="hero-pro-gradient inline-block font-black">
                   EC Management
                 </span>
               </h1>
-              <p className="text-xs sm:text-sm lg:text-xs xl:text-sm text-slate-100 font-medium leading-relaxed max-w-xl drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)] text-left">
+              <p className="text-xs sm:text-sm lg:text-xs xl:text-sm text-slate-100 font-medium leading-relaxed max-w-xl drop-shadow-[0_2px_12px_rgba(0,0,0,0.98)] text-left tracking-[-0.01em]">
                 Innovation in Action Project of Municipal Environment and Natural Resources Office in Collaboration with Public Employment Service Office.
               </p>
-              <div className="w-full sm:w-auto inline-flex items-center justify-center sm:justify-start space-x-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 text-[10px] sm:text-xs font-mono font-bold tracking-wide shadow-lg backdrop-blur-md">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <div className="w-full sm:w-auto inline-flex items-center justify-center sm:justify-start space-x-2 px-3.5 py-1.5 rounded-full bg-slate-950/70 border border-emerald-400/60 hero-badge-animated text-emerald-300 text-[10px] sm:text-xs font-mono font-extrabold tracking-wider shadow-lg backdrop-blur-md">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0 animate-twinkle" />
                 <span className="leading-tight">PESO & MENRO INTEGRATED OPERATIONS PLATFORM</span>
               </div>
             </div>
 
             {/* Feature Card */}
-            <div className="p-2.5 sm:p-3 lg:p-3 xl:p-3.5 rounded-2xl bg-slate-950/60 hover:bg-slate-950/70 border border-slate-700/60 backdrop-blur-xl shadow-xl space-y-1.5 max-w-xl transition-colors">
-              <p className="text-xs sm:text-xs xl:text-sm text-slate-100 leading-relaxed font-sans text-left">
+            <div className="p-3 sm:p-3.5 lg:p-3 xl:p-4 rounded-2xl bg-slate-950/70 hover:bg-slate-950/80 border border-slate-700/70 hover:border-emerald-500/60 backdrop-blur-xl shadow-2xl space-y-2 max-w-xl hero-card-pro transition-all">
+              <p className="text-xs sm:text-xs xl:text-sm text-slate-100 leading-relaxed font-sans text-left font-normal">
                 Activity-based participants' inventory monitoring with photographic compliance and real-time GPS watermarking across 11 coastal and river Barangays with Offline First to Online Sync Feature.
               </p>
-              <div className="flex items-center justify-between sm:justify-start space-x-4 pt-1.5 border-t border-slate-800 text-xs font-mono text-emerald-400">
+              <div className="flex items-center justify-between sm:justify-start space-x-4 pt-2 border-t border-slate-800/80 text-xs font-mono text-emerald-400">
                 <span className="flex items-center space-x-2">
-                  <Building2 className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
-                  <span className="font-semibold tracking-wide">11 Coastal Barangays Covered</span>
+                  <Building2 className="w-3.5 h-3.5 shrink-0 text-emerald-400 animate-pulse" />
+                  <span className="font-bold tracking-wider uppercase text-[11px]">11 Coastal Barangays Covered</span>
                 </span>
               </div>
             </div>
 
             {/* Anonymous Citizen & Participant Reporting Box */}
-            <div className="p-2.5 sm:p-3 lg:p-3 xl:p-3.5 rounded-2xl bg-slate-950/65 hover:bg-slate-950/75 border border-emerald-500/50 backdrop-blur-xl shadow-xl space-y-1.5 max-w-xl transition-all">
+            <div className="p-3 sm:p-3.5 lg:p-3 xl:p-4 rounded-2xl bg-slate-950/75 hover:bg-slate-950/85 border border-emerald-500/60 hover:border-emerald-400 backdrop-blur-xl shadow-2xl space-y-2 max-w-xl hero-card-pro transition-all">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2 text-emerald-300 font-mono font-bold text-xs sm:text-xs xl:text-sm">
-                  <EyeOff className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span>CONFIDENTIAL MESSAGE TO ADMIN</span>
+                <div className="flex items-center space-x-2 text-emerald-300 font-mono font-extrabold text-xs sm:text-xs xl:text-sm tracking-wide">
+                  <EyeOff className="w-4 h-4 text-emerald-400 shrink-0 animate-pulse" />
+                  <span className="kinetic-text-glow">CONFIDENTIAL MESSAGE TO ADMIN</span>
                 </div>
-                <span className="text-[9.5px] sm:text-[10px] font-mono font-black text-emerald-300 bg-emerald-500/25 px-2 py-0.5 rounded-full border border-emerald-500/50 uppercase">
+                <span className="text-[9.5px] sm:text-[10px] font-mono font-black text-emerald-300 bg-emerald-500/25 px-2.5 py-0.5 rounded-full border border-emerald-500/50 uppercase tracking-wider shadow-[0_0_12px_rgba(16,185,129,0.3)]">
                   100% Anonymous
                 </span>
               </div>
-              <p className="text-xs sm:text-xs xl:text-sm text-slate-200 leading-relaxed font-sans text-left">
+              <p className="text-xs sm:text-xs xl:text-sm text-slate-100 leading-relaxed font-sans text-left">
                 Want to report about work, waste, suggestions or inquiries? You can send an anonymous message. Only the Admin account can view this and your identity remains confidential.
               </p>
               <button
@@ -1422,7 +1424,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     modalScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
                   }, 50);
                 }}
-                className="w-full py-2 sm:py-2.5 lg:py-1.5 xl:py-2 px-3.5 lg:px-3 rounded-xl fluid-btn-emerald text-slate-950 font-mono font-black text-xs sm:text-xs lg:text-[11px] xl:text-xs flex items-center justify-center space-x-1.5 lg:space-x-1.5 transition-all cursor-pointer hover:scale-[1.01] active:scale-95 border border-emerald-300 shadow-[0_0_20px_rgba(16,185,129,0.45)]"
+                className="w-full py-2 sm:py-2.5 lg:py-2 xl:py-2.5 px-3.5 lg:px-3 rounded-xl fluid-btn-emerald text-slate-950 font-mono font-black text-xs sm:text-xs lg:text-[11px] xl:text-xs flex items-center justify-center space-x-2 transition-all cursor-pointer hover:scale-[1.01] active:scale-95 border-2 border-emerald-300 shadow-[0_0_25px_rgba(16,185,129,0.5)] uppercase tracking-wider"
               >
                 <EyeOff className="w-3.5 h-3.5 lg:w-3 lg:h-3 text-slate-950" />
                 <span>Send Anonymous Message</span>
