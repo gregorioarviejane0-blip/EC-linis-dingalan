@@ -1,5 +1,4 @@
 import express, { Request, Response, NextFunction } from 'express';
-import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import crypto from 'crypto';
 import fs from 'fs';
@@ -71,39 +70,43 @@ function recordAuditLog(
   auditLogs.unshift(newLog);
 }
 
-async function startServer() {
-  const app = express();
-  let port = Number(process.env.PORT) || 3000;
-  const portArgIndex = process.argv.indexOf('--port');
-  if (portArgIndex !== -1 && process.argv[portArgIndex + 1]) {
-    const parsed = Number(process.argv[portArgIndex + 1]);
-    if (!isNaN(parsed) && parsed > 0) port = parsed;
+export const app = express();
+
+// Enable CORS for Vercel and cross-origin environments
+app.use((req: Request, res: Response, next: NextFunction) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-user-role, x-user-id');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
   }
+  next();
+});
 
-  let host = '0.0.0.0';
-  const hostArgIndex = process.argv.indexOf('--host');
-  if (hostArgIndex !== -1 && process.argv[hostArgIndex + 1]) {
-    host = process.argv[hostArgIndex + 1];
+// Normalize URL path: if a serverless rewrite strips /api, re-attach /api so Express routes match
+app.use((req: Request, res: Response, next: NextFunction) => {
+  if (!req.url.startsWith('/api') && !req.url.startsWith('/_')) {
+    req.url = '/api' + req.url;
   }
+  next();
+});
 
-  // Serve static assets from public directory
-  app.use(express.static(path.resolve(__dirname, 'public')));
+// Serve static assets from public directory
+app.use(express.static(path.resolve(__dirname, 'public')));
 
-  app.use(express.json({ limit: '50mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-  // Request IP & User Session simulator
-  app.use((req: Request, res: Response, next: NextFunction) => {
-    // In production, user token comes from Authorization header.
-    // For this demonstration, default session can be simulated or passed via x-user-role / x-user-id headers.
-    const headerRole = (req.headers['x-user-role'] as UserRole) || 'superadmin';
-    const headerUserId = (req.headers['x-user-id'] as string) || (headerRole === 'superadmin' ? 'usr-superadmin-01' : 'usr-menro-01');
-    const currentUser = users.find(u => u.id === headerUserId) || users[0];
+// Request IP & User Session simulator
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const headerRole = (req.headers['x-user-role'] as UserRole) || 'superadmin';
+  const headerUserId = (req.headers['x-user-id'] as string) || (headerRole === 'superadmin' ? 'usr-superadmin-01' : 'usr-menro-01');
+  const currentUser = users.find(u => u.id === headerUserId) || users[0];
 
-    (req as any).user = currentUser;
-    (req as any).clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '112.198.88.24';
-    next();
-  });
+  (req as any).user = currentUser;
+  (req as any).clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '112.198.88.24';
+  next();
+});
 
   // ----------------------------------------------------------------------------
   // RBAC MIDDLEWARE / ROUTE GUARD
@@ -907,6 +910,20 @@ async function startServer() {
     });
   });
 
+async function startServer() {
+  let port = Number(process.env.PORT) || 3000;
+  const portArgIndex = process.argv.indexOf('--port');
+  if (portArgIndex !== -1 && process.argv[portArgIndex + 1]) {
+    const parsed = Number(process.argv[portArgIndex + 1]);
+    if (!isNaN(parsed) && parsed > 0) port = parsed;
+  }
+
+  let host = '0.0.0.0';
+  const hostArgIndex = process.argv.indexOf('--host');
+  if (hostArgIndex !== -1 && process.argv[hostArgIndex + 1]) {
+    host = process.argv[hostArgIndex + 1];
+  }
+
   // Mount Vite development middlewares in dev mode
   if (process.env.NODE_ENV === 'production') {
     app.use(express.static('dist'));
@@ -914,6 +931,7 @@ async function startServer() {
       res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
     });
   } else {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true, allowedHosts: true },
       appType: 'spa',
@@ -938,6 +956,11 @@ async function startServer() {
   });
 }
 
-startServer().catch((err) => {
-  console.error('[Linis Dingalan Server] Startup Error:', err);
-});
+// Only start the local listener if not running in Vercel Serverless environment
+if (process.env.VERCEL !== '1') {
+  startServer().catch((err) => {
+    console.error('[Linis Dingalan Server] Startup Error:', err);
+  });
+}
+
+export default app;
