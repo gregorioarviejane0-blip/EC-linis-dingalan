@@ -1,0 +1,275 @@
+@import "tailwindcss";
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes smoothPopup {
+  0% {
+    opacity: 0;
+    transform: scale(0.88) translateY(20px) rotateX(10deg);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.02) translateY(-2px) rotateX(0deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0) rotateX(0deg);
+  }
+}
+
+@keyframes textShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes gradientFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes logoGlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 12px rgba(0, 200, 117, 0.45)) drop-shadow(0 4px 10px rgba(0, 0, 0, 0.9));
+  }
+  50% {
+    filter: drop-shadow(0 0 24px rgba(6, 182, 212, 0.8)) drop-shadow(0 0 16px rgba(0, 200, 117, 0.85)) drop-shadow(0 4px 12px rgba(0, 0, 0, 0.95));
+  }
+}
+
+@keyframes lightSweep {
+  0% {
+    transform: translateX(-150%) skewX(-25deg);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.8;
+  }
+  60% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateX(250%) skewX(-25deg);
+    opacity: 0;
+  }
+}
+
+@keyframes twinkle {
+  0%, 100% {
+    transform: scale(0.6) rotate(0deg);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(1.2) rotate(90deg);
+    opacity: 1;
+    filter: drop-shadow(0 0 8px #34d399);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slowFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-slowFadeIn {
+  animation: slowFadeIn 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-text-shimmer {
+  background-size: 200% auto;
+  animation: textShimmer 3.5s linear infinite;
+}
+
+.animate-gradient-flow {
+  background-size: 250% 250%;
+  animation: gradientFlow 4s ease infinite;
+}
+
+.animate-logo-glow {
+  animation: logoGlow 3s ease-in-out infinite;
+}
+
+.animate-light-sweep {
+  animation: lightSweep 3.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.animate-twinkle {
+  animation: twinkle 2s ease-in-out infinite;
+}
+
+/* ========================================================================= */
+/* KINETIC TYPOGRAPHY & BUTTON TEXT ANIMATIONS                              */
+/* ========================================================================= */
+@keyframes kineticTextGlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 2px rgba(16, 185, 129, 0.4));
+  }
+  50% {
+    filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.95)) drop-shadow(0 0 14px rgba(45, 212, 191, 0.5));
+  }
+}
+
+@keyframes kineticTextFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-1.5px);
+  }
+}
+
+@keyframes kineticShineSweep {
+  0% {
+    background-position: -250% center;
+  }
+  100% {
+    background-position: 250% center;
+  }
+}
+
+.kinetic-text-glow {
+  animation: kineticTextGlow 2.5s ease-in-out infinite;
+}
+
+.kinetic-text-float {
+  animation: kineticTextFloat 2s ease-in-out infinite;
+}
+
+.kinetic-text-shine {
+  background: linear-gradient(
+    110deg,
+    currentColor 0%,
+    currentColor 38%,
+    #ffffff 50%,
+    currentColor 62%,
+    currentColor 100%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: kineticShineSweep 3s linear infinite;
+}
+
+/* ========================================================================= */
+/* FLUID COLOR FLOW ANIMATION EFFECT FOR BUTTONS                             */
+/* ========================================================================= */
+@keyframes fluidColorFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-fluid-flow {
+  background-size: 260% 260% !important;
+  animation: fluidColorFlow 5s ease infinite !important;
+}
+
+.animate-fluid-flow:hover {
+  animation: fluidColorFlow 2.2s ease infinite !important;
+}
+
+.fluid-btn-emerald {
+  background: linear-gradient(120deg, #059669 0%, #0d9488 22%, #06b6d4 45%, #10b981 70%, #14b8a6 88%, #059669 100%) !important;
+  background-size: 260% 260% !important;
+  animation: fluidColorFlow 5s ease infinite !important;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.3) !important;
+}
+.fluid-btn-emerald:hover {
+  animation: fluidColorFlow 2.2s ease infinite !important;
+  box-shadow: 0 0 28px rgba(16, 185, 129, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.45) !important;
+}
+
+.fluid-btn-amber {
+  background: linear-gradient(120deg, #d97706 0%, #f59e0b 22%, #fbbf24 45%, #ea580c 70%, #d97706 100%) !important;
+  background-size: 260% 260% !important;
+  animation: fluidColorFlow 5s ease infinite !important;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.3) !important;
+}
+.fluid-btn-amber:hover {
+  animation: fluidColorFlow 2.2s ease infinite !important;
+  box-shadow: 0 0 28px rgba(245, 158, 11, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.45) !important;
+}
+
+.fluid-btn-slate {
+  background: linear-gradient(120deg, #1e293b 0%, #334155 28%, #475569 50%, #1e293b 72%, #0f172a 100%) !important;
+  background-size: 260% 260% !important;
+  animation: fluidColorFlow 6s ease infinite !important;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.15) !important;
+}
+.fluid-btn-slate:hover {
+  animation: fluidColorFlow 2.5s ease infinite !important;
+  box-shadow: 0 0 22px rgba(51, 65, 85, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.25) !important;
+}
+
+/* ========================================================================= */
+/* BROWSER AUTOFILL OVERRIDE (REMOVES WHITE BOX & FORCES WHITE TEXT COLOR)   */
+/* ========================================================================= */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: #ffffff !important;
+  color: #ffffff !important;
+  -webkit-box-shadow: 0 0 0px 1000px rgba(15, 23, 42, 0.4) inset !important;
+  box-shadow: 0 0 0px 1000px rgba(15, 23, 42, 0.4) inset !important;
+  transition: background-color 50000s ease-in-out 0s !important;
+  background-color: transparent !important;
+  caret-color: #ffffff !important;
+}
+
+input:-webkit-autofill::first-line {
+  font-family: inherit !important;
+  font-size: inherit !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
