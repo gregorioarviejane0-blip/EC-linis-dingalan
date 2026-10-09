@@ -772,7 +772,7 @@ export default function App() {
             loop
             muted
             playsInline
-            className="absolute inset-0 w-full h-full object-cover object-center animate-slow-pan-left filter contrast-[1.1] saturate-[1.2] brightness-[0.96]"
+            className="absolute inset-0 w-full h-full object-cover object-center filter contrast-[1.1] saturate-[1.2] brightness-[0.96]"
           >
             <source src="/dingalan_admin_bg_video.mp4" type="video/mp4" />
             <source src="/dingalan_admin_bg_video.webm" type="video/webm" />
