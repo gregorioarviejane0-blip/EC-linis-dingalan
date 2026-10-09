@@ -98,15 +98,11 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
       setUploadedPhotos([]);
       setAccomplishmentNotes('');
 
-      // Initialize Field 1: Full Name
-      setFullName(`${beneficiary.firstName} ${beneficiary.lastName}`);
+      // Initialize Field 1: Full Name (Clean - no prefilled example data)
+      setFullName('');
 
-      // Initialize Field 2: Cleaned Area
-      if (activity) {
-        setCleanedArea(`${activity.title} (${activity.targetArea}, Brgy. ${activity.barangay})`);
-      } else {
-        setCleanedArea(`Coastal Clean-Up Area, Brgy. ${beneficiary.barangay}`);
-      }
+      // Initialize Field 2: Cleaned Area (Clean - no prefilled example data)
+      setCleanedArea('');
 
       refreshGps();
     }
@@ -423,7 +419,7 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder="ILAGAY ANG INYONG BUONG PANGALAN (FULL NAME)..."
+                    placeholder=""
                     className="w-full px-4 py-3 rounded-xl bg-slate-950/80 border border-slate-700 focus:border-emerald-400 text-white text-xs sm:text-sm font-sans font-bold shadow-inner uppercase"
                   />
                   <Edit3 className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -447,7 +443,7 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
                     type="text"
                     value={cleanedArea}
                     onChange={(e) => setCleanedArea(e.target.value)}
-                    placeholder="HAL. DINGALAN FEEDER PORT & PALTIC COASTAL SEAWALL, PUROK 2 COASTLINE..."
+                    placeholder=""
                     className="w-full px-4 py-3 rounded-xl bg-slate-950/80 border border-slate-700 focus:border-cyan-400 text-white text-xs sm:text-sm font-sans font-bold shadow-inner uppercase"
                   />
                   <MapPin className="w-4 h-4 text-cyan-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -596,7 +592,7 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
                 <textarea
                   value={accomplishmentNotes}
                   onChange={(e) => setAccomplishmentNotes(e.target.value)}
-                  placeholder="HALIMBAWA: NILINIS ANG TABING-DAGAT SA BRGY. PALTIC, NAKAKOLEKTA NG 4 SAKO NG PLASTIC WASTE KASAMA ANG MGA KAPWA BENEPISYARYO..."
+                  placeholder=""
                   rows={2}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-slate-700 focus:border-emerald-400 text-white placeholder-slate-500 text-xs font-sans uppercase"
                 />

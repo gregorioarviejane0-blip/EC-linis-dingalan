@@ -92,26 +92,11 @@ export const ManualAccomplishmentModal: React.FC<ManualAccomplishmentModalProps>
       setUploadedPhotos([]);
       setAccomplishmentNotes('');
 
-      // Auto-populate Field 1: Full Name
-      const matching = beneficiaries.find(
-        (b) => `${b.firstName} ${b.lastName}`.toLowerCase() === currentUser.name.toLowerCase()
-      ) || beneficiaries[0];
+      // Field 1: Full Name (Clean - no prefilled example data)
+      setFullName('');
 
-      if (matching) {
-        setSelectedBeneId(matching.id);
-        setFullName(`${matching.firstName} ${matching.lastName}`);
-      } else {
-        setFullName(currentUser.name || 'Danilo Bautista');
-      }
-
-      // Auto-populate Field 2: Cleaned Area
-      const ongoing = activities.find((a) => a.status === 'ongoing') || activities[0];
-      if (ongoing) {
-        setSelectedActivityId(ongoing.id);
-        setCleanedArea(`${ongoing.title} (${ongoing.targetArea}, Brgy. ${ongoing.barangay})`);
-      } else {
-        setCleanedArea('Dingalan Feeder Port & Paltic Coastal Cleanliness Operation');
-      }
+      // Field 2: Cleaned Area (Clean - no prefilled example data)
+      setCleanedArea('');
 
       // Start Realtime GPS tracking
       refreshGps();
@@ -398,7 +383,7 @@ export const ManualAccomplishmentModal: React.FC<ManualAccomplishmentModalProps>
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Ilagay ang inyong Buong Pangalan (Full Name)..."
+                    placeholder=""
                     className="w-full px-4 py-3 rounded-xl bg-slate-950/80 border border-slate-700 focus:border-emerald-400 text-white text-xs sm:text-sm font-sans font-bold shadow-inner"
                   />
                   <Edit3 className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -441,7 +426,7 @@ export const ManualAccomplishmentModal: React.FC<ManualAccomplishmentModalProps>
                     type="text"
                     value={cleanedArea}
                     onChange={(e) => setCleanedArea(e.target.value)}
-                    placeholder="Hal. Dingalan Feeder Port & Paltic Coastal Seawall, Purok 2 Coastline..."
+                    placeholder=""
                     className="w-full px-4 py-3 rounded-xl bg-slate-950/80 border border-slate-700 focus:border-cyan-400 text-white text-xs sm:text-sm font-sans font-bold shadow-inner"
                   />
                   <MapPin className="w-4 h-4 text-cyan-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -582,7 +567,7 @@ export const ManualAccomplishmentModal: React.FC<ManualAccomplishmentModalProps>
                 <textarea
                   value={accomplishmentNotes}
                   onChange={(e) => setAccomplishmentNotes(e.target.value)}
-                  placeholder="Halimbawa: Isinagawa ang coastal cleanup sa tabing dagat, naglinis kasama ang grupo at nakakolekta ng mga basura..."
+                  placeholder=""
                   rows={2}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-slate-700 focus:border-emerald-400 text-white placeholder-slate-500 text-xs font-sans"
                 />

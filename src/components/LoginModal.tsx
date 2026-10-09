@@ -252,10 +252,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     } as Beneficiary;
   }, [propBeneficiaries]);
 
-  // Upload Accomplishment Form State (Matching the user's uploaded picture)
-  const [uploadFullName, setUploadFullName] = useState<string>('Danilo Bautista');
-  const [uploadCleanedArea, setUploadCleanedArea] = useState<string>('Dingalan Feeder Port & Paltic Coastal Cleanliness Operation (Dingalan Feeder Port & Seawall Area)');
-  const [uploadBeneBadge, setUploadBeneBadge] = useState<string>('LD-BEN-2025-0101');
+  // Upload Accomplishment Form State (Clean text fields with no prefilled example data)
+  const [uploadFullName, setUploadFullName] = useState<string>('');
+  const [uploadCleanedArea, setUploadCleanedArea] = useState<string>('');
+  const [uploadBeneBadge, setUploadBeneBadge] = useState<string>('');
   const [uploadPhotos, setUploadPhotos] = useState<string[]>([]);
   const [uploadNotes, setUploadNotes] = useState<string>('');
   
@@ -297,7 +297,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   useEffect(() => {
     if (activeView === 'upload') {
       if (defaultUploadBene) {
-        setUploadFullName(`${defaultUploadBene.firstName} ${defaultUploadBene.lastName}`);
         setUploadBeneBadge(defaultUploadBene.beneCode || 'LD-BEN-2025-0101');
       }
       refreshUploadGps();
@@ -1633,7 +1632,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                                   type="text"
                                   value={uploadFullName}
                                   onChange={(e) => setUploadFullName(e.target.value)}
-                                  placeholder="DANILO BAUTISTA"
+                                  placeholder=""
                                   className="w-full px-4 py-2.5 sm:py-3 rounded-xl bg-slate-950/80 border border-slate-700 focus:border-emerald-400 text-white text-xs sm:text-sm font-sans font-bold shadow-inner uppercase"
                                 />
                                 <Edit3 className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -1657,7 +1656,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                                   type="text"
                                   value={uploadCleanedArea}
                                   onChange={(e) => setUploadCleanedArea(e.target.value)}
-                                  placeholder="DINGALAN FEEDER PORT & PALTIC COASTAL CLEANLINESS OPERATION..."
+                                  placeholder=""
                                   className="w-full px-4 py-2.5 sm:py-3 rounded-xl bg-slate-950/80 border border-slate-700 focus:border-cyan-400 text-white text-xs sm:text-sm font-sans font-bold shadow-inner uppercase"
                                 />
                                 <MapPin className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -1754,7 +1753,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                                 rows={2}
                                 value={uploadNotes}
                                 onChange={(e) => setUploadNotes(e.target.value)}
-                                placeholder="HALIMBAWA: NILINIS ANG TABING-DAGAT SA BRGY. PALTIC, NAKAKOLEKTA NG 4 SAKO NG PLASTIC WASTE KASAMA ANG MGA KAPWA BENEPISYARYO..."
+                                placeholder=""
                                 className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-slate-700 focus:border-emerald-400 text-white text-xs sm:text-sm font-sans shadow-inner resize-none uppercase"
                               />
                             </div>
