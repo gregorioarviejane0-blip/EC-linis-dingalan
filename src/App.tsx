@@ -932,6 +932,7 @@ export default function App() {
                 activities={activities}
                 assignments={assignments}
                 beneficiaries={beneficiaries}
+                attendances={attendances}
                 currentUser={currentUser}
                 onCreateActivity={handleCreateActivity}
                 onAssignBeneficiary={handleAssignBeneficiary}
@@ -953,6 +954,9 @@ export default function App() {
                 attendances={attendances}
                 beneficiaries={beneficiaries}
                 currentUser={currentUser}
+                assignments={assignments}
+                onAssignBeneficiary={handleAssignBeneficiary}
+                onUnassignBeneficiary={handleUnassignBeneficiary}
               />
             </div>
           )}

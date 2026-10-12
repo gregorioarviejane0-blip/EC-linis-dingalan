@@ -279,11 +279,11 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
               <div className="mt-3 sm:mt-4 flex flex-wrap items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
                 {currentUser ? (
                   <button
-                    onClick={() => onNavigate('portal')}
+                    onClick={() => onNavigate('reports')}
                     className="w-full sm:w-auto px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 hover:from-emerald-300 hover:to-cyan-300 text-slate-950 font-black text-xs sm:text-sm tracking-wide shadow-[0_0_20px_rgba(16,185,129,0.4)] flex items-center justify-center space-x-2 transition-all transform hover:-translate-y-0.5 active:scale-95 cursor-pointer"
                   >
-                    <QrCode className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-950" />
-                    <span>Buksan ang Field Terminal</span>
+                    <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-950" />
+                    <span>Tingnan ang Program Report (Auto Report)</span>
                     <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-0.5" />
                   </button>
                 ) : (
