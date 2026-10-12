@@ -16,6 +16,13 @@ import {
   QrCode,
   Trash2,
   X,
+  Search,
+  UserCheck,
+  UserX,
+  UserPlus,
+  UserMinus,
+  Sparkles,
+  Filter,
 } from 'lucide-react';
 
 interface ActivityManagementProps {
@@ -25,6 +32,8 @@ interface ActivityManagementProps {
   currentUser: User;
   onCreateActivity: (data: Partial<Activity>) => Promise<void>;
   onAssignBeneficiary: (activityId: string, beneficiaryId: string) => Promise<void>;
+  onUnassignBeneficiary?: (activityId: string, beneficiaryId: string) => Promise<void>;
+  onClearActivityAssignments?: (activityId: string) => Promise<void>;
   onSelectActivityForAttendance?: (activity: Activity) => void;
   onOpenGenerateQrModal?: () => void;
   onDeleteActivity?: (activityId: string) => Promise<void>;
@@ -52,6 +61,8 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
   currentUser,
   onCreateActivity,
   onAssignBeneficiary,
+  onUnassignBeneficiary,
+  onClearActivityAssignments,
   onSelectActivityForAttendance,
   onOpenGenerateQrModal,
   onDeleteActivity,
@@ -62,6 +73,13 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
   const [assignModalActivity, setAssignModalActivity] = useState<Activity | null>(null);
   const [selectedBeneIds, setSelectedBeneIds] = useState<string[]>([]);
   const [isAssigning, setIsAssigning] = useState(false);
+
+  // Search & Filter for Assign Modal
+  const [assignFilterTab, setAssignFilterTab] = useState<'ALL' | 'ASSIGNED' | 'AVAILABLE'>('ALL');
+  const [assignSearchQuery, setAssignSearchQuery] = useState('');
+  const [quickAddName, setQuickAddName] = useState('');
+  const [isConfirmClearAssignedOpen, setIsConfirmClearAssignedOpen] = useState(false);
+  const [expandedActivityId, setExpandedActivityId] = useState<string | null>(null);
 
   // Delete states
   const [activityToDelete, setActivityToDelete] = useState<Activity | null>(null);
@@ -113,8 +131,13 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
       .filter((asg) => asg.activityId === activity.id)
       .map((asg) => asg.beneficiaryId);
     setSelectedBeneIds(alreadyAssigned);
+    setAssignFilterTab('ALL');
+    setAssignSearchQuery('');
+    setQuickAddName('');
+    setIsConfirmClearAssignedOpen(false);
   };
 
+  // Toggle selection in modal
   const handleToggleBeneSelection = (beneId: string) => {
     if (selectedBeneIds.includes(beneId)) {
       setSelectedBeneIds(selectedBeneIds.filter((id) => id !== beneId));
@@ -123,6 +146,58 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
     }
   };
 
+  // Direct Mag-Add ng Naka-Assign
+  const handleAssignSingle = async (beneId: string) => {
+    if (!assignModalActivity) return;
+    setSelectedBeneIds((prev) => Array.from(new Set([...prev, beneId])));
+    const isAssigned = assignments.some(
+      (asg) => asg.activityId === assignModalActivity.id && asg.beneficiaryId === beneId
+    );
+    if (!isAssigned) {
+      try {
+        await onAssignBeneficiary(assignModalActivity.id, beneId);
+      } catch (err: any) {
+        console.warn('Assign error:', err);
+      }
+    }
+  };
+
+  // Direct Burahin ang Naka-Assign
+  const handleUnassignSingle = async (beneId: string) => {
+    if (!assignModalActivity) return;
+    setSelectedBeneIds((prev) => prev.filter((id) => id !== beneId));
+    if (onUnassignBeneficiary) {
+      try {
+        await onUnassignBeneficiary(assignModalActivity.id, beneId);
+      } catch (err: any) {
+        console.warn('Unassign error:', err);
+      }
+    }
+  };
+
+  // Burahin Lahat ng Naka-Assigned
+  const handleClearAllAssigned = async () => {
+    if (!assignModalActivity) return;
+    const actId = assignModalActivity.id;
+    setSelectedBeneIds([]);
+    setIsConfirmClearAssignedOpen(false);
+    if (onClearActivityAssignments) {
+      try {
+        await onClearActivityAssignments(actId);
+      } catch {}
+    } else if (onUnassignBeneficiary) {
+      const currentAssigned = assignments
+        .filter((asg) => asg.activityId === actId)
+        .map((asg) => asg.beneficiaryId);
+      for (const bId of currentAssigned) {
+        try {
+          await onUnassignBeneficiary(actId, bId);
+        } catch {}
+      }
+    }
+  };
+
+  // Batch Assign Cluster
   const handleBatchAssignCluster = (clusterName: string) => {
     const clusterBeneIds = beneficiaries
       .filter((b) => b.assignedCluster.toLowerCase().includes(clusterName.toLowerCase()) || b.barangay === assignModalActivity?.barangay)
@@ -131,18 +206,48 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
     setSelectedBeneIds(combined);
   };
 
+  // Quick Add via name input
+  const handleQuickAddByName = async () => {
+    if (!quickAddName.trim() || !assignModalActivity) return;
+    const q = quickAddName.trim().toLowerCase();
+    const matched = beneficiaries.find(
+      (b) =>
+        `${b.firstName} ${b.lastName}`.toLowerCase().includes(q) ||
+        b.beneCode.toLowerCase().includes(q)
+    );
+    if (matched) {
+      await handleAssignSingle(matched.id);
+      setQuickAddName('');
+    } else {
+      alert(`Hindi nahanap si "${quickAddName}" sa Beneficiary Masterlist. Pakiusap tiyakin na nakarehistro ang pangalan o code.`);
+    }
+  };
+
+  // Commit / Save all assignments changes
   const handleSaveAssignments = async () => {
     if (!assignModalActivity) return;
     setIsAssigning(true);
     try {
+      const currentAssigned = assignments
+        .filter((asg) => asg.activityId === assignModalActivity.id)
+        .map((asg) => asg.beneficiaryId);
+
+      // Add new ones
       for (const beneId of selectedBeneIds) {
-        const isAssigned = assignments.some(
-          (asg) => asg.activityId === assignModalActivity.id && asg.beneficiaryId === beneId
-        );
-        if (!isAssigned) {
+        if (!currentAssigned.includes(beneId)) {
           await onAssignBeneficiary(assignModalActivity.id, beneId);
         }
       }
+
+      // Remove / unassign deselected ones
+      if (onUnassignBeneficiary) {
+        for (const beneId of currentAssigned) {
+          if (!selectedBeneIds.includes(beneId)) {
+            await onUnassignBeneficiary(assignModalActivity.id, beneId);
+          }
+        }
+      }
+
       setAssignModalActivity(null);
     } catch (err: any) {
       alert(err.message || 'Failed to update assignments');
@@ -344,6 +449,51 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                         style={{ width: `${Math.min(100, progressPercent)}%` }}
                       />
                     </div>
+
+                    {/* Expandable Assigned Beneficiaries List & Quick Delete */}
+                    {assignedCount > 0 && (
+                      <div className="pt-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedActivityId(expandedActivityId === act.id ? null : act.id)}
+                          className="text-[11px] font-mono text-emerald-400 hover:text-emerald-300 flex items-center gap-1 transition-colors cursor-pointer"
+                        >
+                          <span>{expandedActivityId === act.id ? '▲ Itago ang naka-assign' : `▼ Tingnan ang mga naka-assign (${assignedCount})`}</span>
+                        </button>
+                        {expandedActivityId === act.id && (
+                          <div className="mt-2 p-2 rounded-xl bg-slate-950/90 border border-slate-800 space-y-1.5 max-h-40 overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden">
+                            <div className="text-[10px] uppercase font-mono font-bold text-slate-400 flex items-center justify-between pb-1 border-b border-slate-800">
+                              <span>Naka-Assigned:</span>
+                              <span className="text-emerald-400 font-mono">{assignedCount}</span>
+                            </div>
+                            {beneficiaries
+                              .filter((b) => assignments.some((asg) => asg.activityId === act.id && asg.beneficiaryId === b.id))
+                              .map((b) => (
+                                <div key={b.id} className="flex items-center justify-between py-1 px-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-xs">
+                                  <div className="truncate pr-2">
+                                    <span className="font-bold text-white text-[11px]">{b.firstName} {b.lastName}</span>
+                                    <span className="text-[10px] text-slate-400 ml-1.5 font-mono">({b.beneCode} • {b.barangay})</span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      if (onUnassignBeneficiary) {
+                                        await onUnassignBeneficiary(act.id, b.id);
+                                      }
+                                    }}
+                                    className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/20 p-1 rounded transition-colors shrink-0 cursor-pointer flex items-center gap-0.5 text-[10px]"
+                                    title={`Burahin/Alisin si ${b.firstName} ${b.lastName} sa program`}
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                    <span>Alisin</span>
+                                  </button>
+                                </div>
+                              ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -520,120 +670,338 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
 
       {/* Assign Beneficiaries Modal */}
       {assignModalActivity && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto">
-          <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden my-8">
-            <div className="px-6 py-4 border-b border-slate-800 bg-slate-900/90 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-sm overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden animate-fadeIn">
+          <div className="relative w-full max-w-2xl bg-slate-900 border-2 border-emerald-500/50 rounded-2xl sm:rounded-3xl shadow-[0_25px_70px_rgba(0,0,0,0.9),0_0_50px_rgba(16,185,129,0.2)] overflow-hidden my-4 sm:my-8 text-left">
+            {/* Modal Header */}
+            <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-800 bg-slate-900/95 flex items-center justify-between">
               <div>
-                <h3 className="text-base font-bold text-white">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-400 block">
+                  Work Program Workforce Assignment
+                </span>
+                <h3 className="text-base sm:text-lg font-black text-white">
                   Assign Beneficiaries to Work Program
                 </h3>
                 <p className="text-xs text-emerald-400 mt-0.5">
-                  {assignModalActivity.title} ({assignModalActivity.targetArea})
+                  {assignModalActivity.title} (Brgy. {assignModalActivity.barangay} • {assignModalActivity.targetArea})
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => setAssignModalActivity(null)}
-                className="text-slate-400 hover:text-white"
+                className="p-1.5 rounded-xl bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
+                title="Isara"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
-              {/* Quick Batch Cluster Assign */}
-              <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700 text-xs flex flex-wrap items-center justify-between gap-2">
-                <span className="font-semibold text-slate-300">
-                  Quick Assign by Work Cluster:
-                </span>
-                <div className="flex flex-wrap gap-1.5">
+            <div className="p-3.5 sm:p-6 space-y-3.5 sm:space-y-4">
+              {/* Metric Counters Bar */}
+              <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                <div className="p-2 sm:p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
+                  <span className="text-[10px] uppercase font-mono text-slate-400 block">Naka-Assigned</span>
+                  <span className="text-sm sm:text-base font-black text-emerald-400 font-mono">
+                    {selectedBeneIds.length} <span className="text-xs text-slate-500 font-normal">/ {assignModalActivity.targetBeneficiariesCount}</span>
+                  </span>
+                </div>
+                <div className="p-2 sm:p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
+                  <span className="text-[10px] uppercase font-mono text-slate-400 block">Available</span>
+                  <span className="text-sm sm:text-base font-black text-cyan-400 font-mono">
+                    {Math.max(0, beneficiaries.length - selectedBeneIds.length)}
+                  </span>
+                </div>
+                <div className="p-2 sm:p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
+                  <span className="text-[10px] uppercase font-mono text-slate-400 block">Kabuuan</span>
+                  <span className="text-sm sm:text-base font-black text-slate-200 font-mono">
+                    {beneficiaries.length}
+                  </span>
+                </div>
+              </div>
+
+              {/* Quick Add by Name/Code Input Box */}
+              <div className="p-2.5 sm:p-3 rounded-xl bg-slate-950/90 border border-emerald-500/30 space-y-1.5">
+                <label className="text-[11px] font-mono text-emerald-400 font-bold uppercase flex items-center space-x-1.5">
+                  <UserPlus className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Mabilisang Mag-Add ng Naka-Assign:</span>
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={quickAddName}
+                    onChange={(e) => setQuickAddName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleQuickAddByName();
+                      }
+                    }}
+                    placeholder="I-type ang pangalan o Bene Code para i-add agad..."
+                    className="flex-1 px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:border-emerald-400 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleQuickAddByName}
+                    className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-mono font-bold rounded-xl transition-all cursor-pointer shadow flex items-center gap-1 shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ Mag-Add</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Search & Filter Tabs */}
+              <div className="space-y-2">
+                <div className="relative">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={assignSearchQuery}
+                    onChange={(e) => setAssignSearchQuery(e.target.value)}
+                    placeholder="Salain ayon sa Pangalan, ID Code, Barangay, o Cluster..."
+                    className="w-full pl-9 pr-8 py-2 bg-slate-950/90 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:border-emerald-400 focus:outline-none"
+                  />
+                  {assignSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setAssignSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Filter Tabs */}
+                <div className="flex items-center gap-1.5 p-1 bg-slate-950 rounded-xl border border-slate-800 text-xs font-mono">
+                  <button
+                    type="button"
+                    onClick={() => setAssignFilterTab('ALL')}
+                    className={`flex-1 py-1 px-2 rounded-lg text-center transition-all cursor-pointer font-bold ${
+                      assignFilterTab === 'ALL'
+                        ? 'bg-slate-800 text-white shadow'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    Lahat ({beneficiaries.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAssignFilterTab('ASSIGNED')}
+                    className={`flex-1 py-1 px-2 rounded-lg text-center transition-all cursor-pointer font-bold flex items-center justify-center gap-1.5 ${
+                      assignFilterTab === 'ASSIGNED'
+                        ? 'bg-emerald-600 text-white shadow'
+                        : 'text-emerald-400 hover:text-emerald-300'
+                    }`}
+                  >
+                    <span>✓ Naka-Assigned</span>
+                    <span className="px-1.5 py-0.2 rounded-full bg-emerald-950 text-[10px] font-mono">
+                      {selectedBeneIds.length}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAssignFilterTab('AVAILABLE')}
+                    className={`flex-1 py-1 px-2 rounded-lg text-center transition-all cursor-pointer font-bold ${
+                      assignFilterTab === 'AVAILABLE'
+                        ? 'bg-cyan-700 text-white shadow'
+                        : 'text-cyan-400 hover:text-cyan-300'
+                    }`}
+                  >
+                    Available ({Math.max(0, beneficiaries.length - selectedBeneIds.length)})
+                  </button>
+                </div>
+              </div>
+
+              {/* Quick Batch Assign & Delete Actions Bar */}
+              <div className="p-2.5 sm:p-3 bg-slate-800/80 rounded-xl border border-slate-700 text-xs flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="font-semibold text-slate-300 text-[11px]">
+                    Quick Assign:
+                  </span>
                   <button
                     type="button"
                     onClick={() => handleBatchAssignCluster('Coastal Watch')}
-                    className="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded text-[11px]"
+                    className="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-[11px] font-mono cursor-pointer transition-colors"
                   >
                     + Coastal Watch
                   </button>
                   <button
                     type="button"
                     onClick={() => handleBatchAssignCluster('Mangrove')}
-                    className="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded text-[11px]"
+                    className="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-[11px] font-mono cursor-pointer transition-colors"
                   >
-                    + Mangrove Cluster
+                    + Mangrove
                   </button>
                   <button
                     type="button"
                     onClick={() => handleBatchAssignCluster(assignModalActivity.barangay)}
-                    className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-600 text-white rounded text-[11px] font-bold"
+                    className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-[11px] font-mono font-bold cursor-pointer transition-colors"
                   >
-                    + All Brgy. {assignModalActivity.barangay}
+                    + Brgy. {assignModalActivity.barangay}
                   </button>
                 </div>
+
+                {/* Clear All Assigned Button */}
+                {selectedBeneIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setIsConfirmClearAssignedOpen(true)}
+                    className="px-2.5 py-1 bg-rose-500/20 hover:bg-rose-600 text-rose-300 hover:text-white rounded-lg text-[11px] font-mono font-bold border border-rose-500/40 flex items-center gap-1 transition-all cursor-pointer ml-auto"
+                    title="Alisin ang lahat ng kasalukuyang naka-assign sa work program na ito"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span>Burahin Lahat ng Naka-Assigned ({selectedBeneIds.length})</span>
+                  </button>
+                )}
               </div>
 
-              {/* Selection Summary */}
-              <div className="flex items-center justify-between text-xs text-slate-400">
-                <span>
-                  Selected: <strong className="text-emerald-400 font-mono">{selectedBeneIds.length}</strong> beneficiaries
-                </span>
-                <span className="text-[11px]">
-                  Target capacity: {assignModalActivity.targetBeneficiariesCount}
-                </span>
-              </div>
-
-              {/* Beneficiary List with Checkboxes */}
-              <div className="max-h-80 overflow-y-auto space-y-2 border border-slate-800 p-2 rounded-xl bg-slate-950/60">
-                {beneficiaries.map((b) => {
-                  const isSelected = selectedBeneIds.includes(b.id);
-                  return (
-                    <div
-                      key={b.id}
-                      onClick={() => handleToggleBeneSelection(b.id)}
-                      className={`p-2.5 rounded-lg border flex items-center justify-between cursor-pointer transition-colors ${
-                        isSelected
-                          ? 'bg-emerald-950/40 border-emerald-500/50 text-white'
-                          : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800/60'
-                      }`}
+              {/* Confirmation Alert to Clear All Assigned */}
+              {isConfirmClearAssignedOpen && (
+                <div className="p-3 rounded-xl bg-rose-950/80 border-2 border-rose-500/80 text-rose-200 text-xs space-y-2 animate-fadeIn">
+                  <p className="font-bold text-white flex items-center gap-1.5">
+                    <AlertCircle className="w-4 h-4 text-rose-400" />
+                    <span>Kumpirmasyon: Burahin ang Lahat ng Naka-Assigned?</span>
+                  </p>
+                  <p className="text-[11px] text-rose-300">
+                    Sigurado ka bang nais mong alisin ang lahat ng <strong>{selectedBeneIds.length}</strong> na naka-assign sa work program na ito?
+                  </p>
+                  <div className="flex justify-end gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setIsConfirmClearAssignedOpen(false)}
+                      className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[11px] font-mono cursor-pointer"
                     >
-                      <div className="flex items-center space-x-3">
-                        {isSelected ? (
-                          <CheckSquare className="w-4 h-4 text-emerald-400 shrink-0" />
-                        ) : (
-                          <Square className="w-4 h-4 text-slate-500 shrink-0" />
-                        )}
-                        <div>
-                          <div className="font-bold text-xs">
-                            {b.firstName} {b.lastName}
-                          </div>
-                          <div className="text-[10px] text-slate-400 font-mono">
-                            {b.beneCode} • Brgy. {b.barangay} ({b.assignedCluster})
+                      Kanselahin
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleClearAllAssigned}
+                      className="px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-[11px] font-mono font-bold cursor-pointer shadow"
+                    >
+                      Oo, Burahin Lahat
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Beneficiary List with Checkboxes and Direct Add/Delete Buttons */}
+              <div className="max-h-72 sm:max-h-80 overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden space-y-2 border border-slate-800 p-2 sm:p-2.5 rounded-xl bg-slate-950/70">
+                {beneficiaries
+                  .filter((b) => {
+                    const isSelected = selectedBeneIds.includes(b.id);
+                    if (assignFilterTab === 'ASSIGNED' && !isSelected) return false;
+                    if (assignFilterTab === 'AVAILABLE' && isSelected) return false;
+
+                    if (assignSearchQuery.trim()) {
+                      const q = assignSearchQuery.toLowerCase();
+                      const fullName = `${b.firstName} ${b.lastName}`.toLowerCase();
+                      const code = b.beneCode.toLowerCase();
+                      const brgy = b.barangay.toLowerCase();
+                      const cluster = (b.assignedCluster || '').toLowerCase();
+                      return fullName.includes(q) || code.includes(q) || brgy.includes(q) || cluster.includes(q);
+                    }
+                    return true;
+                  })
+                  .map((b) => {
+                    const isSelected = selectedBeneIds.includes(b.id);
+                    return (
+                      <div
+                        key={b.id}
+                        onClick={() => handleToggleBeneSelection(b.id)}
+                        className={`p-2.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2 cursor-pointer transition-all ${
+                          isSelected
+                            ? 'bg-emerald-950/40 border-emerald-500/60 shadow-[0_0_15px_rgba(16,185,129,0.15)] text-white'
+                            : 'bg-slate-900/90 border-slate-800 text-slate-300 hover:bg-slate-800/60'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3 min-w-0">
+                          {isSelected ? (
+                            <CheckSquare className="w-4 h-4 text-emerald-400 shrink-0" />
+                          ) : (
+                            <Square className="w-4 h-4 text-slate-500 shrink-0" />
+                          )}
+                          <div className="min-w-0">
+                            <div className="font-bold text-xs flex items-center gap-1.5 flex-wrap">
+                              <span className="truncate">{b.firstName} {b.lastName}</span>
+                              {isSelected ? (
+                                <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono">
+                                  ✓ Naka-Assigned
+                                </span>
+                              ) : (
+                                <span className="px-1.5 py-0.5 rounded text-[9.5px] font-mono bg-slate-800 text-slate-400">
+                                  Available
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                              {b.beneCode} • Brgy. {b.barangay} ({b.assignedCluster})
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400">
-                        {b.contactNumber}
-                      </span>
-                    </div>
-                  );
-                })}
+                        {/* Action controls: Direct Add & Direct Delete Buttons */}
+                        <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-800/80">
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 shrink-0">
+                            {b.contactNumber}
+                          </span>
+
+                          {isSelected ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleUnassignSingle(b.id);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/40 text-xs font-mono font-bold flex items-center gap-1 transition-all cursor-pointer shadow shrink-0"
+                              title="Burahin ang naka-assigned"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Burahin</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAssignSingle(b.id);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-mono font-bold flex items-center gap-1 transition-all cursor-pointer shadow shrink-0"
+                              title="I-add bilang naka-assigned"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>+ Mag-Add</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
               </div>
 
-              <div className="pt-3 border-t border-slate-800 flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => setAssignModalActivity(null)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 rounded-xl"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveAssignments}
-                  disabled={isAssigning}
-                  className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-lg"
-                >
-                  {isAssigning ? 'Saving Assignments...' : 'Commit Assignments'}
-                </button>
+              {/* Bottom Action Footer */}
+              <div className="pt-3 border-t border-slate-800 flex flex-col xs:flex-row items-center justify-between gap-2.5">
+                <span className="text-xs text-slate-400 font-mono">
+                  Kabuuang Naka-Assigned: <strong className="text-emerald-400">{selectedBeneIds.length}</strong>
+                </span>
+
+                <div className="flex items-center space-x-2 w-full xs:w-auto justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setAssignModalActivity(null)}
+                    className="flex-1 xs:flex-initial px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors cursor-pointer"
+                  >
+                    Isara
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveAssignments}
+                    disabled={isAssigning}
+                    className="flex-1 xs:flex-initial px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-lg transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  >
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    <span>{isAssigning ? 'Saving Assignments...' : `I-save ang mga Naka-Assigned (${selectedBeneIds.length})`}</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -642,7 +1010,7 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
 
       {/* Create Activity Modal */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden">
           <div className="relative w-full max-w-xl bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden my-8">
             <div className="px-6 py-4 border-b border-slate-800 bg-slate-900/90 flex items-center justify-between">
               <h3 className="text-base font-bold text-white">Create Work Program Activity</h3>

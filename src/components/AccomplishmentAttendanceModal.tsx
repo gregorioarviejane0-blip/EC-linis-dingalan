@@ -156,7 +156,7 @@ export const AccomplishmentAttendanceModal: React.FC<AccomplishmentAttendanceMod
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 bg-slate-950/85 backdrop-blur-md overflow-y-auto animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 bg-slate-950/85 backdrop-blur-md overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden animate-fadeIn">
       <div className="relative w-full max-w-7xl bg-slate-900 border-2 border-emerald-500/50 rounded-2xl sm:rounded-3xl shadow-[0_25px_70px_rgba(0,0,0,0.9),0_0_50px_rgba(16,185,129,0.2)] overflow-hidden my-auto flex flex-col max-h-[94vh]">
         
         {/* ========================================================================= */}
@@ -285,7 +285,7 @@ export const AccomplishmentAttendanceModal: React.FC<AccomplishmentAttendanceMod
         {/* ========================================================================= */}
         {/* ATTENDANCE RECORDS (MOBILE CARDS + DESKTOP TABLE)                         */}
         {/* ========================================================================= */}
-        <div className="p-2.5 sm:p-6 overflow-y-auto flex-1">
+        <div className="p-2.5 sm:p-6 overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden flex-1">
           {filteredAttendances.length === 0 ? (
             <div className="text-center py-12 sm:py-16 space-y-3 bg-slate-950/40 rounded-2xl border border-slate-800">
               <Camera className="w-10 h-10 sm:w-12 sm:h-12 text-slate-600 mx-auto" />
@@ -616,7 +616,7 @@ export const AccomplishmentAttendanceModal: React.FC<AccomplishmentAttendanceMod
             </div>
 
             {/* Details & Photos Content */}
-            <div className="p-6 overflow-y-auto space-y-4 text-left">
+            <div className="p-6 overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden space-y-4 text-left">
               {/* Event & Submitted Data Summary (Matches 4-field structure from upload modal) */}
               <div className="p-4 rounded-2xl bg-slate-950/80 border border-emerald-500/30 space-y-3 font-mono text-xs shadow-inner">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

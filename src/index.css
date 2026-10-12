@@ -382,3 +382,39 @@ input:-webkit-autofill::first-line {
   color: #ffffff !important;
   -webkit-text-fill-color: #ffffff !important;
 }
+
+/* ========================================================================= */
+/* HIDE WHITE NATIVE BROWSER SCROLLBARS WHILE KEEPING 100% SCROLLABLE        */
+/* ========================================================================= */
+/* Hide native scrollbars globally across all browsers (Chrome, Safari, Firefox, Edge) */
+* {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0px !important;
+  height: 0px !important;
+}
+
+/* Ensure all scroll containers retain full mouse/touch scrolling with hidden scrollbar */
+.scrollbar-none,
+.no-scrollbar,
+.overflow-y-auto,
+.overflow-x-auto,
+.overflow-auto {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.scrollbar-none::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar,
+.overflow-y-auto::-webkit-scrollbar,
+.overflow-x-auto::-webkit-scrollbar,
+.overflow-auto::-webkit-scrollbar {
+  display: none !important;
+  width: 0px !important;
+  height: 0px !important;
+}
+

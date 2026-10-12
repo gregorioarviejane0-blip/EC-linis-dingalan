@@ -445,7 +445,7 @@ export const GenerateQrEventModal: React.FC<GenerateQrEventModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-[10000] flex items-center justify-center p-2 sm:p-6 bg-slate-950/90 backdrop-blur-xl overflow-y-auto">
+      <div className="fixed inset-0 z-[10000] flex items-center justify-center p-2 sm:p-6 bg-slate-950/90 backdrop-blur-xl overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden">
         <div className="relative w-full max-w-4xl bg-slate-900 border-2 border-emerald-500/70 rounded-2xl sm:rounded-3xl shadow-[0_25px_80px_rgba(0,0,0,0.95),0_0_50px_rgba(16,185,129,0.35)] overflow-hidden my-auto flex flex-col max-h-[94vh] text-slate-100">
           
           {/* Header Bar */}
@@ -472,7 +472,7 @@ export const GenerateQrEventModal: React.FC<GenerateQrEventModalProps> = ({
           </div>
 
           {/* Modal Body */}
-          <div className="p-3.5 sm:p-6 overflow-y-auto space-y-3.5 sm:space-y-5 flex-1 min-h-0 text-left">
+          <div className="p-3.5 sm:p-6 overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden space-y-3.5 sm:space-y-5 flex-1 min-h-0 text-left">
             {/* SUCCESS BROADCAST CONFIRMATION */}
             {isSuccessSent ? (
               <div className="text-center py-8 space-y-4 animate-scaleIn">
@@ -975,7 +975,7 @@ export const GenerateQrEventModal: React.FC<GenerateQrEventModalProps> = ({
       {/* EDIT BROADCAST MODAL OVERLAY                                              */}
       {/* ========================================================================= */}
       {editingBroadcast && (
-        <div className="fixed inset-0 z-[10500] flex items-center justify-center p-3 sm:p-6 bg-slate-950/95 backdrop-blur-xl overflow-y-auto select-none">
+        <div className="fixed inset-0 z-[10500] flex items-center justify-center p-3 sm:p-6 bg-slate-950/95 backdrop-blur-xl overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden select-none">
           <div className="relative w-full max-w-2xl bg-slate-900 border-2 border-emerald-500/80 rounded-3xl shadow-[0_25px_80px_rgba(0,0,0,0.95),0_0_50px_rgba(16,185,129,0.3)] overflow-hidden my-auto flex flex-col h-[90vh] max-h-[850px] text-slate-100">
             {/* Header */}
             <div className="px-6 py-4 border-b border-slate-800 bg-slate-950/95 flex items-center justify-between shrink-0">
@@ -1002,7 +1002,7 @@ export const GenerateQrEventModal: React.FC<GenerateQrEventModalProps> = ({
             </div>
 
             {/* Form Body */}
-            <form onSubmit={handleSaveEdit} className="p-6 overflow-y-auto space-y-4 text-left font-sans flex-1 min-h-0">
+            <form onSubmit={handleSaveEdit} className="p-6 overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden space-y-4 text-left font-sans flex-1 min-h-0">
               <div>
                 <label className="block text-xs font-mono font-bold text-slate-300 uppercase mb-1">
                   Pamagat ng Gawain / Activity Title <span className="text-rose-400">*</span>

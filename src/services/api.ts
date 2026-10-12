@@ -626,6 +626,117 @@ export class ApiService {
     return true;
   }
 
+  async assignBeneficiary(activityId: string, beneficiaryId: string): Promise<ActivityAssignment> {
+    try {
+      const res = await fetch(`/api/activities/${activityId}/assignments`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ beneficiaryId }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data.assignment;
+      }
+    } catch {
+      // offline fallback
+    }
+
+    const newAsg: ActivityAssignment = {
+      id: `asg-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      activityId,
+      beneficiaryId,
+      assignedAt: new Date().toISOString(),
+      status: 'assigned',
+    };
+
+    const rawAsgs = localStorage.getItem(LS_ASSIGNMENTS);
+    const asgs: ActivityAssignment[] = rawAsgs ? JSON.parse(rawAsgs) : [];
+    asgs.push(newAsg);
+    localStorage.setItem(LS_ASSIGNMENTS, JSON.stringify(asgs));
+
+    const rawActs = localStorage.getItem(LS_ACTIVITIES);
+    if (rawActs) {
+      try {
+        const acts: Activity[] = JSON.parse(rawActs);
+        const act = acts.find(a => a.id === activityId);
+        if (act) {
+          act.assignedBeneficiariesCount = (act.assignedBeneficiariesCount || 0) + 1;
+          localStorage.setItem(LS_ACTIVITIES, JSON.stringify(acts));
+        }
+      } catch {}
+    }
+
+    return newAsg;
+  }
+
+  async unassignBeneficiary(activityId: string, beneficiaryId: string): Promise<boolean> {
+    try {
+      await fetch(`/api/activities/${activityId}/assignments/${beneficiaryId}`, {
+        method: 'DELETE',
+        headers: this.getAuthHeaders(),
+      });
+    } catch {
+      // offline fallback
+    }
+
+    const rawAsgs = localStorage.getItem(LS_ASSIGNMENTS);
+    if (rawAsgs) {
+      try {
+        const asgs: ActivityAssignment[] = JSON.parse(rawAsgs);
+        const filtered = asgs.filter(asg => !(asg.activityId === activityId && asg.beneficiaryId === beneficiaryId));
+        localStorage.setItem(LS_ASSIGNMENTS, JSON.stringify(filtered));
+      } catch {}
+    }
+
+    const rawActs = localStorage.getItem(LS_ACTIVITIES);
+    if (rawActs) {
+      try {
+        const acts: Activity[] = JSON.parse(rawActs);
+        const act = acts.find(a => a.id === activityId);
+        if (act) {
+          act.assignedBeneficiariesCount = Math.max(0, (act.assignedBeneficiariesCount || 1) - 1);
+          localStorage.setItem(LS_ACTIVITIES, JSON.stringify(acts));
+        }
+      } catch {}
+    }
+
+    return true;
+  }
+
+  async clearActivityAssignments(activityId: string): Promise<boolean> {
+    try {
+      await fetch(`/api/activities/${activityId}/assignments`, {
+        method: 'DELETE',
+        headers: this.getAuthHeaders(),
+      });
+    } catch {
+      // offline fallback
+    }
+
+    const rawAsgs = localStorage.getItem(LS_ASSIGNMENTS);
+    if (rawAsgs) {
+      try {
+        const asgs: ActivityAssignment[] = JSON.parse(rawAsgs);
+        const filtered = asgs.filter(asg => asg.activityId !== activityId);
+        localStorage.setItem(LS_ASSIGNMENTS, JSON.stringify(filtered));
+      } catch {}
+    }
+
+    const rawActs = localStorage.getItem(LS_ACTIVITIES);
+    if (rawActs) {
+      try {
+        const acts: Activity[] = JSON.parse(rawActs);
+        const act = acts.find(a => a.id === activityId);
+        if (act) {
+          act.assignedBeneficiariesCount = 0;
+          localStorage.setItem(LS_ACTIVITIES, JSON.stringify(acts));
+        }
+      } catch {}
+    }
+
+    return true;
+  }
+
   async clearAllActivities(): Promise<boolean> {
     try {
       fetch('/api/activities', {

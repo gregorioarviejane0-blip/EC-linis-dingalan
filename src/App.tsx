@@ -547,22 +547,60 @@ export default function App() {
     }
   };
 
-  // Assign Beneficiary Handler
+  // Assign Beneficiary Handler (Mag-add ng naka-assigned)
   const handleAssignBeneficiary = async (activityId: string, beneficiaryId: string) => {
     try {
-      const res = await fetch(`/api/activities/${activityId}/assignments`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-role': currentUser.role,
-          'x-user-id': currentUser.id,
-        },
-        body: JSON.stringify({ beneficiaryId }),
+      const newAsg = await api.assignBeneficiary(activityId, beneficiaryId);
+      setAssignments((prev) => {
+        const exists = prev.some(
+          (asg) => asg.activityId === activityId && asg.beneficiaryId === beneficiaryId
+        );
+        return exists ? prev : [...prev, newAsg];
       });
-      if (res.ok) {
-        const data = await res.json();
-        setAssignments((prev) => [...prev, data.assignment]);
-      }
+      setActivities((prev) =>
+        prev.map((act) =>
+          act.id === activityId
+            ? { ...act, assignedBeneficiariesCount: (act.assignedBeneficiariesCount || 0) + 1 }
+            : act
+        )
+      );
+    } catch {
+      // offline
+    }
+  };
+
+  // Unassign Beneficiary Handler (Burahin ang naka-assigned)
+  const handleUnassignBeneficiary = async (activityId: string, beneficiaryId: string) => {
+    try {
+      await api.unassignBeneficiary(activityId, beneficiaryId);
+      setAssignments((prev) =>
+        prev.filter((asg) => !(asg.activityId === activityId && asg.beneficiaryId === beneficiaryId))
+      );
+      setActivities((prev) =>
+        prev.map((act) =>
+          act.id === activityId
+            ? { ...act, assignedBeneficiariesCount: Math.max(0, (act.assignedBeneficiariesCount || 1) - 1) }
+            : act
+        )
+      );
+    } catch {
+      // offline
+    }
+  };
+
+  // Clear All Assignments for an Activity (Burahin lahat ng naka-assign sa work program)
+  const handleClearActivityAssignments = async (activityId: string) => {
+    try {
+      await api.clearActivityAssignments(activityId);
+      setAssignments((prev) => prev.filter((asg) => asg.activityId !== activityId));
+      setActivities((prev) =>
+        prev.map((act) =>
+          act.id === activityId
+            ? { ...act, assignedBeneficiariesCount: 0 }
+            : act
+        )
+      );
+      showToast('Lahat ng naka-assign sa work program ay matagumpay na naalis.', 'info');
     } catch {
       // offline
     }
@@ -897,6 +935,8 @@ export default function App() {
                 currentUser={currentUser}
                 onCreateActivity={handleCreateActivity}
                 onAssignBeneficiary={handleAssignBeneficiary}
+                onUnassignBeneficiary={handleUnassignBeneficiary}
+                onClearActivityAssignments={handleClearActivityAssignments}
                 onSelectActivityForAttendance={handleSelectActivityForAttendance}
                 onOpenGenerateQrModal={() => setIsGenerateQrModalOpen(true)}
                 onDeleteActivity={handleDeleteActivity}

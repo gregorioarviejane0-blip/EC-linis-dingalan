@@ -397,6 +397,45 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     res.status(201).json({ assignment: newAsg });
   });
 
+  // Unassign Beneficiary from Activity (Burahin / Tanggalin ang naka-assign)
+  app.delete('/api/activities/:id/assignments/:beneficiaryId', (req: Request, res: Response) => {
+    const { id, beneficiaryId } = req.params;
+    const activity = activities.find(a => a.id === id);
+    if (!activity) {
+      return res.status(404).json({ error: 'Activity not found' });
+    }
+
+    const asgIdx = assignments.findIndex(asg => asg.activityId === id && asg.beneficiaryId === beneficiaryId);
+    if (asgIdx === -1) {
+      return res.status(404).json({ error: 'Assignment not found' });
+    }
+
+    assignments.splice(asgIdx, 1);
+    activity.assignedBeneficiariesCount = Math.max(0, activity.assignedBeneficiariesCount - 1);
+
+    res.json({ success: true, message: 'Beneficiary unassigned successfully' });
+  });
+
+  // Clear all assignments from an Activity (Burahin lahat ng naka-assign sa program)
+  app.delete('/api/activities/:id/assignments', (req: Request, res: Response) => {
+    const { id } = req.params;
+    const activity = activities.find(a => a.id === id);
+    if (!activity) {
+      return res.status(404).json({ error: 'Activity not found' });
+    }
+
+    let removed = 0;
+    for (let i = assignments.length - 1; i >= 0; i--) {
+      if (assignments[i].activityId === id) {
+        assignments.splice(i, 1);
+        removed++;
+      }
+    }
+    activity.assignedBeneficiariesCount = 0;
+
+    res.json({ success: true, count: removed, message: `Removed all ${removed} assigned beneficiaries.` });
+  });
+
   // Delete Individual Activity
   app.delete('/api/activities/:id', (req: Request, res: Response) => {
     const { id } = req.params;

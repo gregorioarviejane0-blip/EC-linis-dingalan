@@ -187,9 +187,6 @@ export const Header: React.FC<HeaderProps> = ({
             { id: 'portal', label: 'Terminal', fullLabel: 'Field Terminal', icon: QrCode },
             { id: 'beneficiaries', label: 'Masterlist', icon: Users },
             { id: 'activities', label: 'Programs', icon: Calendar },
-            { id: 'reports', label: 'Reports', icon: FileText },
-            { id: 'storage', label: 'Prune', icon: HardDrive },
-            { id: 'architecture', label: 'DDL', icon: Cpu },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -370,9 +367,6 @@ export const Header: React.FC<HeaderProps> = ({
           { id: 'portal', label: 'Terminal', icon: QrCode },
           { id: 'beneficiaries', label: 'Masterlist', icon: Users },
           { id: 'activities', label: 'Programs', icon: Calendar },
-          { id: 'reports', label: 'Reports', icon: FileText },
-          { id: 'storage', label: 'Prune', icon: HardDrive },
-          { id: 'architecture', label: 'DDL', icon: Cpu },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
