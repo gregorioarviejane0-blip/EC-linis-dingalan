@@ -41,13 +41,13 @@ export interface Beneficiary {
   middleName?: string;
   lastName: string;
   suffix?: string;
-  nationalOrLocalId: string;
+  nationalOrLocalId?: string;
   contactNumber: string;
   barangay: DingalanBarangay;
   assignedCluster: string;
-  emergencyContactName: string;
-  emergencyContactPhone: string;
-  emergencyContactRelation: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  emergencyContactRelation?: string;
   photoUrl?: string;
   status: 'active' | 'inactive';
   qrHash: string; // Cryptographic signature

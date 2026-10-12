@@ -506,7 +506,43 @@ export default function App() {
   const handleAddBeneficiary = async (beneData: Partial<Beneficiary>) => {
     const newBene = await api.createBeneficiary(beneData);
     setBeneficiaries((prev) => [newBene, ...prev]);
-    showToast(`Registered ${newBene.firstName} ${newBene.lastName} with QR token ${newBene.beneCode}.`, 'success');
+
+    // Automatically broadcast event reminder (paalala) & QR code so it goes to login page, and switch to program content
+    try {
+      const broadcastObj: EventQrBroadcast = {
+        id: `evt-${Date.now()}`,
+        activityId: `act-${Date.now()}`,
+        activityTitle: `Clean-up Drive: ${newBene.assignedCluster || 'Coastal Watch'}`,
+        barangay: newBene.barangay,
+        targetArea: newBene.assignedCluster || 'Dingalan Feeder Port',
+        qrPayload: newBene.qrHash,
+        eventDate: new Date().toISOString().split('T')[0],
+        startTime: '07:00 AM',
+        estimatedEndTime: '11:00 AM',
+        totalHours: '4 Oras',
+        requiredTools: 'Sariling walis, dustpan, tumbler, at PPE/vest',
+        waterTumblerReminder: 'Magdala ng sariling water tumbler (bawal single-use plastic).',
+        recommendedAttire: 'Comfortable workwear & closed shoes',
+        additionalNotes: `Paalala para kay ${newBene.firstName} ${newBene.lastName}: Sundin ang iskedyul at magdala ng sariling kagamitan sa Brgy. ${newBene.barangay}.`,
+        sentByAdminName: currentUser.name || 'Admin Officer',
+        sentAt: new Date().toISOString(),
+      };
+      await api.broadcastEventQr(broadcastObj);
+      setLatestEventBroadcast(broadcastObj);
+      localStorage.setItem('ld_latest_event_broadcast', JSON.stringify(broadcastObj));
+    } catch (e) {
+      console.error('Auto broadcast error:', e);
+    }
+
+    setActiveTab('reports');
+    showToast(`Registered ${newBene.firstName} ${newBene.lastName} & broadcasted QR/paalala to Login Page & Program Content!`, 'success');
+  };
+
+  // Update Beneficiary Handler
+  const handleUpdateBeneficiary = async (id: string, data: Partial<Beneficiary>) => {
+    const updated = await api.updateBeneficiary(id, data);
+    setBeneficiaries((prev) => prev.map((b) => b.id === id ? updated : b));
+    showToast(`Updated beneficiary record for ${updated.firstName} ${updated.lastName}.`, 'success');
   };
 
   // Delete Beneficiary Handler
@@ -521,6 +557,17 @@ export default function App() {
     const newAct = await api.createActivity(data);
     setActivities((prev) => [newAct, ...prev]);
     showToast(`Created work program "${newAct.title}".`, 'success');
+  };
+
+  // Update Activity Handler
+  const handleUpdateActivity = async (id: string, data: Partial<Activity>) => {
+    try {
+      const updated = await api.updateActivity(id, data);
+      setActivities((prev) => prev.map((a) => (a.id === id ? updated : a)));
+      showToast(`Na-update ang work program "${updated.title}".`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Nabigo ang pag-update sa program', 'error');
+    }
   };
 
   // Delete Single Activity Handler
@@ -919,6 +966,7 @@ export default function App() {
                 beneficiaries={beneficiaries}
                 currentUser={currentUser}
                 onAddBeneficiary={handleAddBeneficiary}
+                onUpdateBeneficiary={handleUpdateBeneficiary}
                 onDeleteBeneficiary={handleDeleteBeneficiary}
                 onDirectScanTest={handleDirectScanTest}
               />
@@ -957,6 +1005,8 @@ export default function App() {
                 assignments={assignments}
                 onAssignBeneficiary={handleAssignBeneficiary}
                 onUnassignBeneficiary={handleUnassignBeneficiary}
+                onUpdateActivity={handleUpdateActivity}
+                onDeleteActivity={handleDeleteActivity}
               />
             </div>
           )}

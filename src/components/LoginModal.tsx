@@ -126,7 +126,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 }) => {
   const clock = useDingalanClock();
   const phTime = clock.time;
-  const [isUnfolded, setIsUnfolded] = useState<boolean>(true);
+  const [isUnfolded, setIsUnfolded] = useState<boolean>(false);
   const [isBroadcastHidden, setIsBroadcastHidden] = useState<boolean>(false);
   const [isAnonymousModalOpen, setIsAnonymousModalOpen] = useState<boolean>(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -709,7 +709,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
   // Automatically open the Event Advisory with QR Code whenever a broadcast is sent or loaded
   useEffect(() => {
-    if (eventBroadcast && eventBroadcast.id && !isBroadcastHidden) {
+    // Only open if the user has already interacted with the system or explicitly requested it
+    if (eventBroadcast && eventBroadcast.id && !isBroadcastHidden && isUnfolded) {
       setIsUnfolded(true);
       setActiveView('event');
     }
@@ -814,8 +815,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     setErrorMessage(null);
     setPendingNotice(null);
     // Automatic na bubungad ang Paalala at QR Code card
-    setIsUnfolded(true);
-    setActiveView('event');
+    // setIsUnfolded(true);
+    // setActiveView('event');
 
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -1498,7 +1499,68 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           {/* --------------------------------------------------------------------- */}
           <div className={`w-full max-w-full lg:max-w-3xl xl:max-w-4xl mx-auto self-center my-auto lg:col-span-7 xl:col-span-7 ${activeView === 'overview' ? 'hidden lg:block' : 'block'}`}>
             <AnimatePresence mode="wait">
-              {isUnfolded && (
+              {!isUnfolded ? (
+                <motion.div
+                  key="fisherman-teaser"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.3 }}
+                  className="relative rounded-2xl lg:rounded-3xl border-2 border-emerald-400/80 shadow-[0_0_50px_rgba(16,185,129,0.4)] bg-slate-950/85 backdrop-blur-md p-6 sm:p-8 lg:p-10 flex flex-col items-center justify-center text-center space-y-4 max-w-lg mx-auto overflow-hidden my-auto"
+                >
+                  <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 font-mono text-xs font-bold flex items-center space-x-1.5 animate-pulse">
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Hilahin ang isda para buksan ang Login Box</span>
+                  </div>
+
+                  <div className="relative w-full max-w-sm rounded-2xl overflow-hidden border-2 border-emerald-500/50 shadow-2xl bg-slate-900 group mt-4">
+                    <img
+                      src="/fisherman.png"
+                      alt="Fisherman Login Teaser"
+                      className="w-full h-auto object-cover select-none pointer-events-none"
+                    />
+
+                    {/* Interactive Draggable Fish Hotspot / Handle */}
+                    <motion.div
+                      drag
+                      dragConstraints={{ left: -120, right: 120, top: -120, bottom: 120 }}
+                      dragElastic={0.25}
+                      onDragEnd={(e, info) => {
+                        if (Math.abs(info.offset.x) > 25 || Math.abs(info.offset.y) > 25) {
+                          setIsUnfolded(true);
+                          setActiveView('login');
+                        }
+                      }}
+                      onClick={() => {
+                        setIsUnfolded(true);
+                        setActiveView('login');
+                      }}
+                      className="absolute bottom-[10%] right-[12%] w-24 h-28 cursor-grab active:cursor-grabbing flex items-center justify-center group/fish z-20"
+                      title="Hilahin o pindutin ang isda para lumabas ang login box!"
+                    >
+                      <div className="absolute inset-0 bg-emerald-400/30 rounded-full blur-lg animate-ping opacity-75 pointer-events-none" />
+                      <div className="relative z-10 px-2.5 py-1.5 rounded-xl bg-emerald-500 text-slate-950 font-mono font-black text-xs shadow-xl border-2 border-white animate-bounce flex items-center space-x-1">
+                        <span>HILA ISDA 🎣</span>
+                      </div>
+                    </motion.div>
+                  </div>
+
+                  <p className="text-xs sm:text-sm font-mono text-slate-200 max-w-xs leading-relaxed">
+                    I-drag o i-click ang isda sa litrato gamit ang cursor upang awtomatikong lumabas ang Admin Login Box.
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsUnfolded(true);
+                      setActiveView('login');
+                    }}
+                    className="mt-2 px-6 py-3 rounded-xl fluid-btn-emerald text-slate-950 font-mono font-black text-xs sm:text-sm uppercase tracking-wider shadow-[0_0_20px_rgba(16,185,129,0.5)] hover:scale-105 transition-all cursor-pointer border-2 border-emerald-300"
+                  >
+                    Buksan ang Login Box
+                  </button>
+                </motion.div>
+              ) : isUnfolded && (
                 <motion.div
                   key={activeView}
                   initial={{ opacity: 0, y: 12, scale: 0.98 }}

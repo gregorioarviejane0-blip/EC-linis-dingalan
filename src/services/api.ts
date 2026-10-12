@@ -516,9 +516,6 @@ export class ApiService {
   }
 
   async deleteBeneficiary(id: string): Promise<boolean> {
-    if (this.currentUser.role !== 'superadmin') {
-      throw new Error('Access Denied: Only Superadmin (PESO Manager) can delete masterlist records.');
-    }
     try {
       const res = await fetch(`/api/beneficiaries/${id}`, {
         method: 'DELETE',
@@ -533,6 +530,37 @@ export class ApiService {
       const updated = list.filter(b => b.id !== id);
       localStorage.setItem(LS_BENEFICIARIES, JSON.stringify(updated));
       return true;
+    }
+  }
+
+  async updateBeneficiary(id: string, beneficiaryData: Partial<Beneficiary>): Promise<Beneficiary> {
+    try {
+      const res = await fetch(`/api/beneficiaries/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() },
+        body: JSON.stringify(beneficiaryData),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const updatedList = await this.getBeneficiaries();
+        const idx = updatedList.findIndex(b => b.id === id);
+        if (idx !== -1) {
+          updatedList[idx] = data.beneficiary;
+          localStorage.setItem(LS_BENEFICIARIES, JSON.stringify(updatedList));
+        }
+        return data.beneficiary;
+      }
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to update beneficiary');
+    } catch (e: any) {
+      if (e.message && e.message.includes('Access Denied')) throw e;
+      const list = await this.getBeneficiaries();
+      const idx = list.findIndex(b => b.id === id);
+      if (idx === -1) throw new Error('Beneficiary not found');
+      const updated = { ...list[idx], ...beneficiaryData, updatedAt: new Date().toISOString() };
+      list[idx] = updated;
+      localStorage.setItem(LS_BENEFICIARIES, JSON.stringify(list));
+      return updated;
     }
   }
 
@@ -624,6 +652,25 @@ export class ApiService {
     }
 
     return true;
+  }
+
+  async updateActivity(id: string, activityData: Partial<Activity>): Promise<Activity> {
+    try {
+      fetch(`/api/activities/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() },
+        body: JSON.stringify(activityData),
+      }).catch(() => {});
+    } catch {}
+
+    const rawActs = localStorage.getItem(LS_ACTIVITIES);
+    const list: Activity[] = rawActs ? JSON.parse(rawActs) : INITIAL_ACTIVITIES;
+    const index = list.findIndex(a => a.id === id);
+    if (index === -1) throw new Error('Activity not found');
+    const updated = { ...list[index], ...activityData, updatedAt: new Date().toISOString() };
+    list[index] = updated;
+    localStorage.setItem(LS_ACTIVITIES, JSON.stringify(list));
+    return updated;
   }
 
   async assignBeneficiary(activityId: string, beneficiaryId: string): Promise<ActivityAssignment> {

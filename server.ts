@@ -301,7 +301,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     res.status(201).json({ beneficiary: newBene });
   });
 
-  app.delete('/api/beneficiaries/:id', requireRole(['superadmin']), (req: Request, res: Response) => {
+  app.delete('/api/beneficiaries/:id', requireRole(['superadmin', 'admin', 'menro_officer', 'staff']), (req: Request, res: Response) => {
     const { id } = req.params;
     const user = (req as any).user as User;
     const target = beneficiaries.find(b => b.id === id);
@@ -321,6 +321,35 @@ app.use((req: Request, res: Response, next: NextFunction) => {
       (req as any).clientIp
     );
     res.json({ success: true, message: `Beneficiary ${target.beneCode} deleted.` });
+  });
+
+  // Update Beneficiary
+  app.put('/api/beneficiaries/:id', requireRole(['superadmin', 'admin', 'menro_officer', 'staff']), (req: Request, res: Response) => {
+    const { id } = req.params;
+    const user = (req as any).user as User;
+    const idx = beneficiaries.findIndex(b => b.id === id);
+    if (idx === -1) {
+      return res.status(404).json({ error: 'Beneficiary not found' });
+    }
+    const updated = {
+      ...beneficiaries[idx],
+      ...req.body,
+      id,
+      updatedAt: new Date().toISOString(),
+    };
+    beneficiaries[idx] = updated;
+    recordAuditLog(
+      user.id,
+      user.name,
+      user.role,
+      user.department,
+      'BENEFICIARY_RECORD_UPDATED',
+      'BENEFICIARY',
+      id,
+      `Updated beneficiary record: ${updated.firstName} ${updated.lastName} (${updated.beneCode})`,
+      (req as any).clientIp
+    );
+    res.json({ beneficiary: updated });
   });
 
   // Activities
@@ -466,6 +495,33 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     );
 
     res.json({ success: true, message: `Work program '${deleted.title}' deleted successfully.` });
+  });
+
+  // Update Individual Activity
+  app.put('/api/activities/:id', (req: Request, res: Response) => {
+    const { id } = req.params;
+    const user = (req as any).user as User;
+    const actIdx = activities.findIndex(a => a.id === id);
+    if (actIdx === -1) {
+      return res.status(404).json({ error: 'Activity not found' });
+    }
+    activities[actIdx] = {
+      ...activities[actIdx],
+      ...req.body,
+      updatedAt: new Date().toISOString(),
+    };
+    recordAuditLog(
+      user?.id || 'admin',
+      user?.name || 'Administrator',
+      user?.role || 'admin',
+      user?.department || 'PESO',
+      'ACTIVITY_WORK_PROGRAM_UPDATED',
+      'ACTIVITY',
+      id,
+      `Updated work program '${activities[actIdx].title}' in ${activities[actIdx].barangay}`,
+      (req as any).clientIp
+    );
+    res.json({ success: true, activity: activities[actIdx] });
   });
 
   // Delete All Activities

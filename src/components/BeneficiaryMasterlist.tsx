@@ -14,6 +14,7 @@ import {
   Phone,
   ShieldAlert,
   Download,
+  Pencil,
 } from 'lucide-react';
 
 const DINGALAN_BARANGAYS: DingalanBarangay[] = [
@@ -34,6 +35,7 @@ interface BeneficiaryMasterlistProps {
   beneficiaries: Beneficiary[];
   currentUser: User;
   onAddBeneficiary: (data: Partial<Beneficiary>) => Promise<void>;
+  onUpdateBeneficiary?: (id: string, data: Partial<Beneficiary>) => Promise<void>;
   onDeleteBeneficiary: (id: string) => Promise<void>;
   onDirectScanTest?: (bene: Beneficiary) => void;
 }
@@ -42,6 +44,7 @@ export const BeneficiaryMasterlist: React.FC<BeneficiaryMasterlistProps> = ({
   beneficiaries,
   currentUser,
   onAddBeneficiary,
+  onUpdateBeneficiary,
   onDeleteBeneficiary,
   onDirectScanTest,
 }) => {
@@ -50,28 +53,63 @@ export const BeneficiaryMasterlist: React.FC<BeneficiaryMasterlistProps> = ({
   const [activeModalBene, setActiveModalBene] = useState<Beneficiary | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
+  // Edit State
+  const [editingBeneficiary, setEditingBeneficiary] = useState<Beneficiary | null>(null);
+  const [editFormState, setEditFormState] = useState({
+    firstName: '',
+    middleName: '',
+    lastName: '',
+    suffix: '',
+    contactNumber: '',
+    barangay: 'Paltic' as DingalanBarangay,
+    assignedCluster: '',
+  });
+
   // Form State
   const [formState, setFormState] = useState({
     firstName: '',
     middleName: '',
     lastName: '',
     suffix: '',
-    nationalOrLocalId: '',
     contactNumber: '',
     barangay: 'Paltic' as DingalanBarangay,
     assignedCluster: 'Dingalan Feeder Port & Coastal Watch',
-    emergencyContactName: '',
-    emergencyContactPhone: '',
-    emergencyContactRelation: 'Spouse',
   });
 
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const handleOpenEdit = (bene: Beneficiary) => {
+    setEditingBeneficiary(bene);
+    setEditFormState({
+      firstName: bene.firstName,
+      middleName: bene.middleName || '',
+      lastName: bene.lastName,
+      suffix: bene.suffix || '',
+      contactNumber: bene.contactNumber,
+      barangay: bene.barangay,
+      assignedCluster: bene.assignedCluster,
+    });
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingBeneficiary || !onUpdateBeneficiary) return;
+    try {
+      setIsSubmitting(true);
+      await onUpdateBeneficiary(editingBeneficiary.id, editFormState);
+      setEditingBeneficiary(null);
+    } catch (err: any) {
+      alert(err.message || 'Failed to update beneficiary');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const filteredBeneficiaries = useMemo(() => {
     return beneficiaries.filter((b) => {
       const matchesSearch =
-        `${b.firstName} ${b.lastName} ${b.beneCode} ${b.nationalOrLocalId}`
+        `${b.firstName} ${b.lastName} ${b.beneCode} ${b.nationalOrLocalId || ''}`
           .toLowerCase()
           .includes(searchTerm.toLowerCase());
       const matchesBarangay =
@@ -79,20 +117,6 @@ export const BeneficiaryMasterlist: React.FC<BeneficiaryMasterlistProps> = ({
       return matchesSearch && matchesBarangay;
     });
   }, [beneficiaries, searchTerm, selectedBarangay]);
-
-  // Real-time duplicate check
-  const duplicateIdWarning = useMemo(() => {
-    if (!formState.nationalOrLocalId.trim()) return null;
-    const found = beneficiaries.find(
-      (b) =>
-        b.nationalOrLocalId.trim().toLowerCase() ===
-        formState.nationalOrLocalId.trim().toLowerCase()
-    );
-    if (found) {
-      return `Warning: ID '${formState.nationalOrLocalId}' is already assigned to ${found.firstName} ${found.lastName} (${found.beneCode}) in Brgy. ${found.barangay}.`;
-    }
-    return null;
-  }, [formState.nationalOrLocalId, beneficiaries]);
 
   const duplicateNameWarning = useMemo(() => {
     if (!formState.firstName.trim() || !formState.lastName.trim()) return null;
@@ -114,10 +138,6 @@ export const BeneficiaryMasterlist: React.FC<BeneficiaryMasterlistProps> = ({
     e.preventDefault();
     setFormError(null);
 
-    if (duplicateIdWarning) {
-      setFormError(duplicateIdWarning);
-      return;
-    }
     if (duplicateNameWarning) {
       setFormError(duplicateNameWarning);
       return;
@@ -132,13 +152,9 @@ export const BeneficiaryMasterlist: React.FC<BeneficiaryMasterlistProps> = ({
         middleName: '',
         lastName: '',
         suffix: '',
-        nationalOrLocalId: '',
         contactNumber: '',
         barangay: 'Paltic',
         assignedCluster: 'Dingalan Feeder Port & Coastal Watch',
-        emergencyContactName: '',
-        emergencyContactPhone: '',
-        emergencyContactRelation: 'Spouse',
       });
     } catch (err: any) {
       setFormError(err.message || 'Registration failed');
@@ -148,11 +164,7 @@ export const BeneficiaryMasterlist: React.FC<BeneficiaryMasterlistProps> = ({
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (currentUser.role !== 'superadmin') {
-      alert('Access Restricted: Only Superadmin (PESO Manager) can delete masterlist records. MENRO Officers have read-only and field-compliance permissions.');
-      return;
-    }
-    if (window.confirm(`Are you sure you want to permanently delete beneficiary "${name}"? This action is logged in the PESO Audit Trail.`)) {
+    if (window.confirm(`Are you sure you want to permanently delete beneficiary "${name}"? This action is logged in the Audit Trail.`)) {
       try {
         await onDeleteBeneficiary(id);
       } catch (err: any) {
@@ -290,15 +302,21 @@ export const BeneficiaryMasterlist: React.FC<BeneficiaryMasterlistProps> = ({
                       <span>ID QR</span>
                     </button>
 
-                    {currentUser.role === 'superadmin' ? (
-                      <button
-                        onClick={() => handleDelete(bene.id, `${bene.firstName} ${bene.lastName}`)}
-                        title="Delete record"
-                        className="p-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg border border-rose-500/30 transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    ) : null}
+                    <button
+                      onClick={() => handleOpenEdit(bene)}
+                      title="Edit beneficiary record"
+                      className="p-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 rounded-lg border border-amber-500/30 transition-colors"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+
+                    <button
+                      onClick={() => handleDelete(bene.id, `${bene.firstName} ${bene.lastName}`)}
+                      title="Delete record"
+                      className="p-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg border border-rose-500/30 transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -390,23 +408,21 @@ export const BeneficiaryMasterlist: React.FC<BeneficiaryMasterlistProps> = ({
                           <QrCode className="w-3.5 h-3.5" />
                         </button>
 
-                        {currentUser.role === 'superadmin' ? (
-                          <button
-                            onClick={() => handleDelete(bene.id, `${bene.firstName} ${bene.lastName}`)}
-                            title="Permanently Delete (Superadmin PESO Manager Only)"
-                            className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg border border-rose-500/30 transition-colors"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        ) : (
-                          <button
-                            disabled
-                            title="RBAC Protected: Only PESO Manager can delete records"
-                            className="p-1.5 bg-slate-800 text-slate-600 rounded-lg cursor-not-allowed opacity-50"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
+                        <button
+                          onClick={() => handleOpenEdit(bene)}
+                          title="Edit beneficiary record"
+                          className="p-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 rounded-lg border border-amber-500/30 transition-colors"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+
+                        <button
+                          onClick={() => handleDelete(bene.id, `${bene.firstName} ${bene.lastName}`)}
+                          title="Permanently Delete"
+                          className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg border border-rose-500/30 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -424,6 +440,140 @@ export const BeneficiaryMasterlist: React.FC<BeneficiaryMasterlistProps> = ({
           onClose={() => setActiveModalBene(null)}
           onDirectScanTest={onDirectScanTest}
         />
+      )}
+
+      {/* Edit Beneficiary Modal */}
+      {editingBeneficiary && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto">
+          <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden my-8">
+            <div className="px-6 py-4 border-b border-slate-800 bg-slate-900/90 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Pencil className="w-5 h-5 text-amber-400" />
+                <h3 className="text-base font-bold text-white">
+                  Edit Beneficiary Record: {editingBeneficiary.firstName} {editingBeneficiary.lastName}
+                </h3>
+              </div>
+              <button
+                onClick={() => setEditingBeneficiary(null)}
+                className="text-slate-400 hover:text-slate-200"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleEditSubmit} className="p-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div className="md:col-span-1">
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                    First Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editFormState.firstName}
+                    onChange={(e) => setEditFormState({ ...editFormState, firstName: e.target.value })}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
+                <div className="md:col-span-1">
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                    Middle Name
+                  </label>
+                  <input
+                    type="text"
+                    value={editFormState.middleName}
+                    onChange={(e) => setEditFormState({ ...editFormState, middleName: e.target.value })}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
+                <div className="md:col-span-1">
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                    Last Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editFormState.lastName}
+                    onChange={(e) => setEditFormState({ ...editFormState, lastName: e.target.value })}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
+                <div className="md:col-span-1">
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                    Suffix
+                  </label>
+                  <input
+                    type="text"
+                    value={editFormState.suffix}
+                    onChange={(e) => setEditFormState({ ...editFormState, suffix: e.target.value })}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                  Contact Number (Mobile) *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editFormState.contactNumber}
+                  onChange={(e) => setEditFormState({ ...editFormState, contactNumber: e.target.value })}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                    Barangay *
+                  </label>
+                  <select
+                    value={editFormState.barangay}
+                    onChange={(e) => setEditFormState({ ...editFormState, barangay: e.target.value as DingalanBarangay })}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
+                  >
+                    {DINGALAN_BARANGAYS.map((b) => (
+                      <option key={b} value={b}>
+                        Brgy. {b}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                    Assigned Cluster / Work Zone *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editFormState.assignedCluster}
+                    onChange={(e) => setEditFormState({ ...editFormState, assignedCluster: e.target.value })}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-slate-800 flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingBeneficiary(null)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-5 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-500 disabled:opacity-50 rounded-xl shadow-lg"
+                >
+                  {isSubmitting ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* Manual Registration Modal with Duplicate Prevention */}
@@ -447,13 +597,6 @@ export const BeneficiaryMasterlist: React.FC<BeneficiaryMasterlistProps> = ({
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               {/* Warnings & Validation Banners */}
-              {duplicateIdWarning && (
-                <div className="p-3 bg-amber-500/15 border border-amber-500/40 rounded-xl text-amber-200 text-xs flex items-start space-x-2">
-                  <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                  <span>{duplicateIdWarning}</span>
-                </div>
-              )}
-
               {duplicateNameWarning && (
                 <div className="p-3 bg-rose-500/15 border border-rose-500/40 rounded-xl text-rose-200 text-xs flex items-start space-x-2">
                   <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
@@ -521,110 +664,53 @@ export const BeneficiaryMasterlist: React.FC<BeneficiaryMasterlistProps> = ({
                 </div>
               </div>
 
-              {/* ID & Contact */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                    PhilSys / Dingalan Resident ID * (Must be Unique)
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formState.nationalOrLocalId}
-                    onChange={(e) => setFormState({ ...formState, nationalOrLocalId: e.target.value })}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white font-mono focus:border-emerald-500 focus:outline-none"
-                    placeholder="PHILSYS-DING-9029"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                    Contact Number (Mobile) *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formState.contactNumber}
-                    onChange={(e) => setFormState({ ...formState, contactNumber: e.target.value })}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
-                    placeholder="0917-000-0000"
-                  />
-                </div>
-              </div>
+               {/* Contact Number */}
+               <div>
+                 <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                   Contact Number (Mobile) *
+                 </label>
+                 <input
+                   type="text"
+                   required
+                   value={formState.contactNumber}
+                   onChange={(e) => setFormState({ ...formState, contactNumber: e.target.value })}
+                   className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
+                   placeholder="0917-000-0000"
+                 />
+               </div>
 
-              {/* Barangay & Cluster */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                    Barangay *
-                  </label>
-                  <select
-                    value={formState.barangay}
-                    onChange={(e) => setFormState({ ...formState, barangay: e.target.value as DingalanBarangay })}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
-                  >
-                    {DINGALAN_BARANGAYS.map((b) => (
-                      <option key={b} value={b}>
-                        Brgy. {b}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                    Assigned Cluster / Work Zone *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formState.assignedCluster}
-                    onChange={(e) => setFormState({ ...formState, assignedCluster: e.target.value })}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
-                    placeholder="e.g. Dingalan Feeder Port & Coastal Watch"
-                  />
-                </div>
-              </div>
-
-              {/* Emergency Contact */}
-              <div className="pt-2 border-t border-slate-800">
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                  Emergency Contact Details
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-[11px] text-slate-300 mb-1">Name *</label>
-                    <input
-                      type="text"
-                      required
-                      value={formState.emergencyContactName}
-                      onChange={(e) => setFormState({ ...formState, emergencyContactName: e.target.value })}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
-                      placeholder="Elena Bautista"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] text-slate-300 mb-1">Relation *</label>
-                    <input
-                      type="text"
-                      required
-                      value={formState.emergencyContactRelation}
-                      onChange={(e) => setFormState({ ...formState, emergencyContactRelation: e.target.value })}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
-                      placeholder="Spouse / Parent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] text-slate-300 mb-1">Emergency Phone *</label>
-                    <input
-                      type="text"
-                      required
-                      value={formState.emergencyContactPhone}
-                      onChange={(e) => setFormState({ ...formState, emergencyContactPhone: e.target.value })}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
-                      placeholder="0917-000-0000"
-                    />
-                  </div>
-                </div>
-              </div>
+               {/* Barangay & Cluster */}
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                 <div>
+                   <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                     Barangay *
+                   </label>
+                   <select
+                     value={formState.barangay}
+                     onChange={(e) => setFormState({ ...formState, barangay: e.target.value as DingalanBarangay })}
+                     className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
+                   >
+                     {DINGALAN_BARANGAYS.map((b) => (
+                       <option key={b} value={b}>
+                         Brgy. {b}
+                       </option>
+                     ))}
+                   </select>
+                 </div>
+                 <div>
+                   <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                     Assigned Cluster / Work Zone *
+                   </label>
+                   <input
+                     type="text"
+                     required
+                     value={formState.assignedCluster}
+                     onChange={(e) => setFormState({ ...formState, assignedCluster: e.target.value })}
+                     className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
+                     placeholder="e.g. Dingalan Feeder Port & Coastal Watch"
+                   />
+                 </div>
+               </div>
 
               <div className="pt-4 border-t border-slate-800 flex justify-end space-x-3">
                 <button
@@ -636,7 +722,7 @@ export const BeneficiaryMasterlist: React.FC<BeneficiaryMasterlistProps> = ({
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting || !!duplicateIdWarning || !!duplicateNameWarning}
+                  disabled={isSubmitting || !!duplicateNameWarning}
                   className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-lg"
                 >
                   {isSubmitting ? 'Registering...' : 'Register & Generate QR Token'}

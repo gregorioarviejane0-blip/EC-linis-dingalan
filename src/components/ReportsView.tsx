@@ -21,7 +21,23 @@ import {
   PieChart,
   Users,
   TrendingUp,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
+
+const DINGALAN_BARANGAYS: DingalanBarangay[] = [
+  'Aplaya',
+  'Butas na Bato',
+  'Cabischasan',
+  'Caragsacan',
+  'Davil-davilan',
+  'Dikapanikian',
+  'Ibona',
+  'Paltic',
+  'Poblacion',
+  'Tanawan',
+  'Umiray',
+];
 
 interface ReportsViewProps {
   activities: Activity[];
@@ -31,6 +47,8 @@ interface ReportsViewProps {
   assignments?: ActivityAssignment[];
   onAssignBeneficiary?: (activityId: string, beneficiaryId: string) => void;
   onUnassignBeneficiary?: (activityId: string, beneficiaryId: string) => void;
+  onUpdateActivity?: (id: string, data: Partial<Activity>) => void;
+  onDeleteActivity?: (id: string) => void;
 }
 
 export const ReportsView: React.FC<ReportsViewProps> = ({
@@ -41,6 +59,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   assignments = [],
   onAssignBeneficiary,
   onUnassignBeneficiary,
+  onUpdateActivity,
+  onDeleteActivity,
 }) => {
   const [selectedActivityId, setSelectedActivityId] = useState<string>('ALL');
   const [selectedBarangay, setSelectedBarangay] = useState<string>('ALL');
@@ -50,6 +70,43 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   const [activeChartModal, setActiveChartModal] = useState<'photos' | 'assigned' | 'potential' | 'barangays' | null>(null);
   const [managingAssignmentsActivity, setManagingAssignmentsActivity] = useState<Activity | null>(null);
   const [assignSearchTerm, setAssignSearchTerm] = useState('');
+
+  // Editing activity state
+  const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+  const [editForm, setEditForm] = useState<{
+    title: string;
+    barangay: DingalanBarangay;
+    description: string;
+    targetBeneficiariesCount: number | string;
+  }>({
+    title: '',
+    barangay: 'Paltic' as DingalanBarangay,
+    description: '',
+    targetBeneficiariesCount: 20,
+  });
+
+  const handleOpenEdit = (act: Activity) => {
+    setEditingActivity(act);
+    setEditForm({
+      title: act.title,
+      barangay: act.barangay,
+      description: act.description,
+      targetBeneficiariesCount: act.targetBeneficiariesCount || 20,
+    });
+  };
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingActivity || !onUpdateActivity) return;
+    onUpdateActivity(editingActivity.id, editForm);
+    setEditingActivity(null);
+  };
+
+  const handleDeleteAct = (act: Activity) => {
+    if (window.confirm(`Sigurado ka bang nais mong burahin ang work program "${act.title}"?`)) {
+      if (onDeleteActivity) onDeleteActivity(act.id);
+    }
+  };
 
   const photoUploadedCount = useMemo(() => {
     return attendances.filter(
@@ -372,10 +429,28 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               <div key={act.id} className="bg-slate-900/90 border border-emerald-500/30 rounded-2xl p-3 shadow-lg text-xs space-y-2.5 flex flex-col justify-between">
                 <div className="space-y-2">
                   <div className="flex items-start justify-between gap-2">
-                    <span className="font-black text-emerald-400 text-sm tracking-tight">{act.title}</span>
-                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shrink-0">
-                      📍 Brgy. {act.barangay} (On-going)
-                    </span>
+                    <div>
+                      <span className="font-black text-emerald-400 text-sm tracking-tight">{act.title}</span>
+                    </div>
+                    <div className="flex items-center space-x-1.5 shrink-0">
+                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                        📍 Brgy. {act.barangay}
+                      </span>
+                      <button
+                        onClick={() => handleOpenEdit(act)}
+                        title="I-edit ang Program"
+                        className="p-1 bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded-lg border border-slate-700 transition-colors cursor-pointer"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteAct(act)}
+                        title="I-delete ang Program"
+                        className="p-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg border border-rose-500/30 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
 
                   <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-2 space-y-1 font-mono text-[11px]">
@@ -635,6 +710,96 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             >
               Tapusin / Isara
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Program Modal */}
+      {editingActivity && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-slate-900 border border-emerald-500/50 rounded-3xl p-5 sm:p-6 w-full max-w-lg shadow-2xl relative">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center space-x-2">
+                <div className="p-2 bg-emerald-500/20 rounded-xl text-emerald-300">
+                  <Pencil className="w-5 h-5" />
+                </div>
+                <h3 className="text-base font-black text-white uppercase tracking-wider">
+                  I-edit ang Work Program
+                </h3>
+              </div>
+              <button
+                onClick={() => setEditingActivity(null)}
+                className="p-1.5 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="mt-4 space-y-4 text-xs font-mono">
+              <div>
+                Program Title *
+                <input
+                  type="text"
+                  required
+                  value={editForm.title}
+                  onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                  className="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-slate-100 focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  Barangay *
+                  <select
+                    value={editForm.barangay}
+                    onChange={(e) => setEditForm({ ...editForm, barangay: e.target.value as DingalanBarangay })}
+                    className="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-slate-100 focus:border-emerald-500 focus:outline-none"
+                  >
+                    {DINGALAN_BARANGAYS.map((b) => (
+                      <option key={b} value={b}>Brgy. {b}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  Target Beneficiaries *
+                  <input
+                    type="number"
+                    min={1}
+                    required
+                    value={editForm.targetBeneficiariesCount}
+                    onChange={(e) => setEditForm({ ...editForm, targetBeneficiariesCount: Number(e.target.value) })}
+                    className="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-slate-100 focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                Mga Gagawin / Description *
+                <textarea
+                  rows={3}
+                  required
+                  value={editForm.description}
+                  onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                  className="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-slate-100 focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setEditingActivity(null)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold cursor-pointer transition-colors"
+                >
+                  Kanselahin
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold cursor-pointer transition-colors shadow-lg shadow-emerald-950/40"
+                >
+                  I-save ang Pagbabago
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

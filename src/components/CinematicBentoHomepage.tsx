@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Activity, Beneficiary, AttendanceRecord, User, UserRole, EventQrBroadcast } from '../types';
 import {
   Camera,
@@ -71,6 +71,13 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
   const [watermarkSimulated, setWatermarkSimulated] = useState(false);
   const [activeSector, setActiveSector] = useState<'paltic' | 'aplaya' | 'ibona' | 'poblacion'>('paltic');
 
+  const ongoingAct = useMemo(() => {
+    return activities.find((a) => a.status === 'scheduled' || a.status === 'ongoing') || activities[0];
+  }, [activities]);
+
+  const ongoingBarangay = eventBroadcast?.barangay || ongoingAct?.barangay || 'Paltic';
+  const ongoingTitle = eventBroadcast?.activityTitle || ongoingAct?.title || 'Coastal Clean-up Drive';
+  const ongoingArea = eventBroadcast?.targetArea || ongoingAct?.targetArea || 'Dingalan Feeder Port & Coastal Watch';
   const isAdminOrSuperAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin';
   const [isEditingBanner, setIsEditingBanner] = useState(false);
   const [bannerTitle, setBannerTitle] = useState(() => localStorage.getItem('dingalan_banner_title') || 'Linis Dingalan EC Management');
@@ -206,39 +213,6 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
 
             {/* Main Title & Subtitle in Full Widescreen Width with Professional Shimmer Animation & Admin-Only Edit */}
             <div className="max-w-5xl relative">
-              {isAdminOrSuperAdmin && (
-                <div className="absolute top-0 right-0 z-20">
-                  {!isEditingBanner ? (
-                    <button
-                      type="button"
-                      onClick={() => setIsEditingBanner(true)}
-                      className="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/50 text-emerald-300 text-[11px] font-mono font-bold flex items-center space-x-1 transition-all cursor-pointer shadow-md"
-                      title="Baguhin ang content na ito (Admin Exclusive)"
-                    >
-                      <Edit3 className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Baguhin ang Content</span>
-                    </button>
-                  ) : (
-                    <div className="flex items-center space-x-2 bg-slate-950/90 p-2 rounded-xl border border-emerald-500/60 shadow-xl">
-                      <button
-                        type="button"
-                        onClick={handleSaveBanner}
-                        className="px-3 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-mono font-bold flex items-center space-x-1 cursor-pointer"
-                      >
-                        <Save className="w-3.5 h-3.5" />
-                        <span>I-save</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setIsEditingBanner(false)}
-                        className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono cursor-pointer"
-                      >
-                        Kanselahin
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
 
               {!isEditingBanner ? (
                 <>
@@ -399,117 +373,14 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
             {/* --------------------------------------------------------------------- */}
             {/* TILE 1: LARGE TILE (Span 7) - Camera HUD Crosshairs & Geotag Watermark */}
             {/* --------------------------------------------------------------------- */}
-            <div className="md:col-span-7 bg-slate-900/60 backdrop-blur-2xl border border-emerald-500/25 rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 shadow-[0_12px_40px_rgba(0,0,0,0.4)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.08)] flex flex-col justify-between relative overflow-hidden group">
+            <div className="hidden md:col-span-7 bg-slate-900/60 backdrop-blur-2xl border border-emerald-500/25 rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 shadow-[0_12px_40px_rgba(0,0,0,0.4)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.08)] flex flex-col justify-between relative overflow-hidden group">
               {/* Subtle green ambient inner corner glow */}
               <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 blur-2xl pointer-events-none" />
 
-              <div>
-                {/* Header */}
-                <div className="flex items-center justify-between pb-4 border-b border-slate-700/60">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
-                      <Camera className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-base font-extrabold text-white tracking-tight">
-                        Optical Viewfinder & Geotag Watermark HUD
-                      </h3>
-                      <p className="text-[11px] font-mono text-slate-400">
-                        HTML5 Canvas Stamping Engine • High-Contrast Coastal Grade
-                      </p>
-                    </div>
-                  </div>
+              {/* Removed Component Content */}
 
-                  <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 animate-pulse">
-                    LIVE HUD 1080P
-                  </span>
-                </div>
-
-                {/* Viewfinder Frame with Tactical Corner Crosshairs */}
-                <div className="mt-4 relative aspect-[16/9] w-full rounded-2xl overflow-hidden border-2 border-slate-700/80 bg-slate-950 shadow-2xl">
-                  {/* Photo Background (Simulated coastal cleanup frame) */}
-                  <img
-                    src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=1280&auto=format&fit=crop&q=80"
-                    alt="Field Worker Preview"
-                    className="w-full h-full object-cover filter contrast-105"
-                  />
-
-                  {/* Tactical Reticle & Corner Brackets */}
-                  <div className="absolute inset-0 pointer-events-none p-3 flex flex-col justify-between">
-                    <div className="flex justify-between items-start">
-                      <div className="w-6 h-6 border-t-2 border-l-2 border-emerald-400" />
-                      <div className="flex items-center space-x-2 bg-slate-950/80 px-2 py-0.5 rounded border border-emerald-500/40 text-[9px] font-mono text-emerald-300">
-                        <span>FOV 78°</span>
-                        <span>•</span>
-                        <span>F/1.8</span>
-                        <span>•</span>
-                        <span>ISO 100</span>
-                      </div>
-                      <div className="w-6 h-6 border-t-2 border-r-2 border-emerald-400" />
-                    </div>
-
-                    {/* Center Crosshair Target */}
-                    <div className="self-center flex items-center justify-center">
-                      <div className="w-12 h-12 border border-emerald-400/60 rounded-full flex items-center justify-center">
-                        <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                      </div>
-                    </div>
-
-                    <div className="flex justify-between items-end">
-                      <div className="w-6 h-6 border-b-2 border-l-2 border-emerald-400" />
-                      <div className="w-6 h-6 border-b-2 border-r-2 border-emerald-400" />
-                    </div>
-                  </div>
-
-                  {/* Lower-Third Burned HUD Banner Preview */}
-                  <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-slate-950 via-slate-950/90 to-transparent p-3.5 pt-6 text-left border-t border-emerald-500/40">
-                    <div className="flex items-center justify-between text-[9px] font-mono text-emerald-400 font-bold tracking-widest uppercase mb-1">
-                      <span>LINIS DINGALAN EC MANAGEMENT // AUDITED GEOTAG</span>
-                      <span className="text-cyan-300 font-bold">LGU DINGALAN SEC-V1</span>
-                    </div>
-
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <p className="text-xs sm:text-sm font-extrabold text-white">
-                          DANILO P. BAUTISTA [LD-BEN-2025-0101]
-                        </p>
-                        <p className="text-[10px] text-slate-300 mt-0.5">
-                          ACTIVITY: {ongoingActivity.title} • Brgy. Paltic
-                        </p>
-                        <p className="text-[10px] font-mono text-sky-400 font-bold">
-                          GPS: 15.394218° N, 121.401142° E (±3.5m) • {phTime || '06:14 AM PST'}
-                        </p>
-                      </div>
-
-                      {/* Glowing Compliant Badge */}
-                      <div className="px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-400/60 text-center shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-                        <span className="block text-[8px] font-mono font-bold text-emerald-300">
-                          STATUS
-                        </span>
-                        <span className="block text-xs font-mono font-extrabold text-white tracking-wider">
-                          COMPLIANT
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Bottom Card Actions */}
-              <div className="mt-4 pt-3 border-t border-slate-700/60 flex items-center justify-between">
-                <span className="text-xs text-slate-400 font-mono">
-                  Burn Format: 1280x720 WebP (82% Quality Compression)
-                </span>
-                <button
-                  onClick={() => onNavigate('portal')}
-                  className="px-4 py-2 rounded-xl bg-emerald-600/90 hover:bg-emerald-600 text-white font-bold text-xs flex items-center space-x-1.5 shadow transition-all"
-                >
-                  <span>Open Active Camera</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
             </div>
-
+            
             {/* --------------------------------------------------------------------- */}
             {/* TILE 2: TALL TILE (Span 5) - Topographic GPS Radar Map */}
             {/* --------------------------------------------------------------------- */}
@@ -537,6 +408,30 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
                   <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
                     14 SATS LOCKED
                   </span>
+                </div>
+
+                {/* Ongoing / Scheduled Barangay & Cleaning Area Banner */}
+                <div
+                  onClick={() => onNavigate('attendance')}
+                  className="mt-3 p-3 rounded-xl bg-cyan-950/70 border border-cyan-500/50 hover:border-cyan-400 cursor-pointer transition-all group flex items-center justify-between shadow-md"
+                  title="Pindutin para buksan ang Mapa ng Dingalan at makita ang sakop na areang lilinisan"
+                >
+                  <div className="flex items-center space-x-2.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
+                    <div>
+                      <span className="text-[10px] font-mono text-cyan-300 block font-bold uppercase tracking-wider">
+                        Ongoing / Scheduled: Brgy. {ongoingBarangay}
+                      </span>
+                      <span className="text-xs text-white font-bold truncate max-w-[220px] sm:max-w-[280px] block">
+                        {ongoingTitle} • {ongoingArea}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className="text-[10px] font-mono font-bold text-cyan-400 bg-cyan-500/15 px-2 py-1 rounded-lg border border-cyan-500/30 group-hover:bg-cyan-500/25 transition-colors block">
+                      Buksan ang Mapa →
+                    </span>
+                  </div>
                 </div>
 
                 {/* Radar Mockup Container with Sweeping Beam */}
@@ -667,7 +562,7 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
             {/* --------------------------------------------------------------------- */}
             {/* TILE 3: MEDIUM TILE (Span 6) - QR Verified-ID Badge */}
             {/* --------------------------------------------------------------------- */}
-            <div className="md:col-span-6 bg-slate-900/60 backdrop-blur-2xl border border-emerald-500/25 rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 shadow-[0_12px_40px_rgba(0,0,0,0.4)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.08)] flex flex-col justify-between relative overflow-hidden">
+            <div className="hidden md:col-span-6 bg-slate-900/60 backdrop-blur-2xl border border-emerald-500/25 rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 shadow-[0_12px_40px_rgba(0,0,0,0.4)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.08)] flex flex-col justify-between relative overflow-hidden">
               <div>
                 {/* Header */}
                 <div className="flex items-center justify-between pb-4 border-b border-slate-700/60">
