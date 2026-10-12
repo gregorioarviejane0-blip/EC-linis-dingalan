@@ -26,6 +26,7 @@ import {
   Building2,
   FolderOpen,
   ChevronLeft,
+  ChevronDown,
   Minimize2,
   QrCode,
   Camera,
@@ -1084,7 +1085,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   return (
     <div
       ref={modalScrollRef}
-      className="fixed inset-0 z-50 w-screen h-[100dvh] overflow-y-auto bg-transparent font-sans text-slate-100 flex flex-col justify-between"
+      className={`fixed inset-0 z-50 w-screen h-[100dvh] ${activeView === 'anonymous' || activeView === 'upload' || activeView === 'event' ? 'overflow-hidden sm:overflow-y-auto' : 'overflow-y-auto'} bg-transparent font-sans text-slate-100 flex flex-col justify-between scrollbar-none [&::-webkit-scrollbar]:hidden`}
     >
       {/* ========================================================================= */}
       {/* CINEMATIC DINGALAN LIGHTHOUSE VIDEO CLIP (PANNING TO THE RIGHT)           */}
@@ -1117,7 +1118,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       {/* ========================================================================= */}
       {/* TOP NAVIGATION / STATUS BAR (COMPACT TO PREVENT SCREEN OVERFLOW)           */}
       {/* ========================================================================= */}
-      <div className="relative z-10 w-full px-3 sm:px-6 lg:px-10 xl:px-14 py-2 sm:py-2.5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3 border-b border-white/15 bg-slate-950/35 backdrop-blur-md shrink-0">
+      <div className={`relative z-10 w-full px-3 sm:px-6 lg:px-10 xl:px-14 ${activeView === 'anonymous' || activeView === 'upload' || activeView === 'event' ? 'py-1 sm:py-2.5' : 'py-2 sm:py-2.5'} flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-1.5 sm:gap-3 border-b border-white/15 bg-slate-950/35 backdrop-blur-md shrink-0`}>
         {/* Official eC access Logo & National Branding */}
         <div className="flex items-center justify-between sm:justify-start space-x-3 sm:space-x-4 w-full sm:w-auto">
           <div className="flex items-center space-x-2.5 sm:space-x-3.5 shrink-0">
@@ -1400,15 +1401,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       {/* ========================================================================= */}
       {/* MAIN CENTER HERO CONTAINER (FITS 100% INTO WHOLE SCREEN MOBILE & DESKTOP) */}
       {/* ========================================================================= */}
-      <div className="relative z-10 w-full max-w-[1750px] mx-auto px-2 xs:px-3 sm:px-6 lg:px-8 xl:px-12 flex-1 min-h-0 flex flex-col items-center justify-start lg:justify-center overflow-y-visible lg:overflow-y-auto my-0 lg:my-auto py-2 sm:py-3 pb-32 sm:pb-8 overscroll-contain">
-        <div className="w-full flex flex-col lg:grid lg:grid-cols-12 gap-3 sm:gap-5 lg:gap-6 xl:gap-8 items-center lg:items-center justify-start lg:justify-center">
+      <div className={`relative z-10 w-full max-w-[1750px] mx-auto px-2 xs:px-3 sm:px-6 lg:px-8 xl:px-12 flex-1 min-h-0 flex flex-col items-center justify-center my-auto ${activeView === 'upload' || activeView === 'event' ? 'py-0.5 sm:py-3' : 'py-2 sm:py-3'} overscroll-contain ${activeView === 'anonymous' || activeView === 'upload' || activeView === 'event' ? 'overflow-hidden' : 'overflow-y-auto sm:overflow-y-auto'}`}>
+        <div className="w-full flex flex-col lg:grid lg:grid-cols-12 gap-3 sm:gap-5 lg:gap-6 xl:gap-8 items-center lg:items-center justify-center my-auto flex-1">
           
           {/* --------------------------------------------------------------------- */}
-          {/* LEFT SIDE: HERO TYPOGRAPHY & BRANDING (KEPT VISIBLE ON DESKTOP ALWAYS)*/}
+          {/* LEFT SIDE: HERO TYPOGRAPHY & BRANDING (ENLARGED TO OCCUPY MOBILE SCREEN)*/}
           {/* --------------------------------------------------------------------- */}
-          <div className={`text-left space-y-2 sm:space-y-2.5 lg:space-y-2.5 xl:space-y-3 w-full lg:col-span-5 xl:col-span-5 ${activeView === 'overview' ? 'block' : 'hidden lg:block'}`}>
-            <div className="space-y-1 sm:space-y-1.5 lg:space-y-2">
-              <h1 className="text-xl xs:text-2xl sm:text-3xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-black text-white tracking-tight leading-[1.08] drop-shadow-[0_4px_24px_rgba(0,0,0,0.95)]">
+          <div className={`text-left space-y-3.5 xs:space-y-4 sm:space-y-6 lg:space-y-2.5 xl:space-y-3 w-full lg:col-span-5 xl:col-span-5 py-2 xs:py-3 sm:py-4 lg:py-0 ${activeView === 'overview' ? 'block' : 'hidden lg:block'}`}>
+            <div className="space-y-2 xs:space-y-3 sm:space-y-4 lg:space-y-2">
+              <h1 className="text-3xl xs:text-4xl sm:text-5xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-black text-white tracking-tight leading-[1.06] drop-shadow-[0_4px_24px_rgba(0,0,0,0.95)]">
                 <span className="hero-pro-title block font-black">
                   Linis Dingalan
                 </span>
@@ -1416,24 +1417,24 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   EC Management
                 </span>
               </h1>
-              <p className="text-[11px] xs:text-xs sm:text-sm lg:text-xs xl:text-sm text-slate-100 font-medium leading-relaxed max-w-xl drop-shadow-[0_2px_12px_rgba(0,0,0,0.98)] text-left tracking-[-0.01em]">
+              <p className="text-sm xs:text-base sm:text-lg lg:text-xs xl:text-sm text-slate-100 font-medium xs:font-semibold leading-relaxed max-w-none lg:max-w-xl drop-shadow-[0_2px_12px_rgba(0,0,0,0.98)] text-left tracking-normal">
                 Innovation in Action Project of Municipal Environment and Natural Resources Office in Collaboration with Public Employment Service Office.
               </p>
-              <div className="w-full sm:w-auto inline-flex items-center justify-center sm:justify-start space-x-2 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full bg-slate-950/70 border border-emerald-400/60 hero-badge-animated text-emerald-300 text-[9.5px] sm:text-xs font-mono font-extrabold tracking-wider shadow-lg backdrop-blur-md">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0 animate-twinkle" />
+              <div className="w-full sm:w-auto inline-flex items-center justify-center sm:justify-start space-x-2.5 px-3.5 py-2 sm:px-4 sm:py-2 rounded-full bg-slate-950/80 border-2 border-emerald-400/70 hero-badge-animated text-emerald-300 text-xs xs:text-sm sm:text-sm lg:text-[9.5px] xl:text-xs font-mono font-extrabold tracking-wider shadow-lg backdrop-blur-md">
+                <Sparkles className="w-4 h-4 xs:w-5 xs:h-5 lg:w-3.5 lg:h-3.5 text-emerald-400 shrink-0 animate-twinkle" />
                 <span className="leading-tight">PESO & MENRO INTEGRATED OPERATIONS PLATFORM</span>
               </div>
             </div>
 
             {/* Feature Card */}
-            <div className="p-2.5 sm:p-3.5 lg:p-3 xl:p-4 rounded-2xl bg-slate-950/70 hover:bg-slate-950/80 border border-slate-700/70 hover:border-emerald-500/60 backdrop-blur-xl shadow-xl space-y-1.5 sm:space-y-2 max-w-xl hero-card-pro transition-all">
-              <p className="text-[11px] xs:text-xs xl:text-sm text-slate-100 leading-relaxed font-sans text-left font-normal">
+            <div className="p-4 xs:p-5 sm:p-6 lg:p-3 xl:p-4 rounded-2xl sm:rounded-3xl bg-slate-950/80 hover:bg-slate-950/90 border-2 border-emerald-500/50 lg:border-slate-700/70 hover:border-emerald-500/60 backdrop-blur-xl shadow-2xl space-y-3 sm:space-y-4 lg:space-y-2 w-full max-w-none lg:max-w-xl hero-card-pro transition-all">
+              <p className="text-sm xs:text-base sm:text-lg lg:text-xs xl:text-sm text-slate-100 leading-relaxed font-sans text-left font-normal xs:font-medium">
                 Activity-based participants' inventory monitoring with photographic compliance and real-time GPS watermarking across 11 coastal and river Barangays with Offline First to Online Sync Feature.
               </p>
-              <div className="flex items-center justify-between sm:justify-start space-x-4 pt-1.5 sm:pt-2 border-t border-slate-800/80 text-xs font-mono text-emerald-400">
+              <div className="flex items-center justify-between sm:justify-start space-x-4 pt-2.5 sm:pt-3 lg:pt-1.5 border-t border-slate-800 text-xs xs:text-sm sm:text-base lg:text-xs font-mono text-emerald-400">
                 <span className="flex items-center space-x-2">
-                  <Building2 className="w-3.5 h-3.5 shrink-0 text-emerald-400 animate-pulse" />
-                  <span className="font-bold tracking-wider uppercase text-[10px] sm:text-[11px]">11 Coastal Barangays Covered</span>
+                  <Building2 className="w-4 h-4 xs:w-5 xs:h-5 lg:w-3.5 lg:h-3.5 shrink-0 text-emerald-400 animate-pulse" />
+                  <span className="font-bold tracking-wider uppercase text-xs xs:text-sm sm:text-base lg:text-[10px] xl:text-[11px]">11 Coastal Barangays Covered</span>
                 </span>
               </div>
             </div>
@@ -1472,21 +1473,21 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             </div>
 
             {/* Mobile quick switcher to Admin Login if in Overview mode */}
-            <div className="flex lg:hidden items-center justify-between pt-1 px-1 text-[11px] font-mono">
+            <div className="flex lg:hidden items-center justify-between pt-2.5 xs:pt-3.5 sm:pt-4 px-0.5 text-xs xs:text-sm sm:text-base font-mono gap-2.5">
               <button
                 type="button"
                 onClick={() => setActiveView('login')}
-                className="text-white hover:text-emerald-300 font-bold underline flex items-center gap-1 cursor-pointer"
+                className="flex-1 py-2.5 px-3 rounded-xl bg-slate-900/85 border border-slate-700/80 text-white hover:text-emerald-300 font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-lg active:scale-95 transition-all"
               >
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
                 <span>Go to Admin Login</span>
               </button>
               <button
                 type="button"
                 onClick={() => setActiveView('event')}
-                className="text-emerald-300 hover:text-white font-bold underline flex items-center gap-1 cursor-pointer"
+                className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-950/70 border border-emerald-500/60 text-emerald-300 hover:text-white font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-lg active:scale-95 transition-all"
               >
-                <Radio className="w-3.5 h-3.5 text-emerald-400" />
+                <Radio className="w-4 h-4 text-emerald-400" />
                 <span>View Advisory</span>
               </button>
             </div>
@@ -1495,7 +1496,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           {/* --------------------------------------------------------------------- */}
           {/* RIGHT SIDE: POP-UP LOGIN BOX / BROADCAST CARD (ENLARGED FOR HIGH VISIBILITY) */}
           {/* --------------------------------------------------------------------- */}
-          <div className={`w-full max-w-full lg:max-w-3xl xl:max-w-4xl mx-auto self-start lg:self-center lg:col-span-7 xl:col-span-7 ${activeView === 'overview' ? 'hidden lg:block' : 'block'}`}>
+          <div className={`w-full max-w-full lg:max-w-3xl xl:max-w-4xl mx-auto self-center my-auto lg:col-span-7 xl:col-span-7 ${activeView === 'overview' ? 'hidden lg:block' : 'block'}`}>
             <AnimatePresence mode="wait">
               {isUnfolded && (
                 <motion.div
@@ -1504,13 +1505,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -12, scale: 0.98 }}
                   transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                  className="w-full"
+                  className="w-full my-auto flex flex-col justify-center items-center"
                 >
                   {activeView === 'upload' ? (
                     /* ========================================================================= */
-                    /* PATUNAY SA PAGDALO: UPLOAD ACCOMPLISHMENT (MATCHING USER SCREENSHOT)     */
+                    /* PATUNAY SA PAGDALO: UPLOAD ACCOMPLISHMENT (COMPACT ON MOBILE SCREEN)      */
                     /* ========================================================================= */
-                    <div className="relative rounded-2xl sm:rounded-3xl border-2 border-emerald-500/70 shadow-[0_25px_70px_rgba(0,0,0,0.9),0_0_50px_rgba(16,185,129,0.3)] bg-slate-900/95 hover:bg-slate-900 backdrop-blur-md overflow-hidden animate-scaleIn w-full text-left flex flex-col h-auto max-h-none sm:max-h-[85vh] my-1 sm:my-0">
+                    <div className="relative rounded-xl sm:rounded-3xl border-2 border-emerald-500/70 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_40px_rgba(16,185,129,0.25)] bg-slate-900/95 hover:bg-slate-900 backdrop-blur-md overflow-hidden animate-scaleIn w-full max-w-xl sm:max-w-2xl mx-auto text-left flex flex-col h-auto max-h-[calc(100dvh-70px)] sm:max-h-[85vh] my-0">
                       {/* Hidden file inputs */}
                       <input
                         type="file"
@@ -1529,60 +1530,60 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                         className="hidden"
                       />
 
-                      {/* Header Bar */}
-                      <div className="px-3.5 sm:px-6 py-2.5 sm:py-3.5 border-b border-slate-800 bg-slate-950/90 flex items-center justify-between shrink-0">
-                        <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
-                          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 shadow-md shrink-0">
-                            <Camera className="w-4 h-4 sm:w-5 sm:h-5 text-slate-950" />
+                      {/* Header Bar (Compact on mobile) */}
+                      <div className="px-2.5 sm:px-6 py-1.5 sm:py-3.5 border-b border-slate-800 bg-slate-950/90 flex items-center justify-between shrink-0">
+                        <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+                          <div className="w-6 h-6 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 shadow-md shrink-0">
+                            <Camera className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-slate-950" />
                           </div>
                           <div className="min-w-0">
-                            <span className="text-[9px] sm:text-[10px] font-mono font-extrabold uppercase tracking-widest text-emerald-400 block truncate">
-                              LINIS DINGALAN • VERIFIED QR ATTENDANCE
+                            <span className="text-[8px] sm:text-[10px] font-mono font-extrabold uppercase tracking-widest text-emerald-400 block truncate">
+                              LINIS DINGALAN • QR ATTENDANCE
                             </span>
-                            <h3 className="text-xs sm:text-base lg:text-lg font-black text-white tracking-tight leading-tight uppercase truncate">
+                            <h3 className="text-[11px] sm:text-base lg:text-lg font-black text-white tracking-tight leading-tight uppercase truncate">
                               PATUNAY SA PAGDALO: UPLOAD ACCOMPLISHMENT
                             </h3>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-2 shrink-0">
+                        <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
                           <button
                             type="button"
                             onClick={() => setActiveView('login')}
-                            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 font-mono text-[10px] sm:text-xs font-bold transition-all cursor-pointer uppercase tracking-wider"
+                            className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md sm:rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 font-mono text-[9px] sm:text-xs font-bold transition-all cursor-pointer uppercase tracking-wider"
                           >
                             ADMIN LOGIN
                           </button>
                           <button
                             type="button"
                             onClick={() => setActiveView('event')}
-                            className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer shrink-0"
+                            className="p-1 sm:p-1.5 rounded-md sm:rounded-lg bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer shrink-0"
                             title="ISARA AT BUMALIK SA ADVISORY"
                           >
-                            <X className="w-4 h-4 sm:w-5 sm:h-5" />
+                            <X className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
                           </button>
                         </div>
                       </div>
 
-                      {/* Body Content */}
-                      <div className="p-3.5 sm:p-5 overflow-y-auto space-y-3.5 sm:space-y-4 flex-1 min-h-0 text-left">
+                      {/* Body Content (Fits on mobile without scrolling) */}
+                      <div className="p-2 xs:p-2.5 sm:p-5 overflow-hidden sm:overflow-y-auto space-y-1.5 xs:space-y-2 sm:space-y-4 flex-1 min-h-0 text-left scrollbar-none">
                         {uploadIsSuccess ? (
-                          <div className="text-center py-6 space-y-3.5 animate-scaleIn">
-                            <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.4)]">
-                              <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10 text-emerald-400" />
+                          <div className="text-center py-2 sm:py-6 space-y-2 sm:space-y-3.5 animate-scaleIn">
+                            <div className="w-10 h-10 sm:w-20 sm:h-20 mx-auto rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.4)]">
+                              <CheckCircle2 className="w-5 h-5 sm:w-10 sm:h-10 text-emerald-400" />
                             </div>
-                            <div className="space-y-1">
-                              <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase tracking-wider">
+                            <div className="space-y-0.5 sm:space-y-1">
+                              <span className="px-2.5 py-0.5 rounded-full text-[9px] sm:text-xs font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase tracking-wider">
                                 ATTENDANCE & PROOF RECORDED
                               </span>
-                              <h4 className="text-xl sm:text-2xl font-black text-white uppercase">
+                              <h4 className="text-sm sm:text-2xl font-black text-white uppercase">
                                 MATAGUMPAY NA NA-UPLOAD ANG ACCOMPLISHMENT!
                               </h4>
-                              <p className="text-xs text-slate-300 max-w-md mx-auto uppercase font-medium">
+                              <p className="text-[10px] sm:text-xs text-slate-300 max-w-md mx-auto uppercase font-medium">
                                 ANG {uploadPhotos.length} NA PATUNAY NA LARAWAN NI <strong className="text-white">{uploadFullName}</strong> AY NAISUMITE NA SA SYSTEM.
                               </p>
                             </div>
 
-                            <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 text-xs font-mono text-left space-y-1.5 max-w-md mx-auto uppercase">
+                            <div className="p-2 sm:p-3.5 rounded-xl sm:rounded-2xl bg-slate-950/70 border border-slate-800 text-[10px] sm:text-xs font-mono text-left space-y-1 sm:space-y-1.5 max-w-md mx-auto uppercase">
                               <div className="flex justify-between">
                                 <span className="text-slate-400">ATTENDEE:</span>
                                 <span className="text-white font-bold">{uploadFullName}</span>
@@ -1601,14 +1602,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                               </div>
                             </div>
 
-                            <div className="flex flex-col sm:flex-row gap-2.5 max-w-md mx-auto pt-2 w-full">
+                            <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-2.5 max-w-md mx-auto pt-1 sm:pt-2 w-full">
                               {uploadPhotos.length > 0 && (
                                 <button
                                   type="button"
                                   onClick={() => setUploadFullscreenIndex(0)}
-                                  className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-emerald-500/40 text-emerald-300 font-black text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer uppercase tracking-wider"
+                                  className="w-full py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl bg-slate-800 hover:bg-slate-700 border border-emerald-500/40 text-emerald-300 font-black text-[10px] sm:text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer uppercase tracking-wider"
                                 >
-                                  <Images className="w-4 h-4 text-emerald-400" />
+                                  <Images className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
                                   <span>I-FULLSCREEN ANG LARAWAN ({uploadPhotos.length})</span>
                                 </button>
                               )}
@@ -1620,7 +1621,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                                   setUploadNotes('');
                                   setActiveView('event');
                                 }}
-                                className="w-full py-2.5 rounded-xl fluid-btn-emerald text-slate-950 font-black text-xs cursor-pointer shadow-lg uppercase tracking-wider"
+                                className="w-full py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl fluid-btn-emerald text-slate-950 font-black text-[10px] sm:text-xs cursor-pointer shadow-lg uppercase tracking-wider"
                               >
                                 TAPOS NA (BUMALIK SA ADVISORY)
                               </button>
@@ -1630,19 +1631,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                           <>
                             {/* CUT-OFF WARNING BANNER (Matching the screenshot exactly with CAPITAL LETTERS) */}
                             {uploadCutoffInfo.isExpired ? (
-                              <div className="p-3.5 sm:p-4 rounded-2xl bg-rose-950/90 border-2 border-rose-500/80 text-rose-200 text-xs font-sans space-y-1.5 shadow-[0_0_30px_rgba(244,63,94,0.35)]">
-                                <div className="flex items-center space-x-2 font-mono font-black text-rose-300 text-xs sm:text-sm uppercase">
-                                  <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-rose-400 shrink-0" />
-                                  <span>TAPOS NA ANG NAKATAKDANG ORAS NG EVENT (CUT-OFF REACHED)</span>
+                              <div className="p-2 sm:p-4 rounded-xl sm:rounded-2xl bg-rose-950/90 border-2 border-rose-500/80 text-rose-200 text-[10px] sm:text-xs font-sans space-y-0.5 sm:space-y-1.5 shadow-[0_0_30px_rgba(244,63,94,0.35)]">
+                                <div className="flex items-center space-x-1.5 font-mono font-black text-rose-300 text-[10px] sm:text-sm uppercase">
+                                  <AlertCircle className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-rose-400 shrink-0" />
+                                  <span>TAPOS NA ANG ORAS NG EVENT (CUT-OFF REACHED)</span>
                                 </div>
-                                <p className="leading-relaxed text-slate-200 text-[11px] sm:text-xs uppercase font-medium">
-                                  NAKALIPAS NA ANG ITINAKDANG ORAS NG EVENT ({uploadCutoffInfo.endTimeFormatted || '5:10 PM'}). AYON SA PATAKARAN NG LGU, HINDI NA TATANGGAPIN ANG ACCOMPLISHMENT ATTENDANCE O MGA LARAWAN MATAPOS ANG NAKATAKDANG CUT-OFF TIME.
+                                <p className="leading-snug text-slate-200 text-[9px] sm:text-xs uppercase font-medium">
+                                  NAKALIPAS NA ANG ITINAKDANG ORAS NG EVENT ({uploadCutoffInfo.endTimeFormatted || '5:10 PM'}). AYON SA PATAKARAN NG LGU, HINDI NA TATANGGAPIN ANG ACCOMPLISHMENT ATTENDANCE MATAPOS ANG CUT-OFF.
                                 </p>
                               </div>
                             ) : (
-                              <div className="p-2.5 sm:p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-[11px] font-mono flex items-center justify-between uppercase">
-                                <span className="flex items-center gap-1.5">
-                                  <Clock className="w-3.5 h-3.5 text-emerald-400" />
+                              <div className="p-1 sm:p-3 rounded-lg sm:rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-[9px] xs:text-[9.5px] sm:text-[11px] font-mono flex items-center justify-between uppercase">
+                                <span className="flex items-center gap-1 sm:gap-1.5">
+                                  <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400" />
                                   <span>EVENT CUT-OFF: <strong>{uploadCutoffInfo.endTimeFormatted || '5:10 PM'}</strong></span>
                                 </span>
                                 <span className="text-emerald-400 font-bold hidden xs:inline">BUKAS PARA SA SUBMISSION</span>
@@ -1650,8 +1651,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                             )}
 
                             {uploadErrorMessage && (
-                              <div className="p-3 rounded-xl bg-rose-950/80 border border-rose-500/50 text-rose-200 text-xs flex items-center space-x-2 uppercase font-mono font-bold">
-                                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                              <div className="p-1.5 sm:p-3 rounded-lg sm:rounded-xl bg-rose-950/80 border border-rose-500/50 text-rose-200 text-[10px] sm:text-xs flex items-center space-x-1.5 uppercase font-mono font-bold">
+                                <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-400 shrink-0" />
                                 <span>{uploadErrorMessage}</span>
                               </div>
                             )}
@@ -1659,13 +1660,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                             {/* ========================================================================= */}
                             {/* FIELD 1: FULL NAME NG BENEPISYARYO / ATTENDEE */}
                             {/* ========================================================================= */}
-                            <div className="space-y-1.5">
+                            <div className="space-y-0.5 sm:space-y-1.5">
                               <div className="flex items-center justify-between">
-                                <label className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wide flex items-center space-x-1.5">
-                                  <UserCheck className="w-4 h-4 text-emerald-400" />
-                                  <span>1. FULL NAME NG BENEPISYARYO / ATTENDEE <span className="text-rose-400">*</span></span>
+                                <label className="text-[10px] sm:text-xs font-mono font-bold text-slate-200 uppercase tracking-wide flex items-center space-x-1 sm:space-x-1.5">
+                                  <UserCheck className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-400" />
+                                  <span>1. FULL NAME NG BENEPISYARYO <span className="text-rose-400">*</span></span>
                                 </label>
-                                <span className="text-[10px] font-mono text-emerald-400 uppercase font-semibold">KAYO ANG MAGPAPASYA NG ILALAGAY</span>
+                                <span className="text-[8.5px] sm:text-[10px] font-mono text-emerald-400 uppercase font-semibold hidden xs:inline">KAYO ANG MAGPAPASYA</span>
                               </div>
 
                               <div className="relative">
@@ -1674,22 +1675,22 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                                   value={uploadFullName}
                                   onChange={(e) => setUploadFullName(e.target.value)}
                                   placeholder=""
-                                  className="w-full px-4 py-2.5 sm:py-3 rounded-xl bg-slate-950/80 border border-slate-700 focus:border-emerald-400 text-white text-xs sm:text-sm font-sans font-bold shadow-inner uppercase"
+                                  className="w-full px-2.5 sm:px-4 py-1.5 sm:py-3 rounded-lg sm:rounded-xl bg-slate-950/80 border border-slate-700 focus:border-emerald-400 text-white text-[11px] sm:text-sm font-sans font-bold shadow-inner uppercase"
                                 />
-                                <Edit3 className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                <Edit3 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 absolute right-2.5 sm:right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                               </div>
                             </div>
 
                             {/* ========================================================================= */}
                             {/* FIELD 2: LUGAR KUNG SAANG AREA NAKAPAGLINIS */}
                             {/* ========================================================================= */}
-                            <div className="space-y-1.5 pt-0.5">
+                            <div className="space-y-0.5 sm:space-y-1.5">
                               <div className="flex items-center justify-between">
-                                <label className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wide flex items-center space-x-1.5">
-                                  <Calendar className="w-4 h-4 text-cyan-400" />
-                                  <span>2. LUGAR KUNG SAANG AREA NAKAPAGLINIS <span className="text-rose-400">*</span></span>
+                                <label className="text-[10px] sm:text-xs font-mono font-bold text-slate-200 uppercase tracking-wide flex items-center space-x-1 sm:space-x-1.5">
+                                  <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-cyan-400" />
+                                  <span>2. LUGAR NA NILINIS <span className="text-rose-400">*</span></span>
                                 </label>
-                                <span className="text-[10px] font-mono text-cyan-400 uppercase font-semibold">KAYO ANG MAGPAPASYA NG ILALAGAY</span>
+                                <span className="text-[8.5px] sm:text-[10px] font-mono text-cyan-400 uppercase font-semibold hidden xs:inline">KAYO ANG MAGPAPASYA</span>
                               </div>
 
                               <div className="relative">
@@ -1698,53 +1699,53 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                                   value={uploadCleanedArea}
                                   onChange={(e) => setUploadCleanedArea(e.target.value)}
                                   placeholder=""
-                                  className="w-full px-4 py-2.5 sm:py-3 rounded-xl bg-slate-950/80 border border-slate-700 focus:border-cyan-400 text-white text-xs sm:text-sm font-sans font-bold shadow-inner uppercase"
+                                  className="w-full px-2.5 sm:px-4 py-1.5 sm:py-3 rounded-lg sm:rounded-xl bg-slate-950/80 border border-slate-700 focus:border-cyan-400 text-white text-[11px] sm:text-sm font-sans font-bold shadow-inner uppercase"
                                 />
-                                <MapPin className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 absolute right-2.5 sm:right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                               </div>
                             </div>
 
                             {/* ========================================================================= */}
                             {/* FIELD 3: ACCOMPLISHMENT PICTURES (KAHIT ILANG PICTURE) */}
                             {/* ========================================================================= */}
-                            <div className="space-y-2 pt-0.5">
+                            <div className="space-y-1 sm:space-y-2">
                               <div className="flex items-center justify-between">
-                                <label className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wide flex items-center space-x-1.5">
-                                  <Images className="w-4 h-4 text-emerald-400" />
-                                  <span>3. ACCOMPLISHMENT PICTURES (KAHIT ILANG PICTURE) <span className="text-rose-400">*</span></span>
+                                <label className="text-[10px] sm:text-xs font-mono font-bold text-slate-200 uppercase tracking-wide flex items-center space-x-1 sm:space-x-1.5">
+                                  <Images className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-400" />
+                                  <span>3. ACCOMPLISHMENT PICTURES <span className="text-rose-400">*</span></span>
                                 </label>
-                                <span className="text-[10px] font-mono text-cyan-400 font-bold uppercase">
-                                  {uploadPhotos.length} LARAWAN NA-UPLOAD
+                                <span className="text-[9px] sm:text-[10px] font-mono text-cyan-400 font-bold uppercase">
+                                  {uploadPhotos.length} LARAWAN
                                 </span>
                               </div>
 
-                              {/* Action Buttons: Fitted 100% inside container */}
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 w-full">
+                              {/* Action Buttons: Compact on mobile, 2 columns */}
+                              <div className="grid grid-cols-2 gap-1.5 sm:gap-2.5 w-full">
                                 <button
                                   type="button"
                                   onClick={() => uploadFileInputRef.current?.click()}
-                                  className="w-full p-2.5 sm:p-3.5 rounded-xl border-2 border-dashed border-emerald-500/50 hover:border-emerald-400 bg-emerald-950/25 hover:bg-emerald-950/40 flex flex-col items-center justify-center space-y-1 transition-all cursor-pointer group uppercase text-center"
+                                  className="w-full p-1.5 sm:p-3.5 rounded-lg sm:rounded-xl border-2 border-dashed border-emerald-500/50 hover:border-emerald-400 bg-emerald-950/25 hover:bg-emerald-950/40 flex flex-col items-center justify-center space-y-0.5 sm:space-y-1 transition-all cursor-pointer group uppercase text-center"
                                 >
-                                  <div className="flex items-center space-x-1.5 text-emerald-300 font-black text-xs sm:text-sm group-hover:scale-105 transition-transform">
-                                    <Upload className="w-4 h-4 text-emerald-400 shrink-0" />
-                                    <span>PUMILI NG MGA LARAWAN</span>
+                                  <div className="flex items-center space-x-1 text-emerald-300 font-black text-[10px] sm:text-sm group-hover:scale-105 transition-transform">
+                                    <Upload className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-400 shrink-0" />
+                                    <span className="truncate">PUMILI NG LARAWAN</span>
                                   </div>
-                                  <span className="text-[9.5px] sm:text-[10px] text-slate-400 font-mono uppercase">
-                                    (KAHIT ILANG PICTURE / WALANG LIMIT)
+                                  <span className="text-[8px] sm:text-[10px] text-slate-400 font-mono uppercase truncate hidden xs:block">
+                                    (WALANG LIMIT)
                                   </span>
                                 </button>
 
                                 <button
                                   type="button"
                                   onClick={() => uploadCameraInputRef.current?.click()}
-                                  className="w-full p-2.5 sm:p-3.5 rounded-xl border-2 border-slate-700 hover:border-cyan-400 bg-slate-950/60 hover:bg-slate-950/80 flex flex-col items-center justify-center space-y-1 transition-all cursor-pointer group uppercase text-center"
+                                  className="w-full p-1.5 sm:p-3.5 rounded-lg sm:rounded-xl border-2 border-slate-700 hover:border-cyan-400 bg-slate-950/60 hover:bg-slate-950/80 flex flex-col items-center justify-center space-y-0.5 sm:space-y-1 transition-all cursor-pointer group uppercase text-center"
                                 >
-                                  <div className="flex items-center space-x-1.5 text-cyan-300 font-black text-xs sm:text-sm group-hover:scale-105 transition-transform">
-                                    <Camera className="w-4 h-4 text-cyan-400 shrink-0" />
-                                    <span>KUMUHA NG CAMERA SNAPSHOT</span>
+                                  <div className="flex items-center space-x-1 text-cyan-300 font-black text-[10px] sm:text-sm group-hover:scale-105 transition-transform">
+                                    <Camera className="w-3 h-3 sm:w-4 sm:h-4 text-cyan-400 shrink-0" />
+                                    <span className="truncate">CAMERA SNAPSHOT</span>
                                   </div>
-                                  <span className="text-[9.5px] sm:text-[10px] text-slate-400 font-mono uppercase">
-                                    (DIRECT CAMERA WITH REALTIME GPS)
+                                  <span className="text-[8px] sm:text-[10px] text-slate-400 font-mono uppercase truncate hidden xs:block">
+                                    (DIRECT CAMERA)
                                   </span>
                                 </button>
                               </div>
@@ -1753,17 +1754,17 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                                 type="button"
                                 onClick={handleUploadSamplePhotos}
                                 disabled={uploadIsProcessing}
-                                className="w-full py-2 px-3 rounded-lg bg-slate-950/60 hover:bg-slate-900 border border-slate-800 text-slate-300 hover:text-emerald-300 text-[10.5px] sm:text-[11px] font-mono font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer uppercase"
+                                className="w-full py-1 sm:py-2 px-2 sm:px-3 rounded-md sm:rounded-lg bg-slate-950/60 hover:bg-slate-900 border border-slate-800 text-slate-300 hover:text-emerald-300 text-[9px] sm:text-[11px] font-mono font-bold flex items-center justify-center gap-1 sm:gap-1.5 transition-colors cursor-pointer uppercase"
                               >
-                                <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                                <span>MAG-LOAD NG SAMPLE CLEANUP PHOTOS PARA SA TEST</span>
+                                <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400 shrink-0" />
+                                <span className="truncate">LOAD SAMPLE PHOTOS PARA SA TEST</span>
                               </button>
 
                               {/* Thumbnail previews */}
                               {uploadPhotos.length > 0 && (
-                                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-1">
+                                <div className="grid grid-cols-4 sm:grid-cols-4 gap-1 sm:gap-2 pt-0.5">
                                   {uploadPhotos.map((photo, idx) => (
-                                    <div key={idx} className="relative group rounded-xl overflow-hidden border border-emerald-500/50 bg-slate-950 aspect-square">
+                                    <div key={idx} className="relative group rounded-md sm:rounded-xl overflow-hidden border border-emerald-500/50 bg-slate-950 aspect-square h-9 sm:h-auto">
                                       <img
                                         src={photo}
                                         alt={`Upload ${idx + 1}`}
@@ -1773,9 +1774,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                                       <button
                                         type="button"
                                         onClick={() => setUploadPhotos((prev) => prev.filter((_, i) => i !== idx))}
-                                        className="absolute top-1 right-1 p-1 rounded-md bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-500/50 cursor-pointer opacity-80 hover:opacity-100 transition-opacity"
+                                        className="absolute top-0.5 right-0.5 p-0.5 sm:p-1 rounded bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-500/50 cursor-pointer"
                                       >
-                                        <Trash2 className="w-3 h-3" />
+                                        <Trash2 className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                                       </button>
                                     </div>
                                   ))}
@@ -1786,40 +1787,40 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                             {/* ========================================================================= */}
                             {/* FIELD 4: ULAT SA GINAWANG PAGLILINIS */}
                             {/* ========================================================================= */}
-                            <div className="space-y-1.5 pt-0.5">
-                              <label className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wide block">
-                                4. ULAT SA GINAWANG PAGLILINIS (CLEANUP ACCOMPLISHMENT NOTES)
+                            <div className="space-y-0.5 sm:space-y-1.5">
+                              <label className="text-[10px] sm:text-xs font-mono font-bold text-slate-200 uppercase tracking-wide block">
+                                4. ULAT SA GINAWANG PAGLILINIS (NOTES)
                               </label>
                               <textarea
-                                rows={2}
+                                rows={1}
                                 value={uploadNotes}
                                 onChange={(e) => setUploadNotes(e.target.value)}
                                 placeholder=""
-                                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-slate-700 focus:border-emerald-400 text-white text-xs sm:text-sm font-sans shadow-inner resize-none uppercase"
+                                className="w-full px-2.5 sm:px-3.5 py-1 sm:py-2.5 rounded-lg sm:rounded-xl bg-slate-950/80 border border-slate-700 focus:border-emerald-400 text-white text-[11px] sm:text-sm font-sans shadow-inner resize-none uppercase"
                               />
                             </div>
 
                             {/* BOTTOM SUBMISSION BUTTON: FITTED 100% INSIDE */}
-                            <div className="pt-1 w-full">
+                            <div className="pt-0.5 sm:pt-1 w-full">
                               {uploadCutoffInfo.isExpired ? (
                                 <button
                                   type="button"
                                   onClick={handleUploadSubmit}
                                   disabled={uploadIsProcessing}
-                                  className="w-full py-3 px-4 rounded-xl bg-rose-950/90 hover:bg-rose-900/90 border-2 border-rose-500/70 text-rose-200 font-mono font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg active:scale-95 uppercase tracking-wide"
+                                  className="w-full py-2 sm:py-3 px-3 sm:px-4 rounded-lg sm:rounded-xl bg-rose-950/90 hover:bg-rose-900/90 border-2 border-rose-500/70 text-rose-200 font-mono font-black text-[11px] sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer shadow-lg active:scale-95 uppercase tracking-wide"
                                 >
-                                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-                                  <span>ISARA NA ANG SUBMISSION (NAKALIPAS NA ANG CUT-OFF)</span>
+                                  <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-400 shrink-0" />
+                                  <span>ISARA NA ANG SUBMISSION (CUT-OFF)</span>
                                 </button>
                               ) : (
                                 <button
                                   type="button"
                                   onClick={handleUploadSubmit}
                                   disabled={uploadIsProcessing}
-                                  className="w-full py-3 px-4 rounded-xl fluid-btn-emerald text-slate-950 font-mono font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg active:scale-95 uppercase tracking-wide"
+                                  className="w-full py-2 sm:py-3 px-3 sm:px-4 rounded-lg sm:rounded-xl fluid-btn-emerald text-slate-950 font-mono font-black text-[11px] sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer shadow-lg active:scale-95 uppercase tracking-wide"
                                 >
-                                  <Upload className="w-4 h-4 text-slate-950 shrink-0" />
-                                  <span>{uploadIsProcessing ? 'PINA-PROSESO ANG ACCOMPLISHMENT...' : 'I-SUMITE ANG PATUNAY SA PAGDALO (SUBMIT)'}</span>
+                                  <Upload className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-950 shrink-0" />
+                                  <span>{uploadIsProcessing ? 'PINA-PROSESO...' : 'I-SUMITE ANG PATUNAY SA PAGDALO (SUBMIT)'}</span>
                                 </button>
                               )}
                             </div>
@@ -1842,22 +1843,22 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     </div>
                   ) : activeView === 'anonymous' ? (
                     /* ========================================================================= */
-                    /* ANONYMOUS MESSAGE CARD (FITS INSIDE LOGIN BOX AREA AS REQUESTED)          */
+                    /* ANONYMOUS MESSAGE CARD (FITS 100% ON MOBILE & DESKTOP WITHOUT SCROLLBAR) */
                     /* ========================================================================= */
-                    <div className="relative rounded-2xl sm:rounded-3xl border-2 border-amber-500/70 shadow-[0_25px_70px_rgba(0,0,0,0.9),0_0_50px_rgba(245,158,11,0.25)] bg-slate-900/95 hover:bg-slate-900 backdrop-blur-md overflow-hidden animate-scaleIn w-full text-left flex flex-col h-auto max-h-none sm:max-h-[86vh] my-1 sm:my-0">
+                    <div className="relative rounded-2xl sm:rounded-3xl border-2 border-amber-500/70 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_40px_rgba(245,158,11,0.25)] bg-slate-900/95 hover:bg-slate-900 backdrop-blur-md overflow-hidden animate-scaleIn w-full max-w-xl sm:max-w-2xl mx-auto text-left flex flex-col h-auto max-h-none my-0">
                       {/* Header Bar */}
-                      <div className="px-3 sm:px-6 py-2.5 sm:py-3.5 border-b border-slate-800 bg-slate-950/95 flex items-center justify-between shrink-0 sticky top-0 z-20">
+                      <div className="px-3 sm:px-6 py-2 sm:py-3 border-b border-slate-800 bg-slate-950/95 flex items-center justify-between shrink-0 sticky top-0 z-20">
                         <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
-                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-tr from-amber-400 to-yellow-300 flex items-center justify-center text-slate-950 shadow-md shrink-0">
+                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-gradient-to-tr from-amber-400 to-yellow-300 flex items-center justify-center text-slate-950 shadow-md shrink-0">
                             <EyeOff className="w-4 h-4 text-slate-950" />
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center space-x-1.5">
-                              <span className="px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-mono font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 uppercase tracking-widest">
+                              <span className="px-2 py-0.5 rounded-full text-[8.5px] sm:text-[10px] font-mono font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 uppercase tracking-widest">
                                 100% ANONYMOUS & CONFIDENTIAL
                               </span>
                             </div>
-                            <h3 className="text-xs sm:text-sm lg:text-base font-black text-white tracking-tight uppercase truncate">
+                            <h3 className="text-xs sm:text-sm lg:text-base font-black text-white tracking-tight uppercase leading-snug">
                               MAGPADALA NG ANONYMOUS MESSAGE SA ADMIN
                             </h3>
                           </div>
@@ -1868,7 +1869,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                           <button
                             type="button"
                             onClick={handleAdminPortalClick}
-                            className="px-2 sm:px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 hover:text-white font-mono text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 uppercase"
+                            className="px-2 sm:px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 hover:text-white font-mono text-[9.5px] sm:text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 uppercase shrink-0"
                             title="Lumipat sa Admin Login"
                           >
                             <ShieldCheck className="w-3.5 h-3.5 text-slate-300" />
@@ -1877,7 +1878,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                           <button
                             type="button"
                             onClick={() => setActiveView('event')}
-                            className="p-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-all cursor-pointer"
+                            className="p-1 sm:p-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-all cursor-pointer"
                             title="Bumalik sa Advisory"
                           >
                             <X className="w-4 h-4 text-slate-400 hover:text-white" />
@@ -1886,26 +1887,26 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       </div>
 
                       {/* Card Body */}
-                      <div className="p-3 sm:p-5 lg:p-6 overflow-y-auto space-y-3 sm:space-y-4 flex-1 min-h-0 overscroll-contain pb-28 sm:pb-6 scrollbar-thin">
+                      <div className="p-2.5 xs:p-3 sm:p-5 lg:p-6 space-y-2 sm:space-y-3.5 flex-1 min-h-0 pb-2 sm:pb-6">
                         {anonIsSuccess ? (
-                          <div className="text-center py-6 sm:py-8 space-y-3.5 sm:space-y-4 animate-scaleIn">
-                            <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center text-emerald-400 shadow-[0_0_30px_rgba(16,185,129,0.4)]">
-                              <CheckCircle2 className="w-7 h-7 sm:w-8 sm:h-8" />
+                          <div className="text-center py-2 sm:py-6 space-y-1.5 sm:space-y-3.5 animate-scaleIn">
+                            <div className="w-9 h-9 sm:w-14 sm:h-14 mx-auto rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.4)]">
+                              <CheckCircle2 className="w-5 h-5 sm:w-7 sm:h-7" />
                             </div>
 
-                            <div className="space-y-1.5 max-w-md mx-auto">
-                              <span className="px-3 py-1 rounded-full text-[10px] sm:text-xs font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase">
+                            <div className="space-y-0.5 sm:space-y-1 max-w-md mx-auto">
+                              <span className="px-2 py-0.5 rounded-full text-[8.5px] sm:text-xs font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase">
                                 Ligtas na Naisumite sa Admin Inbox
                               </span>
-                              <h4 className="text-base sm:text-xl font-black text-white uppercase">
+                              <h4 className="text-xs sm:text-xl font-black text-white uppercase">
                                 Matagumpay na Naipadala ang Anonymous Message!
                               </h4>
-                              <p className="text-xs text-slate-300 leading-relaxed font-sans">
-                                Ang inyong ulat ay ligtas nang nakarating sa <strong className="text-white">Admin Inbox</strong>. Hindi kailanman malalaman o maipapakita sa Admin ang inyong pangalan o pagkakakilanlan.
+                              <p className="text-[10px] sm:text-xs text-slate-300 leading-relaxed font-sans">
+                                Ang inyong ulat ay ligtas nang nakarating sa <strong className="text-white">Admin Inbox</strong>. Hindi kailanman malalaman o maipapakita sa Admin ang inyong pagkakakilanlan.
                               </p>
                             </div>
 
-                            <div className="p-3 sm:p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 text-xs font-mono text-left space-y-1 max-w-md mx-auto">
+                            <div className="p-2 sm:p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 text-[9.5px] sm:text-xs font-mono text-left space-y-0.5 sm:space-y-1 max-w-md mx-auto">
                               <div className="flex justify-between text-slate-400">
                                 <span>SENDER ALIAS:</span>
                                 <span className="text-emerald-400 font-bold uppercase">ANONYMOUS (PROTECTED)</span>
@@ -1920,7 +1921,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                               </div>
                             </div>
 
-                            <div className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto pt-2">
+                            <div className="grid grid-cols-2 gap-2 max-w-md mx-auto pt-0.5 font-mono">
                               <button
                                 type="button"
                                 onClick={() => {
@@ -1930,49 +1931,67 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                                   setAnonPriority('normal');
                                   setAnonErrorMessage(null);
                                 }}
-                                className="flex-1 py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white font-mono font-bold text-xs uppercase cursor-pointer"
+                                className="py-1.5 sm:py-2 px-2 rounded-lg sm:rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white font-mono font-bold text-[10px] sm:text-xs uppercase cursor-pointer"
                               >
-                                MAGPADALA MULI NG MENSAHE
+                                MAGPADALA MULI
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setActiveView('event')}
-                                className="flex-1 py-2.5 px-3 rounded-xl fluid-btn-emerald text-slate-950 font-mono font-black text-xs uppercase cursor-pointer shadow-lg"
+                                className="py-1.5 sm:py-2 px-2 rounded-lg sm:rounded-xl fluid-btn-emerald text-slate-950 font-mono font-black text-[10px] sm:text-xs uppercase cursor-pointer shadow-lg"
                               >
                                 BUMALIK SA ADVISORY
                               </button>
                             </div>
                           </div>
                         ) : (
-                          <div className="space-y-3 sm:space-y-4">
+                          <div className="space-y-2 sm:space-y-3.5">
                             {/* Privacy Assurance Banner */}
-                            <div className="p-2 sm:p-3 rounded-xl bg-amber-950/30 border border-amber-500/40 text-amber-200 text-xs flex items-center justify-between">
-                              <div className="flex items-center space-x-2">
-                                <EyeOff className="w-4 h-4 text-amber-400 shrink-0" />
-                                <span className="font-sans font-medium text-[11px] sm:text-xs">
-                                  Ang inyong mensahe ay direktang matatanggap ng Admin nang walang profile o pangalan.
+                            <div className="py-1 px-2.5 rounded-lg bg-amber-950/30 border border-amber-500/40 text-amber-200 text-[9.5px] sm:text-xs flex items-center justify-between gap-1.5">
+                              <div className="flex items-center space-x-1.5 min-w-0">
+                                <EyeOff className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                                <span className="font-sans font-medium text-[10px] sm:text-xs">
+                                  Direktang matatanggap ng Admin nang walang profile o pangalan.
                                 </span>
                               </div>
-                              <span className="font-mono text-[9px] sm:text-[10px] uppercase font-black bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/40 text-amber-300 shrink-0">
-                                Ligtas at Kumpidensiyal
+                              <span className="font-mono text-[8.5px] sm:text-[9px] uppercase font-bold text-amber-300 shrink-0 px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-500/30">
+                                Ligtas
                               </span>
                             </div>
 
                             {anonErrorMessage && (
-                              <div className="p-2.5 sm:p-3 rounded-xl bg-rose-950/80 border border-rose-500/50 text-rose-200 text-xs flex items-center space-x-2 uppercase font-mono font-bold">
-                                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-                                <span>{anonErrorMessage}</span>
+                              <div className="p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl bg-rose-950/80 border border-rose-500/50 text-rose-200 text-[10px] sm:text-xs flex items-center space-x-1.5 uppercase font-mono font-bold">
+                                <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                                <span className="truncate">{anonErrorMessage}</span>
                               </div>
                             )}
 
                             {/* 1. Category Selector */}
-                            <div className="space-y-1 sm:space-y-1.5">
-                              <label className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wide flex items-center space-x-1.5">
+                            <div className="space-y-1">
+                              <label className="text-[10.5px] sm:text-xs font-mono font-bold text-slate-200 uppercase tracking-wide flex items-center space-x-1.5">
                                 <FileText className="w-3.5 h-3.5 text-amber-400" />
                                 <span>1. URI O PAKSA NG ANONYMOUS MESSAGE <span className="text-rose-400">*</span></span>
                               </label>
 
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2">
+                              {/* Mobile: Compact Dropdown Selector */}
+                              <div className="sm:hidden relative">
+                                <select
+                                  value={anonCategory}
+                                  onChange={(e) => setAnonCategory(e.target.value as any)}
+                                  className="w-full py-1.5 px-3 pl-8 rounded-xl bg-slate-950/90 border border-amber-500/50 text-white text-xs font-mono font-bold focus:border-amber-400 focus:outline-none appearance-none cursor-pointer shadow-inner"
+                                >
+                                  <option value="report">⚠️ Ulat / Sumbong ukol sa Gawain o Area</option>
+                                  <option value="feedback">✨ Mungkahi / Rekomendasyon</option>
+                                  <option value="allowance_inquiry">❓ Katanungan ukol sa Stipend / Attendance</option>
+                                  <option value="emergency">🚨 Kagipitan / Emergency sa Field</option>
+                                  <option value="general">📝 Iba pang Kompidensiyal na Pabatid</option>
+                                </select>
+                                <FileText className="w-3.5 h-3.5 text-amber-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                              </div>
+
+                              {/* Desktop: 2-Column Grid of Detailed Cards */}
+                              <div className="hidden sm:grid grid-cols-2 gap-2">
                                 {[
                                   { id: 'report', label: 'ULAT / SUMBONG UKOL SA GAWAIN O AREA', desc: 'May napansing iregularidad o basura na naiwan', icon: AlertCircle },
                                   { id: 'feedback', label: 'MUNGKAHI / REKOMENDASYON', desc: 'Mga ideya para mas mapaganda ang programa', icon: Sparkles },
@@ -1986,22 +2005,22 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                                     <div
                                       key={cat.id}
                                       onClick={() => setAnonCategory(cat.id as any)}
-                                      className={`p-2 sm:p-2.5 rounded-xl border transition-all cursor-pointer flex items-start space-x-2 sm:space-x-2.5 ${
+                                      className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-start space-x-2.5 ${
                                         isSelected
                                           ? 'bg-amber-500/20 border-amber-400 text-white shadow-[0_0_15px_rgba(245,158,11,0.25)]'
                                           : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-950'
                                       }`}
                                     >
                                       <div
-                                        className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                                        className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
                                           isSelected ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-slate-400'
                                         }`}
                                       >
-                                        <Icon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                                        <Icon className="w-3.5 h-3.5" />
                                       </div>
                                       <div className="min-w-0">
-                                        <p className="font-bold text-[11px] sm:text-xs uppercase leading-tight truncate sm:whitespace-normal">{cat.label}</p>
-                                        <p className="text-[9.5px] sm:text-[10px] text-slate-400 leading-snug mt-0.5 line-clamp-1">
+                                        <p className="font-bold text-xs uppercase leading-tight">{cat.label}</p>
+                                        <p className="text-[10px] text-slate-400 leading-snug mt-0.5 line-clamp-1">
                                           {cat.desc}
                                         </p>
                                       </div>
@@ -2012,17 +2031,17 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                             </div>
 
                             {/* 2. Priority Selector */}
-                            <div className="space-y-1 sm:space-y-1.5">
-                              <label className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wide flex items-center justify-between">
+                            <div className="space-y-1">
+                              <label className="text-[10.5px] sm:text-xs font-mono font-bold text-slate-200 uppercase tracking-wide flex items-center justify-between">
                                 <span>2. ANTAS NG KAHALAGAHAN (PRIORITY)</span>
-                                <span className="text-[10px] text-slate-400 font-mono">PUMILI NG ANGKOP NA ANTAS</span>
+                                <span className="text-[9.5px] text-slate-400 font-mono hidden xs:inline">PUMILI NG ANGKOP NA ANTAS</span>
                               </label>
 
-                              <div className="grid grid-cols-3 gap-1.5 sm:gap-2 text-xs font-mono">
+                              <div className="grid grid-cols-3 gap-1.5 text-xs font-mono">
                                 {[
-                                  { id: 'normal', label: 'NORMAL / KARANIWAN', color: 'emerald' },
-                                  { id: 'urgent', label: 'MATAAS (URGENT)', color: 'rose' },
-                                  { id: 'confidential', label: 'KUMPIDENSIYAL', color: 'purple' },
+                                  { id: 'normal', label: 'NORMAL', fullLabel: 'NORMAL / KARANIWAN', color: 'emerald' },
+                                  { id: 'urgent', label: 'URGENT', fullLabel: 'MATAAS (URGENT)', color: 'rose' },
+                                  { id: 'confidential', label: 'KUMPIDENSIYAL', fullLabel: 'KUMPIDENSIYAL', color: 'purple' },
                                 ].map((p) => {
                                   const isSelected = anonPriority === p.id;
                                   return (
@@ -2030,64 +2049,65 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                                       key={p.id}
                                       type="button"
                                       onClick={() => setAnonPriority(p.id as any)}
-                                      className={`py-1.5 sm:py-2 px-1.5 sm:px-2.5 rounded-xl border text-center font-bold text-[10px] sm:text-xs transition-all cursor-pointer uppercase ${
+                                      className={`py-1.5 px-1 rounded-lg border text-center font-bold text-[10px] sm:text-xs transition-all cursor-pointer uppercase ${
                                         isSelected
                                           ? p.id === 'urgent'
-                                            ? 'bg-rose-500/25 border-rose-400 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.3)]'
+                                            ? 'bg-rose-500/25 border-rose-400 text-rose-300 shadow-[0_0_12px_rgba(244,63,94,0.3)]'
                                             : p.id === 'confidential'
-                                            ? 'bg-purple-500/25 border-purple-400 text-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.3)]'
+                                            ? 'bg-purple-500/25 border-purple-400 text-purple-300 shadow-[0_0_12px_rgba(168,85,247,0.3)]'
                                             : 'bg-emerald-500/25 border-emerald-400 text-emerald-300'
                                           : 'bg-slate-950/60 border-slate-800 text-slate-400'
                                       }`}
                                     >
-                                      {p.label}
+                                      <span className="xs:hidden">{p.label}</span>
+                                      <span className="hidden xs:inline">{p.fullLabel}</span>
                                     </button>
                                   );
                                 })}
                               </div>
                             </div>
 
-                            {/* 3. Message Textarea */}
-                            <div className="space-y-1 sm:space-y-1.5">
-                              <label className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wide flex items-center justify-between">
-                                <span>3. NILALAMAN NG ANONYMOUS MENSAHE <span className="text-rose-400">*</span></span>
-                                <span className="text-[10px] font-mono text-amber-400 uppercase font-semibold">100% PROTEKTADO ANG SENDER</span>
+                            {/* 3. Message Textarea (Habaan ang box content malapit sa Admin button) */}
+                            <div className="space-y-1">
+                              <label className="text-[10.5px] sm:text-xs font-mono font-bold text-slate-200 uppercase tracking-wide flex items-center justify-between">
+                                <span>3. NILALAMAN NG MENSAHE <span className="text-rose-400">*</span></span>
+                                <span className="text-[9.5px] font-mono text-amber-400 uppercase font-semibold">100% PROTEKTADO</span>
                               </label>
 
                               <textarea
                                 value={anonMessageText}
                                 onChange={(e) => setAnonMessageText(e.target.value)}
-                                placeholder="ISULAT DITO ANG INYONG ULAT, OBSERBASYON, MUNGKAHI, O MENSAHE PARA SA ADMIN. HUWAG MAG-ALALA, WALANG MAKAKAALAM KUNG SINO ANG NAGPADALA NITO..."
-                                rows={3}
-                                className="w-full px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-2xl bg-slate-950/90 border border-slate-700 focus:border-amber-400 text-white placeholder-slate-500 text-xs sm:text-sm font-sans leading-relaxed shadow-inner"
+                                placeholder="Isulat dito ang inyong ulat, obserbasyon, mungkahi o mensahe para sa Admin..."
+                                rows={4}
+                                className="w-full px-3 py-2.5 rounded-xl bg-slate-950/90 border border-slate-700 focus:border-amber-400 text-white placeholder-slate-500 text-xs sm:text-sm font-sans leading-relaxed shadow-inner resize-none min-h-[105px] sm:min-h-[135px]"
                               />
                             </div>
 
                             {/* Submit & Cancel Buttons */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 pt-1 font-mono">
+                            <div className="grid grid-cols-2 gap-2 sm:gap-2.5 pt-1 font-mono">
                               <button
                                 type="button"
                                 onClick={() => setActiveView('event')}
-                                className="py-2.5 sm:py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold transition-all cursor-pointer border border-slate-700 uppercase"
+                                className="py-2.5 sm:py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] sm:text-xs font-bold transition-all cursor-pointer border border-slate-700 uppercase active:scale-95"
                               >
-                                BUMALIK SA ADVISORY
+                                BUMALIK
                               </button>
 
                               <button
                                 type="button"
                                 onClick={handleSendAnonymousMessage}
                                 disabled={anonIsSubmitting || !anonMessageText.trim()}
-                                className="py-2.5 sm:py-3 rounded-xl fluid-btn-amber text-slate-950 text-xs font-black transition-all cursor-pointer flex items-center justify-center space-x-2 disabled:opacity-50 border border-amber-300/40 shadow-lg active:scale-95 uppercase"
+                                className="py-2.5 sm:py-3 rounded-xl fluid-btn-amber text-slate-950 text-[11px] sm:text-xs font-black transition-all cursor-pointer flex items-center justify-center space-x-1.5 disabled:opacity-50 border border-amber-300/40 shadow-lg active:scale-95 uppercase"
                               >
                                 {anonIsSubmitting ? (
                                   <>
-                                    <span className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
-                                    <span>PINAPADALA ANG ANONYMOUS REPORT...</span>
+                                    <span className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                                    <span className="truncate">PINAPADALA...</span>
                                   </>
                                 ) : (
                                   <>
                                     <Send className="w-4 h-4 text-slate-950 shrink-0" />
-                                    <span>IPADALA SA ADMIN (SEND ANONYMOUS)</span>
+                                    <span className="truncate">IPADALA SA ADMIN</span>
                                   </>
                                 )}
                               </button>
@@ -2098,86 +2118,86 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     </div>
                   ) : (activeView === 'event' || activeView === 'overview') && eventBroadcast ? (
                 /* ========================================================================= */
-                /* EVENT BROADCAST CARD: ENLARGED PROPORTIONED PRO CARD                     */
+                /* EVENT BROADCAST CARD: COMPACT ON MOBILE SCREEN TO PREVENT SCROLL          */
                 /* ========================================================================= */
-                <div className="relative rounded-2xl sm:rounded-3xl border-2 border-emerald-400/80 shadow-[0_0_50px_rgba(16,185,129,0.4),inset_0_0_20px_rgba(16,185,129,0.15)] bg-slate-950/92 hover:bg-slate-950/96 backdrop-blur-md p-4 sm:p-6 lg:p-7 space-y-3 sm:space-y-4 transition-all duration-300 hover:border-emerald-300 animate-scaleIn w-full text-left">
+                <div className="relative rounded-xl sm:rounded-3xl border-2 border-emerald-400/80 shadow-[0_0_40px_rgba(16,185,129,0.35),inset_0_0_20px_rgba(16,185,129,0.15)] bg-slate-950/95 hover:bg-slate-950/98 backdrop-blur-md p-2.5 xs:p-3 sm:p-6 lg:p-7 space-y-1.5 xs:space-y-2 sm:space-y-4 transition-all duration-300 hover:border-emerald-300 animate-scaleIn w-full max-w-xl sm:max-w-2xl mx-auto text-left flex flex-col max-h-[calc(100dvh-65px)] sm:max-h-none overflow-y-auto sm:overflow-visible scrollbar-none [&::-webkit-scrollbar]:hidden">
                   {/* Top Bar inside Card */}
-                  <div className="flex items-center justify-between border-b border-white/10 pb-2.5 sm:pb-3 gap-2">
-                    <div className="flex items-center space-x-2.5 min-w-0">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
-                      <span className="px-3.5 py-1 rounded-full text-xs sm:text-sm font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase tracking-wider flex items-center gap-2 backdrop-blur-sm truncate">
-                        <Radio className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 animate-pulse shrink-0" />
+                  <div className="flex items-center justify-between border-b border-white/10 pb-1.5 sm:pb-3 gap-1.5">
+                    <div className="flex items-center space-x-1.5 sm:space-x-2.5 min-w-0">
+                      <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
+                      <span className="px-2 py-0.5 sm:px-3.5 sm:py-1 rounded-full text-[10px] sm:text-sm font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase tracking-wider flex items-center gap-1.5 backdrop-blur-sm truncate">
+                        <Radio className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-400 animate-pulse shrink-0" />
                         <span className="truncate">Admin Guidelines & Advisory</span>
                       </span>
                     </div>
 
-                    <div className="flex items-center space-x-2 shrink-0">
-                      <span className="text-xs sm:text-sm font-mono text-emerald-300 font-bold px-2.5 py-1 rounded-lg bg-emerald-950/60 border border-emerald-500/30">
+                    <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
+                      <span className="text-[10px] sm:text-sm font-mono text-emerald-300 font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md sm:rounded-lg bg-emerald-950/60 border border-emerald-500/30">
                         {eventBroadcast.startTime} PST
                       </span>
                       <button
                         type="button"
                         onClick={() => setIsUnfolded(false)}
-                        className="p-1.5 sm:p-2 rounded-lg bg-slate-900/70 hover:bg-slate-800 border border-slate-700/60 text-slate-300 hover:text-white transition-all cursor-pointer"
+                        className="p-1 sm:p-2 rounded-md sm:rounded-lg bg-slate-900/70 hover:bg-slate-800 border border-slate-700/60 text-slate-300 hover:text-white transition-all cursor-pointer"
                         title="Close Notice"
                       >
-                        <X className="w-4 h-4 text-slate-400 hover:text-emerald-400" />
+                        <X className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 hover:text-emerald-400" />
                       </button>
                     </div>
                   </div>
 
                   {/* Title & Location */}
-                  <div className="space-y-1.5 text-left">
-                    <h3 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-black text-white leading-tight drop-shadow-md">
+                  <div className="space-y-0.5 sm:space-y-1.5 text-left">
+                    <h3 className="text-sm xs:text-base sm:text-xl lg:text-2xl xl:text-3xl font-black text-white leading-tight drop-shadow-md truncate sm:whitespace-normal">
                       {eventBroadcast.activityTitle}
                     </h3>
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs sm:text-sm lg:text-[14px] font-mono">
-                      <p className="text-emerald-300 font-semibold flex items-center gap-1.5 drop-shadow">
-                        <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 shrink-0" />
+                    <div className="flex flex-wrap items-center gap-x-2.5 sm:gap-x-4 gap-y-0.5 text-[10px] xs:text-[11px] sm:text-sm lg:text-[14px] font-mono">
+                      <p className="text-emerald-300 font-semibold flex items-center gap-1 drop-shadow truncate">
+                        <MapPin className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-400 shrink-0" />
                         <span className="truncate">Brgy. {eventBroadcast.barangay} • {eventBroadcast.targetArea}</span>
                       </p>
-                      <p className="text-cyan-300 font-medium flex items-center gap-1.5 drop-shadow">
-                        <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-400 shrink-0" />
+                      <p className="text-cyan-300 font-medium flex items-center gap-1 drop-shadow">
+                        <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-cyan-400 shrink-0" />
                         <span>{eventBroadcast.startTime} – {eventBroadcast.estimatedEndTime} ({eventBroadcast.totalHours})</span>
                       </p>
                     </div>
                   </div>
 
-                  {/* Event QR Code Box & Attendance Upload (Enlarged) */}
-                  <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-950/70 border border-emerald-400/50 backdrop-blur-md shadow-md flex flex-row items-center gap-4 sm:gap-5 animate-fadeIn">
-                    <div className="p-2 bg-white rounded-xl shadow-md border border-emerald-400/40 flex flex-col items-center shrink-0">
+                  {/* Event QR Code Box & Attendance Upload (Compact on Mobile) */}
+                  <div className="p-2 xs:p-2.5 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-950/70 border border-emerald-400/50 backdrop-blur-md shadow-md flex flex-row items-center gap-2.5 xs:gap-3 sm:gap-5 animate-fadeIn">
+                    <div className="p-1 xs:p-1.5 sm:p-2 bg-white rounded-lg sm:rounded-xl shadow-md border border-emerald-400/40 flex flex-col items-center shrink-0">
                       {eventQrUrl || eventBroadcast.qrDataUrl ? (
                         <div className="relative inline-flex items-center justify-center">
                           <img
                             src={eventQrUrl || eventBroadcast.qrDataUrl}
                             alt="Official Event Attendance QR Code"
-                            className="w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 object-contain"
+                            className="w-14 h-14 xs:w-16 xs:h-16 sm:w-24 sm:h-24 lg:w-28 lg:h-28 object-contain"
                           />
                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
-                            <div className="w-6 h-6 rounded-full bg-white p-0.5 border border-emerald-600 shadow-sm flex items-center justify-center">
-                              <div className="w-full h-full rounded-full bg-[#022c22] flex flex-col items-center justify-center text-center p-0.2 border border-amber-400">
-                                <span className="text-[5px] font-black text-emerald-300 leading-none">LGU</span>
+                            <div className="w-4 h-4 sm:w-6 sm:h-6 rounded-full bg-white p-0.5 border border-emerald-600 shadow-sm flex items-center justify-center">
+                              <div className="w-full h-full rounded-full bg-[#022c22] flex flex-col items-center justify-center text-center border border-amber-400">
+                                <span className="text-[4px] sm:text-[5px] font-black text-emerald-300 leading-none">LGU</span>
                               </div>
                             </div>
                           </div>
                         </div>
                       ) : (
-                        <div className="w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center bg-slate-100 rounded-md">
-                          <QrCode className="w-10 h-10 text-slate-800" />
+                        <div className="w-14 h-14 xs:w-16 xs:h-16 sm:w-24 sm:h-24 flex items-center justify-center bg-slate-100 rounded-md">
+                          <QrCode className="w-7 h-7 sm:w-10 sm:h-10 text-slate-800" />
                         </div>
                       )}
-                      <span className="text-[8.5px] sm:text-[9.5px] font-mono font-black text-slate-900 mt-1 uppercase tracking-tight">
+                      <span className="text-[7.5px] sm:text-[9.5px] font-mono font-black text-slate-900 mt-0.5 sm:mt-1 uppercase tracking-tight">
                         SCAN ATTENDANCE
                       </span>
                     </div>
 
-                    <div className="space-y-2 text-left flex-1 min-w-0 w-full">
-                      <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] sm:text-xs font-mono font-bold">
-                        <QrCode className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <div className="space-y-1 sm:space-y-2 text-left flex-1 min-w-0 w-full">
+                      <div className="inline-flex items-center space-x-1 sm:space-x-1.5 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[9px] sm:text-xs font-mono font-bold">
+                        <QrCode className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400 shrink-0" />
                         <span>EVENT ATTENDANCE QR CODE</span>
                       </div>
-                      <p className="text-xs sm:text-sm text-slate-200 font-sans leading-relaxed">
-                        I-scan sa camera ng mobile phone o pindutin upang mag-upload:
+                      <p className="text-[10px] sm:text-sm text-slate-200 font-sans leading-tight line-clamp-1 xs:line-clamp-none">
+                        I-scan sa mobile phone o pindutin upang mag-upload:
                       </p>
                       
                       <button
@@ -2186,25 +2206,25 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                           setIsUnfolded(true);
                           setActiveView('upload');
                         }}
-                        className="w-full py-2 sm:py-2.5 px-3.5 rounded-xl fluid-btn-emerald text-slate-950 font-mono font-black text-xs sm:text-sm flex items-center justify-center space-x-2 transition-all cursor-pointer border border-emerald-300 active:scale-95 shadow-[0_0_18px_rgba(16,185,129,0.55)]"
+                        className="w-full py-1.5 sm:py-2.5 px-2.5 sm:px-3.5 rounded-lg sm:rounded-xl fluid-btn-emerald text-slate-950 font-mono font-black text-[10px] sm:text-sm flex items-center justify-center space-x-1.5 transition-all cursor-pointer border border-emerald-300 active:scale-95 shadow-[0_0_14px_rgba(16,185,129,0.55)]"
                       >
-                        <Camera className="w-4 h-4 text-slate-950 shrink-0" />
+                        <Camera className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-950 shrink-0" />
                         <span className="uppercase font-black truncate tracking-wide">Upload Attendance Photo</span>
-                        <Upload className="w-3.5 h-3.5 text-slate-950 shrink-0" />
+                        <Upload className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-950 shrink-0" />
                       </button>
                     </div>
                   </div>
 
-                  {/* 3-Column Compact Reminder Grid (Enlarged) */}
-                  <div className="grid grid-cols-3 gap-2.5 text-xs sm:text-sm font-mono text-slate-300 text-left">
+                  {/* 3-Column Compact Reminder Grid */}
+                  <div className="grid grid-cols-3 gap-1 xs:gap-1.5 sm:gap-2.5 text-[9px] xs:text-[10px] sm:text-sm font-mono text-slate-300 text-left">
                     {eventBroadcast.requiredTools && (
-                      <div className="bg-slate-950/60 p-2.5 sm:p-3 rounded-xl border border-white/10 backdrop-blur-sm flex flex-col justify-between">
+                      <div className="bg-slate-950/60 p-1.5 xs:p-2 sm:p-3 rounded-lg sm:rounded-xl border border-white/10 backdrop-blur-sm flex flex-col justify-between">
                         <div>
-                          <div className="flex items-center space-x-1 text-slate-400 font-bold text-[9px] sm:text-[10px] uppercase tracking-wider mb-0.5">
-                            <Wrench className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <div className="flex items-center space-x-1 text-slate-400 font-bold text-[8px] sm:text-[10px] uppercase tracking-wider mb-0.5">
+                            <Wrench className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400 shrink-0" />
                             <span className="truncate">Tools:</span>
                           </div>
-                          <span className="text-white text-xs sm:text-sm leading-snug block line-clamp-2 hover:line-clamp-none">
+                          <span className="text-white text-[9.5px] sm:text-sm leading-tight block line-clamp-1 sm:line-clamp-2 hover:line-clamp-none">
                             {eventBroadcast.requiredTools}
                           </span>
                         </div>
@@ -2212,13 +2232,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     )}
 
                     {eventBroadcast.waterTumblerReminder && (
-                      <div className="bg-slate-950/60 p-2.5 sm:p-3 rounded-xl border border-white/10 backdrop-blur-sm flex flex-col justify-between">
+                      <div className="bg-slate-950/60 p-1.5 xs:p-2 sm:p-3 rounded-lg sm:rounded-xl border border-white/10 backdrop-blur-sm flex flex-col justify-between">
                         <div>
-                          <div className="flex items-center space-x-1 text-slate-400 font-bold text-[9px] sm:text-[10px] uppercase tracking-wider mb-0.5">
-                            <Coffee className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                          <div className="flex items-center space-x-1 text-slate-400 font-bold text-[8px] sm:text-[10px] uppercase tracking-wider mb-0.5">
+                            <Coffee className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-cyan-400 shrink-0" />
                             <span className="truncate">Hydration:</span>
                           </div>
-                          <span className="text-white text-xs sm:text-sm leading-snug block line-clamp-2 hover:line-clamp-none">
+                          <span className="text-white text-[9.5px] sm:text-sm leading-tight block line-clamp-1 sm:line-clamp-2 hover:line-clamp-none">
                             {eventBroadcast.waterTumblerReminder}
                           </span>
                         </div>
@@ -2226,13 +2246,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     )}
 
                     {eventBroadcast.recommendedAttire && (
-                      <div className="bg-slate-950/60 p-2.5 sm:p-3 rounded-xl border border-white/10 backdrop-blur-sm flex flex-col justify-between">
+                      <div className="bg-slate-950/60 p-1.5 xs:p-2 sm:p-3 rounded-lg sm:rounded-xl border border-white/10 backdrop-blur-sm flex flex-col justify-between">
                         <div>
-                          <div className="flex items-center space-x-1 text-slate-400 font-bold text-[9px] sm:text-[10px] uppercase tracking-wider mb-0.5">
-                            <Shirt className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                          <div className="flex items-center space-x-1 text-slate-400 font-bold text-[8px] sm:text-[10px] uppercase tracking-wider mb-0.5">
+                            <Shirt className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-teal-400 shrink-0" />
                             <span className="truncate">Attire:</span>
                           </div>
-                          <span className="text-white text-xs sm:text-sm leading-snug block line-clamp-2 hover:line-clamp-none">
+                          <span className="text-white text-[9.5px] sm:text-sm leading-tight block line-clamp-1 sm:line-clamp-2 hover:line-clamp-none">
                             {eventBroadcast.recommendedAttire}
                           </span>
                         </div>
@@ -2242,34 +2262,34 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
                   {/* Additional LGU Admin Notes */}
                   {eventBroadcast.additionalNotes && (
-                    <div className="p-2.5 sm:p-3 rounded-xl bg-slate-950/50 border border-emerald-500/25 text-xs sm:text-sm font-sans text-slate-100 leading-snug text-left">
+                    <div className="p-1.5 xs:p-2 sm:p-3 rounded-lg sm:rounded-xl bg-slate-950/50 border border-emerald-500/25 text-[9.5px] xs:text-[10.5px] sm:text-sm font-sans text-slate-100 leading-snug text-left line-clamp-2">
                       <strong className="text-emerald-300 font-bold">Admin Notes:</strong> {eventBroadcast.additionalNotes}
                     </div>
                   )}
 
                   {/* Bottom Author Row - Responsive on Mobile & Desktop */}
-                  <div className="text-[11px] sm:text-xs md:text-sm font-mono text-slate-400 pt-2.5 border-t border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-2">
-                    <div className="flex items-center gap-1.5 text-emerald-300 font-bold whitespace-nowrap shrink-0">
-                      <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0 animate-pulse" />
-                      <span className="bg-emerald-950/70 border border-emerald-500/30 px-2 py-0.5 rounded text-emerald-300 font-mono tracking-wider whitespace-nowrap">
+                  <div className="text-[9.5px] xs:text-[10px] sm:text-xs md:text-sm font-mono text-slate-400 pt-1.5 sm:pt-2.5 border-t border-white/10 flex flex-row items-center justify-between gap-1">
+                    <div className="flex items-center gap-1 text-emerald-300 font-bold whitespace-nowrap shrink-0">
+                      <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400 shrink-0 animate-pulse" />
+                      <span className="bg-emerald-950/70 border border-emerald-500/30 px-1.5 py-0.5 rounded text-emerald-300 font-mono tracking-wider whitespace-nowrap text-[9px] sm:text-xs">
                         {eventTimeLeft.formatted}
                       </span>
-                      <span className="text-emerald-400/80 font-normal text-[10px] sm:text-xs">remaining</span>
+                      <span className="text-emerald-400/80 font-normal text-[8.5px] sm:text-xs">left</span>
                     </div>
-                    <div className="text-[10.5px] sm:text-xs text-slate-300 truncate sm:text-right">
-                      Broadcasted by: <strong className="text-emerald-400 font-bold">{eventBroadcast.sentByAdminName || 'Admin Officer'}</strong>
+                    <div className="text-[9px] xs:text-[9.5px] sm:text-xs text-slate-300 truncate text-right">
+                      By: <strong className="text-emerald-400 font-bold">{eventBroadcast.sentByAdminName || 'Admin Officer'}</strong>
                     </div>
                   </div>
 
                   {/* Mobile Quick Anonymous Reporting Box inside Advisory */}
-                  <div className="lg:hidden p-2.5 rounded-xl bg-slate-900/95 border-2 border-amber-500/60 flex items-center justify-between gap-2 shadow-lg">
-                    <div className="flex items-center space-x-2 min-w-0">
-                      <div className="w-7 h-7 rounded-lg bg-amber-500/20 flex items-center justify-center shrink-0">
-                        <EyeOff className="w-4 h-4 text-amber-400 animate-pulse" />
+                  <div className="lg:hidden p-1.5 xs:p-2 rounded-lg bg-slate-900/95 border border-amber-500/60 flex items-center justify-between gap-2 shadow-md">
+                    <div className="flex items-center space-x-1.5 min-w-0">
+                      <div className="w-6 h-6 rounded-md bg-amber-500/20 flex items-center justify-center shrink-0">
+                        <EyeOff className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
                       </div>
                       <div className="min-w-0 text-left">
-                        <p className="text-[10px] font-mono font-bold text-amber-300 uppercase leading-none">Confidential Message to Admin</p>
-                        <p className="text-[9.5px] text-slate-300 truncate mt-0.5">100% Anonymous & Protected</p>
+                        <p className="text-[9px] font-mono font-bold text-amber-300 uppercase leading-none">Confidential Message to Admin</p>
+                        <p className="text-[8px] text-slate-300 truncate mt-0.5">100% Anonymous & Protected</p>
                       </div>
                     </div>
                     <button
@@ -2281,7 +2301,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                           modalScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
                         }, 50);
                       }}
-                      className="px-2.5 py-1.5 rounded-lg fluid-btn-amber text-slate-950 font-mono font-black text-[10px] uppercase shrink-0 active:scale-95 shadow cursor-pointer border border-amber-300"
+                      className="px-2 py-1 rounded-md fluid-btn-amber text-slate-950 font-mono font-black text-[9px] uppercase shrink-0 active:scale-95 shadow cursor-pointer border border-amber-300"
                     >
                       Mag-message
                     </button>
@@ -2289,76 +2309,76 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 </div>
               ) : activeView === 'event' ? (
                 /* ========================================================================= */
-                /* NO ACTIVE SCHEDULE: ENLARGED PROFESSIONAL ADVISORY CARD                   */
+                /* NO ACTIVE SCHEDULE: COMPACT PROFESSIONAL ADVISORY CARD (FITS MOBILE)      */
                 /* ========================================================================= */
-                <div className="relative rounded-2xl sm:rounded-3xl border-2 border-slate-700/80 shadow-[0_0_50px_rgba(0,0,0,0.8),inset_0_0_20px_rgba(16,185,129,0.12)] bg-slate-950/90 hover:bg-slate-950/95 backdrop-blur-md p-4 sm:p-6 lg:p-7 space-y-3 sm:space-y-4 transition-all duration-300 hover:border-slate-600 animate-scaleIn w-full text-left">
+                <div className="relative rounded-xl sm:rounded-3xl border-2 border-slate-700/80 shadow-[0_0_40px_rgba(0,0,0,0.8),inset_0_0_20px_rgba(16,185,129,0.12)] bg-slate-950/95 hover:bg-slate-950/98 backdrop-blur-md p-2.5 xs:p-3 sm:p-6 lg:p-7 space-y-1.5 xs:space-y-2 sm:space-y-4 transition-all duration-300 hover:border-slate-600 animate-scaleIn w-full max-w-xl sm:max-w-2xl mx-auto text-left flex flex-col max-h-[calc(100dvh-65px)] sm:max-h-none overflow-y-auto sm:overflow-visible scrollbar-none [&::-webkit-scrollbar]:hidden">
                   {/* Top Bar inside Card */}
-                  <div className="flex items-center justify-between border-b border-white/10 pb-2.5 sm:pb-3 gap-2">
-                    <div className="flex items-center space-x-2.5 min-w-0">
-                      <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shrink-0" />
-                      <span className="px-3.5 py-1 rounded-full text-xs sm:text-sm font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 uppercase tracking-wider flex items-center gap-2 backdrop-blur-sm truncate">
-                        <ShieldCheck className="w-4 h-4 text-cyan-400 shrink-0" />
+                  <div className="flex items-center justify-between border-b border-white/10 pb-1.5 sm:pb-3 gap-1.5">
+                    <div className="flex items-center space-x-1.5 sm:space-x-2.5 min-w-0">
+                      <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-cyan-400 animate-pulse shrink-0" />
+                      <span className="px-2 py-0.5 sm:px-3.5 sm:py-1 rounded-full text-[10px] sm:text-sm font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 uppercase tracking-wider flex items-center gap-1.5 backdrop-blur-sm truncate">
+                        <ShieldCheck className="w-3 h-3 sm:w-4 sm:h-4 text-cyan-400 shrink-0" />
                         <span className="truncate">Public Advisory • PESO & MENRO Operations</span>
                       </span>
                     </div>
 
-                    <div className="flex items-center space-x-2 shrink-0">
+                    <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
                       <button
                         type="button"
                         onClick={() => setActiveView('login')}
-                        className="px-2.5 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 font-mono text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                        className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md sm:rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 font-mono text-[10px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
                       >
-                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                        <ShieldCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400" />
                         <span>Admin Login</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => setIsUnfolded(false)}
-                        className="p-1.5 sm:p-2 rounded-lg bg-slate-900/70 hover:bg-slate-800 border border-slate-700/60 text-slate-300 hover:text-white transition-all cursor-pointer"
+                        className="p-1 sm:p-2 rounded-md sm:rounded-lg bg-slate-900/70 hover:bg-slate-800 border border-slate-700/60 text-slate-300 hover:text-white transition-all cursor-pointer"
                         title="Close Notice"
                       >
-                        <X className="w-4 h-4 text-slate-400 hover:text-white" />
+                        <X className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 hover:text-white" />
                       </button>
                     </div>
                   </div>
 
                   {/* Official Notice Header */}
-                  <div className="space-y-1.5 text-left">
-                    <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-slate-900 border border-slate-700 text-[10px] sm:text-xs font-mono font-bold text-slate-300">
-                      <Clock className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                      <span>OFFICIAL STATUS: NO SCHEDULE RECORDED FOR TODAY</span>
+                  <div className="space-y-0.5 sm:space-y-1.5 text-left">
+                    <div className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full bg-slate-900 border border-slate-700 text-[9px] sm:text-xs font-mono font-bold text-slate-300">
+                      <Clock className="w-3 h-3 text-cyan-400 shrink-0" />
+                      <span>STATUS: NO SCHEDULE RECORDED FOR TODAY</span>
                     </div>
-                    <h3 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-black text-white leading-tight drop-shadow-md">
+                    <h3 className="text-sm xs:text-base sm:text-xl lg:text-2xl xl:text-3xl font-black text-white leading-tight drop-shadow-md">
                       No Official Work Program Scheduled for Today
                     </h3>
-                    <p className="text-xs sm:text-sm lg:text-[14px] font-mono text-emerald-300 flex items-center gap-1.5">
-                      <MapPin className="w-4 h-4 text-emerald-400 shrink-0" />
-                      <span>Municipality of Dingalan, Aurora • Environmental Compliance</span>
+                    <p className="text-[10px] xs:text-[11px] sm:text-sm lg:text-[14px] font-mono text-emerald-300 flex items-center gap-1">
+                      <MapPin className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-400 shrink-0" />
+                      <span className="truncate">Municipality of Dingalan, Aurora • Environmental Compliance</span>
                     </p>
                   </div>
 
-                  {/* Professional Notice Statement Box (Enlarged) */}
-                  <div className="p-3.5 sm:p-4.5 rounded-2xl bg-slate-900/95 border border-slate-800/90 text-xs sm:text-sm lg:text-[14.5px] font-sans space-y-2 text-slate-100 leading-relaxed shadow-inner">
+                  {/* Professional Notice Statement Box */}
+                  <div className="p-2 xs:p-2.5 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-900/95 border border-slate-800/90 text-[10px] xs:text-[11px] sm:text-sm lg:text-[14.5px] font-sans space-y-1 sm:space-y-2 text-slate-100 leading-snug shadow-inner">
                     <p>
                       Please be advised that <strong className="text-white">there are currently no active field operations, coastal cleanup drives, or official environmental compliance activities scheduled for today</strong>.
                     </p>
-                    <p className="text-[11.5px] sm:text-xs lg:text-[13px] text-slate-300 leading-normal">
+                    <p className="text-[9px] xs:text-[10px] sm:text-xs lg:text-[13px] text-slate-300 leading-normal">
                       All verified beneficiaries and supervisors will automatically receive the official event QR code and guidelines here once broadcasted by the Administrator.
                     </p>
                   </div>
 
-                  {/* Most Recent Program / Last Event Date Box (Enlarged) */}
-                  <div className="p-3 sm:p-4 rounded-xl bg-slate-900/90 border border-emerald-500/35 text-xs sm:text-sm font-mono space-y-1.5 text-left shadow-md">
+                  {/* Most Recent Program / Last Event Date Box */}
+                  <div className="p-1.5 xs:p-2 sm:p-4 rounded-lg sm:rounded-xl bg-slate-900/90 border border-emerald-500/35 text-[9.5px] xs:text-[10.5px] sm:text-sm font-mono space-y-0.5 sm:space-y-1.5 text-left shadow-md">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] sm:text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                        <Calendar className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span className="text-[9px] sm:text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                        <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-400 shrink-0" />
                         Most Recent Completed Record:
                       </span>
-                      <span className="text-[9.5px] sm:text-[10.5px] text-slate-300 font-mono font-semibold bg-slate-800 px-2.5 py-0.5 rounded-md border border-slate-700">
+                      <span className="text-[8.5px] sm:text-[10.5px] text-slate-300 font-mono font-semibold bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">
                         Record
                       </span>
                     </div>
-                    <div className="text-white font-bold text-xs sm:text-sm lg:text-[15px] truncate">
+                    <div className="text-white font-bold text-[10px] xs:text-[11px] sm:text-sm lg:text-[15px] truncate">
                       {lastCompletedEvent ? (
                         <span>
                           {lastCompletedEvent.title} — <span className="text-emerald-300 font-mono">{lastCompletedEvent.date}</span> (Brgy. {lastCompletedEvent.barangay})
@@ -2371,36 +2391,36 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Assistance & Office Hours Grid (Enlarged) */}
-                  <div className="grid grid-cols-2 gap-2.5 text-xs sm:text-sm font-mono text-slate-300">
-                    <div className="p-2.5 sm:p-3.5 rounded-xl bg-slate-900/70 border border-slate-800 space-y-1">
-                      <span className="text-[9.5px] sm:text-[10.5px] text-emerald-400 font-bold uppercase tracking-wider block">Office Operations:</span>
-                      <span className="text-white text-xs sm:text-sm lg:text-[14px] truncate block font-medium">Mon–Fri: 8:00 AM – 5:00 PM</span>
+                  {/* Assistance & Office Hours Grid */}
+                  <div className="grid grid-cols-2 gap-1.5 xs:gap-2 sm:gap-2.5 text-[9px] xs:text-[10px] sm:text-sm font-mono text-slate-300">
+                    <div className="p-1.5 xs:p-2 sm:p-3.5 rounded-lg sm:rounded-xl bg-slate-900/70 border border-slate-800 space-y-0.5 sm:space-y-1">
+                      <span className="text-[8px] sm:text-[10.5px] text-emerald-400 font-bold uppercase tracking-wider block">Office Operations:</span>
+                      <span className="text-white text-[9.5px] xs:text-[10.5px] sm:text-sm lg:text-[14px] truncate block font-medium">Mon–Fri: 8:00 AM – 5:00 PM</span>
                     </div>
-                    <div className="p-2.5 sm:p-3.5 rounded-xl bg-slate-900/70 border border-slate-800 space-y-1">
-                      <span className="text-[9.5px] sm:text-[10.5px] text-cyan-400 font-bold uppercase tracking-wider block">Operations Center:</span>
-                      <span className="text-white text-xs sm:text-sm lg:text-[14px] truncate block font-medium">Brgy. Poblacion, Dingalan</span>
+                    <div className="p-1.5 xs:p-2 sm:p-3.5 rounded-lg sm:rounded-xl bg-slate-900/70 border border-slate-800 space-y-0.5 sm:space-y-1">
+                      <span className="text-[8px] sm:text-[10.5px] text-cyan-400 font-bold uppercase tracking-wider block">Operations Center:</span>
+                      <span className="text-white text-[9.5px] xs:text-[10.5px] sm:text-sm lg:text-[14px] truncate block font-medium">Brgy. Poblacion, Dingalan</span>
                     </div>
                   </div>
 
                   {/* Live Monitoring Badge */}
-                  <div className="pt-2 sm:pt-2.5 border-t border-white/10 flex items-center justify-between text-[10.5px] sm:text-xs lg:text-sm font-mono text-slate-400">
-                    <div className="flex items-center space-x-2 text-emerald-400">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                      <span>Live Scheduler Active • Auto-updates upon broadcast</span>
+                  <div className="pt-1.5 sm:pt-2.5 border-t border-white/10 flex items-center justify-between text-[9px] xs:text-[10px] sm:text-xs lg:text-sm font-mono text-slate-400">
+                    <div className="flex items-center space-x-1.5 text-emerald-400">
+                      <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-400 animate-ping" />
+                      <span className="truncate">Live Scheduler Active • Auto-updates upon broadcast</span>
                     </div>
-                    <span className="text-slate-400 font-semibold">Dingalan LGU</span>
+                    <span className="text-slate-400 font-semibold shrink-0">Dingalan LGU</span>
                   </div>
 
                   {/* Mobile Quick Anonymous Reporting Box inside Public Advisory */}
-                  <div className="lg:hidden p-2.5 rounded-xl bg-slate-900/95 border-2 border-amber-500/60 flex items-center justify-between gap-2 shadow-lg">
-                    <div className="flex items-center space-x-2 min-w-0">
-                      <div className="w-7 h-7 rounded-lg bg-amber-500/20 flex items-center justify-center shrink-0">
-                        <EyeOff className="w-4 h-4 text-amber-400 animate-pulse" />
+                  <div className="lg:hidden p-1.5 xs:p-2 rounded-lg bg-slate-900/95 border border-amber-500/60 flex items-center justify-between gap-2 shadow-md">
+                    <div className="flex items-center space-x-1.5 min-w-0">
+                      <div className="w-6 h-6 rounded-md bg-amber-500/20 flex items-center justify-center shrink-0">
+                        <EyeOff className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
                       </div>
                       <div className="min-w-0 text-left">
-                        <p className="text-[10px] font-mono font-bold text-amber-300 uppercase leading-none">Confidential Message to Admin</p>
-                        <p className="text-[9.5px] text-slate-300 truncate mt-0.5">100% Anonymous & Protected</p>
+                        <p className="text-[9px] font-mono font-bold text-amber-300 uppercase leading-none">Confidential Message to Admin</p>
+                        <p className="text-[8px] text-slate-300 truncate mt-0.5">100% Anonymous & Protected</p>
                       </div>
                     </div>
                     <button
@@ -2412,7 +2432,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                           modalScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
                         }, 50);
                       }}
-                      className="px-2.5 py-1.5 rounded-lg fluid-btn-amber text-slate-950 font-mono font-black text-[10px] uppercase shrink-0 active:scale-95 shadow cursor-pointer border border-amber-300"
+                      className="px-2 py-1 rounded-md fluid-btn-amber text-slate-950 font-mono font-black text-[9px] uppercase shrink-0 active:scale-95 shadow cursor-pointer border border-amber-300"
                     >
                       Mag-message
                     </button>
@@ -2421,7 +2441,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               ) : (
                 /* ULTRA-SMOOTH POP-UP GREEN DIAGONAL CARD (SEMI-TRANSPARENT FROSTED GLASS) */
                 <div
-                  className="relative rounded-2xl lg:rounded-3xl border-2 border-emerald-400/80 shadow-[0_0_50px_rgba(16,185,129,0.4),inset_0_0_20px_rgba(16,185,129,0.15)] bg-slate-950/50 hover:bg-slate-950/55 backdrop-blur-md overflow-hidden grid grid-cols-1 md:grid-cols-12 transition-all duration-500 ease-out transform scale-100 opacity-100 translate-y-0"
+                  className="relative rounded-2xl lg:rounded-3xl border-2 border-emerald-400/80 shadow-[0_0_50px_rgba(16,185,129,0.4),inset_0_0_20px_rgba(16,185,129,0.15)] bg-slate-950/50 hover:bg-slate-950/55 backdrop-blur-md overflow-hidden grid grid-cols-1 md:grid-cols-12 transition-all duration-500 ease-out transform scale-100 opacity-100 translate-y-0 w-full max-w-md sm:max-w-xl md:max-w-none mx-auto my-auto"
                   style={{
                     perspective: '1200px',
                     transformStyle: 'preserve-3d',

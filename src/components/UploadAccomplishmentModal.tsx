@@ -274,27 +274,27 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
   };
 
   return (
-    <div className="fixed inset-0 z-[999] flex items-center justify-center p-3 sm:p-6 bg-slate-950/90 backdrop-blur-lg overflow-y-auto animate-fadeIn">
-      <div className="relative w-full max-w-2xl bg-slate-900 border-2 border-emerald-500/60 rounded-3xl shadow-[0_25px_70px_rgba(0,0,0,0.9),0_0_50px_rgba(16,185,129,0.25)] overflow-hidden my-auto flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-[999] flex items-center justify-center p-2 xs:p-3 sm:p-6 bg-slate-950/90 backdrop-blur-lg overflow-y-auto animate-fadeIn">
+      <div className="relative w-full max-w-2xl bg-slate-900 border-2 border-emerald-500/60 rounded-2xl sm:rounded-3xl shadow-[0_25px_70px_rgba(0,0,0,0.9),0_0_50px_rgba(16,185,129,0.25)] overflow-hidden my-auto flex flex-col max-h-[96vh] sm:max-h-[92vh]">
         
         {/* Header Bar */}
-        <div className="px-3.5 sm:px-6 py-3 sm:py-4 border-b border-slate-800 bg-slate-950/80 flex items-center justify-between shrink-0">
-          <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 shadow-md shrink-0">
-              <Camera className="w-4 h-4 sm:w-5 sm:h-5 text-slate-950" />
+        <div className="px-3 sm:px-6 py-2 sm:py-4 border-b border-slate-800 bg-slate-950/80 flex items-center justify-between shrink-0">
+          <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+            <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 shadow-md shrink-0">
+              <Camera className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-slate-950" />
             </div>
             <div className="min-w-0">
-              <span className="text-[9px] sm:text-[10px] font-mono font-extrabold uppercase tracking-widest text-emerald-400 block truncate">
+              <span className="text-[8px] sm:text-[10px] font-mono font-extrabold uppercase tracking-widest text-emerald-400 block truncate">
                 LINIS DINGALAN • VERIFIED QR ATTENDANCE
               </span>
-              <h3 className="text-sm sm:text-lg font-black text-white tracking-tight leading-tight uppercase truncate">
+              <h3 className="text-xs sm:text-lg font-black text-white tracking-tight leading-tight uppercase truncate">
                 PATUNAY SA PAGDALO: UPLOAD ACCOMPLISHMENT
               </h3>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer shrink-0"
+            className="p-1 sm:p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer shrink-0"
             title="ISARA"
           >
             <X className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -302,26 +302,26 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
         </div>
 
         {/* Modal Body */}
-        <div className="p-3.5 sm:p-6 overflow-y-auto space-y-4 sm:space-y-5 flex-1 min-h-0 text-left">
+        <div className="p-2.5 sm:p-6 overflow-y-auto space-y-2.5 sm:space-y-5 flex-1 min-h-0 text-left">
           {/* SUCCESS SCREEN */}
           {isSuccess ? (
-            <div className="text-center py-8 space-y-4 animate-scaleIn">
-              <div className="w-20 h-20 mx-auto rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.4)]">
-                <CheckCircle2 className="w-10 h-10 text-emerald-400" />
+            <div className="text-center py-4 sm:py-8 space-y-2.5 sm:space-y-4 animate-scaleIn">
+              <div className="w-12 h-12 sm:w-20 sm:h-20 mx-auto rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.4)]">
+                <CheckCircle2 className="w-6 h-6 sm:w-10 sm:h-10 text-emerald-400" />
               </div>
-              <div className="space-y-1">
-                <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase tracking-wider">
+              <div className="space-y-0.5 sm:space-y-1">
+                <span className="px-2.5 py-0.5 rounded-full text-[9px] sm:text-xs font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase tracking-wider">
                   ATTENDANCE & PROOF RECORDED
                 </span>
-                <h4 className="text-2xl font-black text-white uppercase">
+                <h4 className="text-base sm:text-2xl font-black text-white uppercase">
                   MATAGUMPAY NA NA-UPLOAD ANG ACCOMPLISHMENT!
                 </h4>
-                <p className="text-xs text-slate-300 max-w-md mx-auto uppercase font-medium">
+                <p className="text-[10px] sm:text-xs text-slate-300 max-w-md mx-auto uppercase font-medium">
                   ANG {uploadedPhotos.length} NA PATUNAY NA LARAWAN NI <strong className="text-white">{fullName}</strong> AY NAISUMITE NA SA SYSTEM AT MAKIKITA NA SA <strong>ACCOMPLISHMENT ATTENDANCE</strong> BUTTON NG ADMIN.
                 </p>
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 text-xs font-mono text-left space-y-1.5 max-w-md mx-auto uppercase">
+              <div className="p-2.5 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-950/70 border border-slate-800 text-[10px] sm:text-xs font-mono text-left space-y-1 sm:space-y-1.5 max-w-md mx-auto uppercase">
                 <div className="flex justify-between">
                   <span className="text-slate-400">ATTENDEE (PANGALAN):</span>
                   <span className="text-white font-bold">{fullName}</span>
@@ -354,19 +354,21 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto w-full">
-                <button
-                  type="button"
-                  onClick={() => setPreviewFullscreenIndex(0)}
-                  className="w-full py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-emerald-500/40 text-emerald-300 font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-lg uppercase tracking-wider"
-                >
-                  <Images className="w-4 h-4 text-emerald-400" />
-                  <span>I-FULLSCREEN ANG LARAWAN ({uploadedPhotos.length})</span>
-                </button>
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 max-w-md mx-auto w-full">
+                {uploadedPhotos.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setPreviewFullscreenIndex(0)}
+                    className="w-full py-2 sm:py-3.5 rounded-lg sm:rounded-xl bg-slate-800 hover:bg-slate-700 border border-emerald-500/40 text-emerald-300 font-black text-[10px] sm:text-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-lg uppercase tracking-wider"
+                  >
+                    <Images className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
+                    <span>I-FULLSCREEN ANG LARAWAN ({uploadedPhotos.length})</span>
+                  </button>
+                )}
 
                 <button
                   onClick={onClose}
-                  className="w-full py-3.5 rounded-xl fluid-btn-emerald text-slate-950 font-black text-xs sm:text-sm shadow-[0_0_20px_rgba(16,185,129,0.35)] cursor-pointer uppercase tracking-wider"
+                  className="w-full py-2 sm:py-3.5 rounded-lg sm:rounded-xl fluid-btn-emerald text-slate-950 font-black text-[10px] sm:text-sm shadow-[0_0_20px_rgba(16,185,129,0.35)] cursor-pointer uppercase tracking-wider"
                 >
                   TAPOS NA (DONE)
                 </button>
@@ -376,28 +378,28 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
             <>
               {/* CUT-OFF WARNING BANNER (Shows when event time limit has passed) */}
               {cutoffInfo.isExpired ? (
-                <div className="p-4 rounded-2xl bg-rose-950/90 border-2 border-rose-500/80 text-rose-200 text-xs font-sans space-y-1.5 shadow-[0_0_30px_rgba(244,63,94,0.35)] animate-pulse">
-                  <div className="flex items-center space-x-2 font-mono font-black text-rose-300 text-sm uppercase">
-                    <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
+                <div className="p-2 sm:p-4 rounded-xl sm:rounded-2xl bg-rose-950/90 border-2 border-rose-500/80 text-rose-200 text-[10px] sm:text-xs font-sans space-y-1 sm:space-y-1.5 shadow-[0_0_30px_rgba(244,63,94,0.35)] animate-pulse">
+                  <div className="flex items-center space-x-1.5 sm:space-x-2 font-mono font-black text-rose-300 text-xs sm:text-sm uppercase">
+                    <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-rose-400 shrink-0" />
                     <span>TAPOS NA ANG NAKATAKDANG ORAS NG EVENT (CUT-OFF REACHED)</span>
                   </div>
-                  <p className="leading-relaxed text-slate-200 uppercase font-medium">
+                  <p className="leading-snug text-slate-200 uppercase font-medium text-[9px] sm:text-xs">
                     NAKALIPAS NA ANG ITINAKDANG ORAS NG EVENT ({cutoffInfo.endTimeFormatted}). AYON SA PATAKARAN NG LGU, HINDI NA TATANGGAPIN ANG ACCOMPLISHMENT ATTENDANCE O MGA LARAWAN MATAPOS ANG NAKATAKDANG CUT-OFF TIME.
                   </p>
                 </div>
               ) : (
-                <div className="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-[11px] font-mono flex items-center justify-between uppercase">
-                  <span className="flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-emerald-400" />
+                <div className="p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-[10px] sm:text-[11px] font-mono flex items-center justify-between uppercase">
+                  <span className="flex items-center gap-1 sm:gap-1.5">
+                    <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400" />
                     <span>EVENT CUT-OFF: <strong>{cutoffInfo.endTimeFormatted}</strong></span>
                   </span>
-                  <span className="text-emerald-400 font-bold">BUKAS PARA SA SUBMISSION</span>
+                  <span className="text-emerald-400 font-bold hidden xs:inline">BUKAS PARA SA SUBMISSION</span>
                 </div>
               )}
 
               {errorMessage && (
-                <div className="p-3.5 rounded-xl bg-rose-950/80 border border-rose-500/50 text-rose-200 text-xs flex items-center space-x-2 uppercase font-mono font-bold">
-                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                <div className="p-2 sm:p-3.5 rounded-lg sm:rounded-xl bg-rose-950/80 border border-rose-500/50 text-rose-200 text-[10px] sm:text-xs flex items-center space-x-1.5 sm:space-x-2 uppercase font-mono font-bold">
+                  <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-400 shrink-0" />
                   <span>{errorMessage}</span>
                 </div>
               )}
@@ -405,13 +407,13 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
               {/* ========================================================================= */}
               {/* FIELD 1: FULL NAME (Malaya nyang ilalagay) */}
               {/* ========================================================================= */}
-              <div className="space-y-1.5">
+              <div className="space-y-0.5 sm:space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wide flex items-center space-x-1.5">
-                    <UserCheck className="w-4 h-4 text-emerald-400" />
+                  <label className="text-[10px] sm:text-xs font-mono font-bold text-slate-200 uppercase tracking-wide flex items-center space-x-1 sm:space-x-1.5">
+                    <UserCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
                     <span>1. FULL NAME NG BENEPISYARYO / ATTENDEE <span className="text-rose-400">*</span></span>
                   </label>
-                  <span className="text-[10px] font-mono text-emerald-400 uppercase font-semibold">KAYO ANG MAGPAPASYA NG ILALAGAY</span>
+                  <span className="text-[8.5px] sm:text-[10px] font-mono text-emerald-400 uppercase font-semibold hidden xs:inline">KAYO ANG MAGPAPASYA NG ILALAGAY</span>
                 </div>
 
                 <div className="relative">
@@ -420,22 +422,22 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder=""
-                    className="w-full px-4 py-3 rounded-xl bg-slate-950/80 border border-slate-700 focus:border-emerald-400 text-white text-xs sm:text-sm font-sans font-bold shadow-inner uppercase"
+                    className="w-full px-3 sm:px-4 py-1.5 sm:py-3 rounded-lg sm:rounded-xl bg-slate-950/80 border border-slate-700 focus:border-emerald-400 text-white text-xs sm:text-sm font-sans font-bold shadow-inner uppercase"
                   />
-                  <Edit3 className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <Edit3 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 absolute right-3 sm:right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
               </div>
 
               {/* ========================================================================= */}
               {/* FIELD 2: LUGAR KUNG SAANG AREA NAKAPAGLINIS (Malaya nyang ilalagay) */}
               {/* ========================================================================= */}
-              <div className="space-y-1.5 pt-1">
+              <div className="space-y-0.5 sm:space-y-1.5 pt-0.5 sm:pt-1">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wide flex items-center space-x-1.5">
-                    <Calendar className="w-4 h-4 text-cyan-400" />
+                  <label className="text-[10px] sm:text-xs font-mono font-bold text-slate-200 uppercase tracking-wide flex items-center space-x-1 sm:space-x-1.5">
+                    <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-400" />
                     <span>2. LUGAR KUNG SAANG AREA NAKAPAGLINIS <span className="text-rose-400">*</span></span>
                   </label>
-                  <span className="text-[10px] font-mono text-cyan-400 uppercase font-semibold">KAYO ANG MAGPAPASYA NG ILALAGAY</span>
+                  <span className="text-[8.5px] sm:text-[10px] font-mono text-cyan-400 uppercase font-semibold hidden xs:inline">KAYO ANG MAGPAPASYA NG ILALAGAY</span>
                 </div>
 
                 <div className="relative">
@@ -444,37 +446,37 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
                     value={cleanedArea}
                     onChange={(e) => setCleanedArea(e.target.value)}
                     placeholder=""
-                    className="w-full px-4 py-3 rounded-xl bg-slate-950/80 border border-slate-700 focus:border-cyan-400 text-white text-xs sm:text-sm font-sans font-bold shadow-inner uppercase"
+                    className="w-full px-3 sm:px-4 py-1.5 sm:py-3 rounded-lg sm:rounded-xl bg-slate-950/80 border border-slate-700 focus:border-cyan-400 text-white text-xs sm:text-sm font-sans font-bold shadow-inner uppercase"
                   />
-                  <MapPin className="w-4 h-4 text-cyan-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-400 absolute right-3 sm:right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
               </div>
 
               {/* Upload Action Area: Kahit Ilang Picture */}
-              <div className="space-y-3 pt-1">
+              <div className="space-y-1.5 sm:space-y-3 pt-0.5 sm:pt-1">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wide flex items-center space-x-1.5">
-                    <Images className="w-4 h-4 text-emerald-400" />
+                  <label className="text-[10px] sm:text-xs font-mono font-bold text-slate-200 uppercase tracking-wide flex items-center space-x-1 sm:space-x-1.5">
+                    <Images className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
                     <span>3. ACCOMPLISHMENT PICTURES (KAHIT ILANG PICTURE) <span className="text-rose-400">*</span></span>
                   </label>
-                  <span className="text-xs font-mono text-cyan-400 font-bold uppercase">
+                  <span className="text-[10px] sm:text-xs font-mono text-cyan-400 font-bold uppercase">
                     {uploadedPhotos.length} LARAWAN NA-UPLOAD
                   </span>
                 </div>
 
                 {/* Big Action Buttons - Fitted 100% Inside Container */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 w-full">
+                <div className="grid grid-cols-2 gap-1.5 sm:gap-3 w-full">
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isProcessing}
-                    className="w-full p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-emerald-500/25 via-teal-500/20 to-slate-900 border-2 border-dashed border-emerald-400/80 hover:border-emerald-300 text-white flex flex-col items-center justify-center space-y-1 transition-all cursor-pointer group shadow-[0_0_20px_rgba(16,185,129,0.25)] hover:scale-[1.01] uppercase text-center"
+                    className="w-full p-2 sm:p-4 rounded-xl sm:rounded-2xl bg-gradient-to-r from-emerald-500/25 via-teal-500/20 to-slate-900 border-2 border-dashed border-emerald-400/80 hover:border-emerald-300 text-white flex flex-col items-center justify-center space-y-0.5 sm:space-y-1 transition-all cursor-pointer group shadow-[0_0_20px_rgba(16,185,129,0.25)] hover:scale-[1.01] uppercase text-center"
                   >
-                    <div className="flex items-center space-x-2">
-                      <Upload className="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform shrink-0" />
-                      <span className="font-black text-xs sm:text-sm">PUMILI NG MGA LARAWAN</span>
+                    <div className="flex items-center space-x-1 sm:space-x-2">
+                      <Upload className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400 group-hover:scale-110 transition-transform shrink-0" />
+                      <span className="font-black text-[10px] sm:text-sm truncate">PUMILI NG LARAWAN</span>
                     </div>
-                    <span className="text-[10px] font-mono text-emerald-300 font-semibold uppercase">
+                    <span className="text-[8px] sm:text-[10px] font-mono text-emerald-300 font-semibold uppercase truncate hidden xs:block">
                       (KAHIT ILANG PICTURE / WALANG LIMIT)
                     </span>
                   </button>
@@ -483,13 +485,13 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
                     type="button"
                     onClick={() => cameraInputRef.current?.click()}
                     disabled={isProcessing}
-                    className="w-full p-3 sm:p-4 rounded-2xl bg-slate-950/80 border-2 border-slate-700 hover:border-cyan-400 text-slate-200 hover:text-white flex flex-col items-center justify-center space-y-1 transition-all cursor-pointer group shadow-lg hover:scale-[1.01] uppercase text-center"
+                    className="w-full p-2 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-950/80 border-2 border-slate-700 hover:border-cyan-400 text-slate-200 hover:text-white flex flex-col items-center justify-center space-y-0.5 sm:space-y-1 transition-all cursor-pointer group shadow-lg hover:scale-[1.01] uppercase text-center"
                   >
-                    <div className="flex items-center space-x-2">
-                      <Camera className="w-5 h-5 text-cyan-400 group-hover:scale-110 transition-transform shrink-0" />
-                      <span className="font-black text-xs sm:text-sm">KUMUHA NG CAMERA SNAPSHOT</span>
+                    <div className="flex items-center space-x-1 sm:space-x-2">
+                      <Camera className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400 group-hover:scale-110 transition-transform shrink-0" />
+                      <span className="font-black text-[10px] sm:text-sm truncate">CAMERA SNAPSHOT</span>
                     </div>
-                    <span className="text-[10px] font-mono text-cyan-300 font-semibold uppercase">
+                    <span className="text-[8px] sm:text-[10px] font-mono text-cyan-300 font-semibold uppercase truncate hidden xs:block">
                       (DIRECT CAMERA WITH REALTIME GPS)
                     </span>
                   </button>
@@ -517,10 +519,10 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
                     type="button"
                     onClick={handleAddSamplePhotos}
                     disabled={isProcessing}
-                    className="w-full py-2.5 px-3 rounded-xl bg-slate-950/60 hover:bg-slate-800 border border-slate-800 text-[11px] font-mono font-bold text-emerald-300 flex items-center justify-center space-x-1.5 transition-colors cursor-pointer uppercase"
+                    className="w-full py-1.5 sm:py-2.5 px-2 sm:px-3 rounded-lg sm:rounded-xl bg-slate-950/60 hover:bg-slate-800 border border-slate-800 text-[9.5px] sm:text-[11px] font-mono font-bold text-emerald-300 flex items-center justify-center space-x-1.5 transition-colors cursor-pointer uppercase"
                   >
-                    <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <span>MAG-LOAD NG SAMPLE CLEANUP PHOTOS PARA SA TEST</span>
+                    <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400 shrink-0" />
+                    <span className="truncate">MAG-LOAD NG SAMPLE CLEANUP PHOTOS PARA SA TEST</span>
                   </button>
                 )}
               </div>
@@ -585,16 +587,16 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
               )}
 
               {/* Accomplishment Notes */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-mono font-bold text-slate-200 block uppercase">
-                  4. ULAT SA GINAWANG PAGLILINIS (CLEANUP ACCOMPLISHMENT NOTES)
+              <div className="space-y-1 sm:space-y-1.5">
+                <label className="text-[10px] sm:text-xs font-mono font-bold text-slate-200 block uppercase">
+                  4. ULAT SA GINAWANG PAGLILINIS (NOTES)
                 </label>
                 <textarea
                   value={accomplishmentNotes}
                   onChange={(e) => setAccomplishmentNotes(e.target.value)}
                   placeholder=""
-                  rows={2}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-slate-700 focus:border-emerald-400 text-white placeholder-slate-500 text-xs font-sans uppercase"
+                  rows={1}
+                  className="w-full px-3 sm:px-3.5 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl bg-slate-950/80 border border-slate-700 focus:border-emerald-400 text-white placeholder-slate-500 text-xs font-sans uppercase resize-none"
                 />
               </div>
 
@@ -603,7 +605,7 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
                 type="button"
                 onClick={handleSubmit}
                 disabled={isProcessing || uploadedPhotos.length === 0 || cutoffInfo.isExpired}
-                className={`w-full py-4 rounded-2xl font-black text-xs sm:text-sm tracking-wide flex items-center justify-center space-x-2 transition-all shadow-xl uppercase ${
+                className={`w-full py-2.5 sm:py-4 rounded-xl sm:rounded-2xl font-black text-xs sm:text-sm tracking-wide flex items-center justify-center space-x-1.5 sm:space-x-2 transition-all shadow-xl uppercase ${
                   cutoffInfo.isExpired
                     ? 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60'
                     : 'bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400 hover:from-emerald-400 hover:to-cyan-300 text-slate-950 shadow-[0_0_30px_rgba(16,185,129,0.4)] cursor-pointer transform hover:-translate-y-0.5 active:scale-95 disabled:opacity-50'
@@ -611,18 +613,18 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
               >
                 {isProcessing ? (
                   <span className="flex items-center space-x-2">
-                    <span className="w-5 h-5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                    <span className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
                     <span>IPINOPROSESO AT ISINUSUMITE ANG MGA LARAWAN...</span>
                   </span>
                 ) : cutoffInfo.isExpired ? (
-                  <span className="flex items-center space-x-2 text-rose-300">
-                    <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
-                    <span>SARADO NA ANG SUBMISSION (NAKALIPAS NA ANG ORAS NG EVENT)</span>
+                  <span className="flex items-center space-x-1.5 sm:space-x-2 text-rose-300">
+                    <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-rose-400 shrink-0" />
+                    <span>SARADO NA ANG SUBMISSION (CUT-OFF)</span>
                   </span>
                 ) : (
-                  <span className="flex items-center space-x-2">
-                    <FileCheck className="w-5 h-5 text-slate-950 shrink-0" />
-                    <span>I-SUBMIT ANG ATTENDANCE AT ACCOMPLISHMENT PICTURES ({uploadedPhotos.length})</span>
+                  <span className="flex items-center space-x-1.5 sm:space-x-2">
+                    <FileCheck className="w-4 h-4 sm:w-5 sm:h-5 text-slate-950 shrink-0" />
+                    <span>I-SUBMIT ANG ATTENDANCE AT PICTURES ({uploadedPhotos.length})</span>
                   </span>
                 )}
               </button>
