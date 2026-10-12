@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Activity, AttendanceRecord, Beneficiary, DingalanBarangay, User, ActivityAssignment } from '../types';
 import { FullScreenPhotoViewer } from './FullScreenPhotoViewer';
 import { formatPhilippineDateTime } from '../utils/philippineClock';
@@ -23,6 +23,8 @@ import {
   TrendingUp,
   Pencil,
   Trash2,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 const DINGALAN_BARANGAYS: DingalanBarangay[] = [
@@ -163,6 +165,22 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       return matchesActivity && matchesBarangay && matchesSearch;
     });
   }, [activities, selectedActivityId, selectedBarangay, searchTerm]);
+
+  // Pagination for Auto Program Content Report (Strictly 3 boxes per page as requested)
+  const [programPage, setProgramPage] = useState<number>(1);
+  const PROGRAMS_PER_PAGE = 3;
+
+  useEffect(() => {
+    setProgramPage(1);
+  }, [selectedActivityId, selectedBarangay, searchTerm]);
+
+  const totalProgramPages = Math.max(1, Math.ceil(filteredActivities.length / PROGRAMS_PER_PAGE));
+  const safeProgramPage = Math.min(Math.max(1, programPage), totalProgramPages);
+
+  const paginatedActivities = useMemo(() => {
+    const startIndex = (safeProgramPage - 1) * PROGRAMS_PER_PAGE;
+    return filteredActivities.slice(startIndex, startIndex + PROGRAMS_PER_PAGE);
+  }, [filteredActivities, safeProgramPage]);
 
   // Aggregate stats
   const totalRecords = filteredAttendances.length;
@@ -384,7 +402,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[10px] font-mono px-2 py-1 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-              {activities.length} Active Programs
+              {activities.length} Active Programs {totalProgramPages > 1 && `• Pahina ${safeProgramPage} ng ${totalProgramPages}`}
             </span>
             <button
               onClick={handleExportExcel}
@@ -410,8 +428,9 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-72 overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pr-1">
-          {filteredActivities.map((act) => {
+        {/* Program Cards Grid (Strictly maximum 3 items visible, remaining on next page) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-stretch">
+          {paginatedActivities.map((act) => {
             const scopeSizes: Record<string, string> = {
               'Paltic': '450 Hektarya (Coastal Port & Shoreline Sector)',
               'Aplaya': '320 Hektarya (Mangrove & Intertidal Protected Zone)',
@@ -484,6 +503,63 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             <p className="text-xs text-slate-400 col-span-full italic">Walang tumugmang detalye ng program content sa iyong isinulat o napiling filter.</p>
           )}
         </div>
+
+        {/* Pagination Controls Bar (3 boxes per page, excess to next page) */}
+        {filteredActivities.length > 0 && totalProgramPages > 1 && (
+          <div className="mt-4 pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs font-mono">
+            <div className="text-slate-400 text-[11px] flex items-center gap-1.5">
+              <span>Ipinapakita:</span>
+              <strong className="text-emerald-300">
+                {(safeProgramPage - 1) * PROGRAMS_PER_PAGE + 1}–{Math.min(safeProgramPage * PROGRAMS_PER_PAGE, filteredActivities.length)}
+              </strong>
+              <span>ng</span>
+              <strong className="text-white">{filteredActivities.length}</strong>
+              <span>Program Content</span>
+              <span className="text-slate-500 hidden xs:inline">(3 bawat pahina)</span>
+            </div>
+
+            <div className="flex items-center space-x-1.5">
+              <button
+                type="button"
+                onClick={() => setProgramPage((prev) => Math.max(1, prev - 1))}
+                disabled={safeProgramPage === 1}
+                className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800 text-slate-200 border border-slate-700 text-[11px] flex items-center transition-colors cursor-pointer disabled:cursor-not-allowed"
+                title="Pumunta sa nakaraang pahina"
+              >
+                <ChevronLeft className="w-3.5 h-3.5 mr-0.5 text-emerald-400" />
+                <span>Nakaraan</span>
+              </button>
+
+              <div className="flex items-center space-x-1">
+                {Array.from({ length: totalProgramPages }, (_, idx) => idx + 1).map((pageNum) => (
+                  <button
+                    key={pageNum}
+                    type="button"
+                    onClick={() => setProgramPage(pageNum)}
+                    className={`min-w-7 h-7 px-2 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                      safeProgramPage === pageNum
+                        ? 'bg-emerald-500 text-slate-950 shadow-md font-black ring-2 ring-emerald-300'
+                        : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setProgramPage((prev) => Math.min(totalProgramPages, prev + 1))}
+                disabled={safeProgramPage === totalProgramPages}
+                className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800 text-slate-200 border border-slate-700 text-[11px] flex items-center transition-colors cursor-pointer disabled:cursor-not-allowed"
+                title="Pumunta sa susunod na pahina"
+              >
+                <span>Susunod</span>
+                <ChevronRight className="w-3.5 h-3.5 ml-0.5 text-emerald-400" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
 
