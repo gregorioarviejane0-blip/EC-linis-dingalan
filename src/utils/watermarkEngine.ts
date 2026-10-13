@@ -205,13 +205,13 @@ export function checkEventCutoff(
       };
     }
 
-    // Absolute UTC epoch timestamp for the deadline in Dingalan, Aurora (UTC+8)
-    const deadlineUtcMs = Date.UTC(year, month - 1, day, hours - 8, minutes, 0);
-    const deadlineDate = new Date(deadlineUtcMs);
+    // Absolute local epoch timestamp for deadline matching device clock
+    const deadlineDate = new Date(year, month - 1, day, hours, minutes, 0);
+    const deadlineEpochMs = deadlineDate.getTime();
 
-    // Synchronized current time in Dingalan, Aurora
-    const nowUtcMs = getDingalanNow().getTime();
-    const isExpired = nowUtcMs >= deadlineUtcMs;
+    // Synchronized current time based on device clock
+    const nowEpochMs = getDingalanNow().getTime();
+    const isExpired = nowEpochMs >= deadlineEpochMs;
 
     return {
       isExpired,
@@ -249,7 +249,7 @@ export async function burnGeotagWatermark(
   const now = getDingalanNow();
   const timestampISO = now.toISOString();
   const dtInfo = formatPhilippineDateTime(now);
-  const localPhTime = `${dtInfo.dayOfWeekTagalog}, ${dtInfo.monthTagalog} ${dtInfo.dayNum}, ${dtInfo.yearNum} • ${dtInfo.exactTimeWithSeconds} PST`;
+  const localPhTime = `${dtInfo.dayOfWeekTagalog}, ${dtInfo.monthTagalog} ${dtInfo.dayNum}, ${dtInfo.yearNum} • ${dtInfo.exactTimeWithSeconds}`;
 
   // 2. Load Source Image
   const img = await loadImage(imageSource);

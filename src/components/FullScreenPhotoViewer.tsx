@@ -239,7 +239,7 @@ export const FullScreenPhotoViewer: React.FC<FullScreenPhotoViewerProps> = ({
           <div className="flex flex-col min-w-0">
             <div className="flex items-center space-x-1.5 text-[9px] sm:text-[10px] font-mono font-extrabold uppercase tracking-widest text-emerald-400">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
-              <span>Oras ng Pilipinas (PST • UTC+8)</span>
+              <span>Oras ng Sistema (Device Synchronized)</span>
               <span className="text-slate-500">•</span>
               <span className="text-cyan-300">Patunay sa Pag-upload</span>
             </div>
@@ -253,7 +253,7 @@ export const FullScreenPhotoViewer: React.FC<FullScreenPhotoViewerProps> = ({
               <span className="text-slate-500 hidden sm:inline">•</span>
               <span className="flex items-center gap-1 text-cyan-300 font-mono">
                 <Clock className="w-3.5 h-3.5 text-cyan-400 shrink-0 animate-pulse" />
-                <span>Eksaktong Oras: <strong className="text-white bg-cyan-950/80 px-1.5 py-0.5 rounded border border-cyan-500/40">{dtInfo.exactTimeWithSeconds} PST</strong></span>
+                <span>Eksaktong Oras: <strong className="text-white bg-cyan-950/80 px-1.5 py-0.5 rounded border border-cyan-500/40">{dtInfo.exactTimeWithSeconds}</strong></span>
               </span>
             </div>
           </div>
@@ -466,7 +466,7 @@ export const FullScreenPhotoViewer: React.FC<FullScreenPhotoViewerProps> = ({
               <div className="flex items-center gap-1.5 text-cyan-300 bg-cyan-950/60 px-2.5 py-1 rounded-lg border border-cyan-500/30">
                 <Clock className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                 <span>
-                  <strong>Na-upload Noong:</strong> {dtInfo.dayOfWeekTagalog}, {dtInfo.monthTagalog} {dtInfo.dayNum}, {dtInfo.yearNum} ganap na <strong className="text-white underline">{dtInfo.exactTimeWithSeconds} PST</strong>
+                  <strong>Na-upload Noong:</strong> {dtInfo.dayOfWeekTagalog}, {dtInfo.monthTagalog} {dtInfo.dayNum}, {dtInfo.yearNum} ganap na <strong className="text-white underline">{dtInfo.exactTimeWithSeconds}</strong>
                 </span>
               </div>
 

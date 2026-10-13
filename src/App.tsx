@@ -64,6 +64,7 @@ export default function App() {
   const [isScanQrModalOpen, setIsScanQrModalOpen] = useState<boolean>(false);
   const [isManualAccomplishmentModalOpen, setIsManualAccomplishmentModalOpen] = useState<boolean>(false);
   const [isGenerateQrModalOpen, setIsGenerateQrModalOpen] = useState<boolean>(false);
+  const [selectedQrActivityId, setSelectedQrActivityId] = useState<string | null>(null);
   const [isEventQrNoticeModalOpen, setIsEventQrNoticeModalOpen] = useState<boolean>(false);
   const [isAnonymousInboxModalOpen, setIsAnonymousInboxModalOpen] = useState<boolean>(false);
   const [anonymousMessages, setAnonymousMessages] = useState<AnonymousMessage[]>([]);
@@ -556,7 +557,99 @@ export default function App() {
   const handleCreateActivity = async (data: Partial<Activity>) => {
     const newAct = await api.createActivity(data);
     setActivities((prev) => [newAct, ...prev]);
-    showToast(`Created work program "${newAct.title}".`, 'success');
+
+    // Automatically sync to latestEventBroadcast so the new program can immediately reflect on the Login Advisory (Picture 2)
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://linis-dingalan.aurora.gov.ph';
+    const payload = `${origin}/?action=upload&act_id=${newAct.id}&brgy=${encodeURIComponent(newAct.barangay || 'Paltic')}&date=${encodeURIComponent(newAct.date || '')}`;
+    const newBc: EventQrBroadcast = {
+      id: `bc-auto-${newAct.id}`,
+      activityId: newAct.id,
+      activityTitle: newAct.title,
+      barangay: newAct.barangay || 'Paltic',
+      targetArea: newAct.targetArea || 'Dingalan Feeder Port & Rock Wall',
+      eventDate: newAct.date || new Date().toISOString().split('T')[0],
+      startTime: newAct.callTime || '06:00 AM',
+      estimatedEndTime: newAct.estimatedEndTime || newAct.qrDisplayEndTime || '11:59 PM',
+      totalHours: newAct.totalHours || '4 na Oras',
+      requiredTools: newAct.requiredTools || 'Guwantes, sako ng basura, walis tingting, tongs',
+      waterTumblerReminder: newAct.waterReminder || 'Magdala ng sariling reusable tumbler na may inuming tubig.',
+      recommendedAttire: newAct.recommendedAttire || 'Linis Dingalan t-shirt o komportableng damit, bota/shoes, sumbrero',
+      additionalNotes: newAct.description || newAct.notes || '',
+      assignedPersonnel: [],
+      sentByAdminName: newAct.supervisorName || currentUser?.name || 'Admin Officer',
+      sentAt: new Date().toISOString(),
+      qrPayload: payload,
+      qrScheduleEnabled: newAct.qrScheduleEnabled !== false,
+      qrDisplayStartDate: newAct.qrDisplayStartDate || newAct.date,
+      qrDisplayStartTime: newAct.qrDisplayStartTime || newAct.callTime,
+      qrDisplayEndDate: newAct.qrDisplayEndDate || newAct.date,
+      qrDisplayEndTime: newAct.qrDisplayEndTime || newAct.estimatedEndTime || '23:59',
+    };
+    setLatestEventBroadcast(newBc);
+    try {
+      localStorage.setItem('ld_latest_event_broadcast', JSON.stringify(newBc));
+      localStorage.removeItem('ld_broadcasts_cleared');
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('ld_sync');
+        bc.postMessage({ type: 'NEW_BROADCAST', broadcast: newBc });
+        bc.close();
+      }
+    } catch {}
+
+    showToast(`Nalikha ang work program "${newAct.title}". Naka-sync sa Login Advisory.`, 'success');
+  };
+
+  // Set Activity as Active Login Advisory Handler (Ipakita sa Login - Picture 2)
+  const handleSetAsActiveLoginAdvisory = async (act: Activity) => {
+    try {
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://linis-dingalan.aurora.gov.ph';
+      const payload = `${origin}/?action=upload&act_id=${act.id}&brgy=${encodeURIComponent(act.barangay || 'Paltic')}&date=${encodeURIComponent(act.date || '')}`;
+
+      const assignedBenes = beneficiaries.filter((b) =>
+        assignments.some((asg) => asg.activityId === act.id && asg.beneficiaryId === b.id)
+      );
+      const personnelStrings = assignedBenes.length > 0
+        ? assignedBenes.map((b) => `${b.firstName} ${b.lastName} (${b.beneCode})`)
+        : (act.assignedPersonnel || []);
+
+      const broadcast: EventQrBroadcast = {
+        id: `bc-${act.id}-${Date.now()}`,
+        activityId: act.id,
+        activityTitle: act.title,
+        barangay: act.barangay,
+        targetArea: act.targetArea,
+        eventDate: act.date,
+        startTime: act.callTime || '06:00 AM',
+        estimatedEndTime: act.estimatedEndTime || act.qrDisplayEndTime || '11:59 PM',
+        totalHours: act.totalHours || '4 na Oras',
+        requiredTools: act.requiredTools || 'Guwantes, sako ng basura, walis tingting, tongs',
+        waterTumblerReminder: act.waterReminder || 'Magdala ng sariling reusable tumbler na may inuming tubig.',
+        recommendedAttire: act.recommendedAttire || 'Linis Dingalan t-shirt o komportableng damit, bota/shoes, sumbrero',
+        additionalNotes: act.description || act.notes || '',
+        assignedPersonnel: personnelStrings,
+        sentByAdminName: act.supervisorName || currentUser?.name || 'Admin Officer',
+        sentAt: new Date().toISOString(),
+        qrPayload: payload,
+        qrScheduleEnabled: act.qrScheduleEnabled !== false,
+        qrDisplayStartDate: act.qrDisplayStartDate || act.date,
+        qrDisplayStartTime: act.qrDisplayStartTime || act.callTime,
+        qrDisplayEndDate: act.qrDisplayEndDate || act.date,
+        qrDisplayEndTime: act.qrDisplayEndTime || act.estimatedEndTime || '23:59',
+      };
+
+      setLatestEventBroadcast(broadcast);
+      localStorage.setItem('ld_latest_event_broadcast', JSON.stringify(broadcast));
+      localStorage.removeItem('ld_broadcasts_cleared');
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('ld_sync');
+        bc.postMessage({ type: 'NEW_BROADCAST', broadcast });
+        bc.close();
+      }
+      await api.broadcastEventQr(broadcast);
+      showToast(`Matagumpay na ipinakita sa Login Page (Pangalawang Picture) ang programang "${act.title}"!`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Nabigo ang pag-broadcast', 'error');
+    }
   };
 
   // Update Activity Handler
@@ -564,7 +657,53 @@ export default function App() {
     try {
       const updated = await api.updateActivity(id, data);
       setActivities((prev) => prev.map((a) => (a.id === id ? updated : a)));
-      showToast(`Na-update ang work program "${updated.title}".`, 'success');
+
+      // Synchronize strictly with latestEventBroadcast:
+      // Kung ano ang nilalaman sa Program button, iyon agad ang magre-reflect sa Login Screen (Pangalawang Picture)
+      setLatestEventBroadcast((prevBc) => {
+        if (!prevBc || prevBc.activityId === id || prevBc.activityTitle === updated.title || activities.length <= 1) {
+          const origin = typeof window !== 'undefined' ? window.location.origin : 'https://linis-dingalan.aurora.gov.ph';
+          const payload = `${origin}/?action=upload&act_id=${updated.id}&brgy=${encodeURIComponent(updated.barangay || 'Paltic')}&date=${encodeURIComponent(updated.date || '')}`;
+          const newBc: EventQrBroadcast = {
+            id: prevBc?.id || `broadcast-${updated.id}`,
+            activityId: updated.id,
+            activityTitle: updated.title,
+            barangay: updated.barangay,
+            targetArea: updated.targetArea,
+            qrDataUrl: prevBc?.qrDataUrl,
+            qrPayload: payload,
+            eventDate: updated.date,
+            startTime: updated.callTime,
+            estimatedEndTime: updated.estimatedEndTime || updated.qrDisplayEndTime || '11:59 PM',
+            totalHours: updated.totalHours || '4 na Oras',
+            requiredTools: updated.requiredTools || 'Guwantes, sako ng basura, walis tingting, tongs',
+            waterTumblerReminder: updated.waterReminder || 'Magdala ng sariling reusable tumbler na may inuming tubig.',
+            recommendedAttire: updated.recommendedAttire || 'Linis Dingalan t-shirt o komportableng damit, bota/shoes, sumbrero',
+            additionalNotes: updated.description || updated.notes || '',
+            assignedPersonnel: prevBc?.assignedPersonnel || [],
+            sentByAdminName: updated.supervisorName || currentUser?.name || 'Admin Officer',
+            sentAt: new Date().toISOString(),
+            qrScheduleEnabled: updated.qrScheduleEnabled !== false,
+            qrDisplayStartDate: updated.qrDisplayStartDate || updated.date,
+            qrDisplayStartTime: updated.qrDisplayStartTime || updated.callTime,
+            qrDisplayEndDate: updated.qrDisplayEndDate || updated.date,
+            qrDisplayEndTime: updated.qrDisplayEndTime || updated.estimatedEndTime || '23:59',
+          };
+          try {
+            localStorage.setItem('ld_latest_event_broadcast', JSON.stringify(newBc));
+            localStorage.removeItem('ld_broadcasts_cleared');
+            if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+              const bc = new BroadcastChannel('ld_sync');
+              bc.postMessage({ type: 'NEW_BROADCAST', broadcast: newBc });
+              bc.close();
+            }
+          } catch {}
+          return newBc;
+        }
+        return prevBc;
+      });
+
+      showToast(`Na-update ang work program "${updated.title}". Naka-sync sa Login Advisory.`, 'success');
     } catch (err: any) {
       showToast(err.message || 'Nabigo ang pag-update sa program', 'error');
     }
@@ -988,9 +1127,17 @@ export default function App() {
                 onUnassignBeneficiary={handleUnassignBeneficiary}
                 onClearActivityAssignments={handleClearActivityAssignments}
                 onSelectActivityForAttendance={handleSelectActivityForAttendance}
-                onOpenGenerateQrModal={() => setIsGenerateQrModalOpen(true)}
+                onOpenGenerateQrModal={() => {
+                  setSelectedQrActivityId(null);
+                  setIsGenerateQrModalOpen(true);
+                }}
+                onOpenGenerateQrModalWithActivity={(act) => {
+                  setSelectedQrActivityId(act.id);
+                  setIsGenerateQrModalOpen(true);
+                }}
                 onDeleteActivity={handleDeleteActivity}
                 onClearAllActivities={handleClearAllActivities}
+                onSetAsActiveLoginAdvisory={handleSetAsActiveLoginAdvisory}
               />
             </div>
           )}
@@ -1137,12 +1284,19 @@ export default function App() {
           {isGenerateQrModalOpen && (
             <GenerateQrEventModal
               isOpen={isGenerateQrModalOpen}
-              onClose={() => setIsGenerateQrModalOpen(false)}
+              onClose={() => {
+                setIsGenerateQrModalOpen(false);
+                setSelectedQrActivityId(null);
+              }}
               activities={activities}
+              assignments={assignments}
+              beneficiaries={beneficiaries}
+              initialActivityId={selectedQrActivityId}
               currentUser={currentUser}
               onBroadcastSuccess={(broadcast) => {
                 handleBroadcastSuccess(broadcast);
                 setIsGenerateQrModalOpen(false);
+                setSelectedQrActivityId(null);
               }}
               onCreateActivity={handleCreateActivity}
               onDeleteActivity={handleDeleteActivity}

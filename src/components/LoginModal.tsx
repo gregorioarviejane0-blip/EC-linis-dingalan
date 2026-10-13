@@ -542,7 +542,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
   // Convert an Activity to a full EventQrBroadcast object with complete reminders and schedule
   const convertActivityToBroadcast = (act: any): EventQrBroadcast => {
-    const rawCallTime = act.qrDisplayStartTime || act.callTime || '06:00 AM';
+    const rawCallTime = act.callTime || act.qrDisplayStartTime || '06:00 AM';
     const formattedCallTime = rawCallTime.includes('AM') || rawCallTime.includes('PM')
       ? rawCallTime
       : `${rawCallTime}`;
@@ -557,21 +557,22 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       targetArea: act.targetArea || 'Dingalan Feeder Port & Rock Wall',
       barangay: act.barangay || 'Paltic',
       qrPayload: payload,
-      eventDate: act.qrDisplayStartDate || act.date || new Date().toISOString().split('T')[0],
+      eventDate: act.date || act.qrDisplayStartDate || new Date().toISOString().split('T')[0],
       startTime: formattedCallTime,
-      estimatedEndTime: act.qrDisplayEndTime || act.estimatedEndTime || (formattedCallTime.includes('PM') ? '05:00 PM' : '11:00 AM'),
-      totalHours: '4 Oras (4 Hours)',
-      requiredTools: act.requiredTools || 'Guwantes (Gloves), Sako para sa Basura, Walis Tingting, Pandakot at Tongs / Pang-ipit',
-      waterTumblerReminder: act.waterReminder || act.waterTumblerReminder || 'Magdala ng sariling reusable tumbler na may inuming tubig. Mahigpit na ipinagbabawal ang single-use plastic bottles alinsunod sa Dingalan MENRO Ordinance.',
-      recommendedAttire: act.recommendedAttire || 'Boots o Rubber Shoes, Sumbrero / Cap laban sa araw, at MENRO/PESO Reflectorized Vest o komportableng damit pansaka.',
-      additionalNotes: act.description || `Opisyal na itinakdang gawain para sa ${act.title} sa ${act.targetArea || 'Dingalan'}. Mag-scan ng QR code at mag-upload ng patunay na larawan bago matapos ang oras.`,
+      estimatedEndTime: act.estimatedEndTime || act.qrDisplayEndTime || (formattedCallTime.includes('PM') ? '05:00 PM' : '11:00 AM'),
+      totalHours: act.totalHours || '4 na Oras',
+      requiredTools: act.requiredTools || 'Guwantes, sako ng basura, walis tingting, tongs',
+      waterTumblerReminder: act.waterReminder || act.waterTumblerReminder || 'Magdala ng sariling reusable tumbler na may inuming tubig.',
+      recommendedAttire: act.recommendedAttire || 'Linis Dingalan t-shirt o komportableng damit, bota/shoes, sumbrero',
+      additionalNotes: act.description || act.notes || `Opisyal na itinakdang gawain para sa ${act.title} sa ${act.targetArea || 'Dingalan'}. Mag-scan ng QR code at mag-upload ng patunay na larawan bago matapos ang oras.`,
       sentAt: new Date().toISOString(),
       sentByAdminName: act.supervisorName || 'Admin Officer (Operations Administrator)',
       qrScheduleEnabled: act.qrScheduleEnabled !== false,
-      qrDisplayStartDate: act.qrDisplayStartDate,
-      qrDisplayStartTime: act.qrDisplayStartTime,
-      qrDisplayEndDate: act.qrDisplayEndDate,
-      qrDisplayEndTime: act.qrDisplayEndTime,
+      qrDisplayStartDate: act.qrDisplayStartDate || act.date,
+      qrDisplayStartTime: act.qrDisplayStartTime || act.callTime,
+      qrDisplayEndDate: act.qrDisplayEndDate || act.date,
+      qrDisplayEndTime: act.qrDisplayEndTime || act.estimatedEndTime,
+      assignedPersonnel: act.assignedPersonnel || [],
     };
   };
 
@@ -595,72 +596,50 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     return null;
   });
 
-  // Track the last activated activity ID to avoid unnecessary state thrashing
-  const lastActiveActivityIdRef = useRef<string | null>(null);
-
-  // Automatic Schedule Arrival Engine:
-  // Updates broadcast data when scheduled activity arrives WITHOUT disrupting active login view
+  // Automatic Schedule & Program Button Mirroring Engine:
+  // Kung ano ang nilalaman sa Program button, iyon ang lalabas sa Login Screen (Pangalawang Picture)
   useEffect(() => {
-    if (!scheduledActivities || scheduledActivities.length === 0) return;
+    if (!allActivities || allActivities.length === 0) return;
 
-    // Check if user manually clicked a specific scheduled activity
+    // 1. If user selected a specific program from the Program pills
     if (selectedScheduledActivityId) {
-      const found = scheduledActivities.find((a) => a.id === selectedScheduledActivityId);
-      if (found && found.id !== lastActiveActivityIdRef.current) {
-        lastActiveActivityIdRef.current = found.id;
+      const found = allActivities.find((a) => a.id === selectedScheduledActivityId);
+      if (found) {
         if (typeof window !== 'undefined') localStorage.removeItem('ld_broadcasts_cleared');
         setActiveBroadcast(convertActivityToBroadcast(found));
+        return;
       }
+    }
+
+    // 2. If propEventBroadcast matches an activity in allActivities, synchronize all edited content immediately
+    if (propEventBroadcast && propEventBroadcast.activityId) {
+      const matched = allActivities.find((a) => a.id === propEventBroadcast.activityId);
+      if (matched) {
+        setActiveBroadcast(convertActivityToBroadcast(matched));
+        return;
+      }
+    }
+
+    // 3. Match ongoing or scheduled programs
+    const activeActs = allActivities.filter((act) => act.status === 'ongoing' || act.status === 'scheduled');
+    if (activeActs.length > 0) {
+      const chosen = activeActs[0];
+      if (typeof window !== 'undefined') localStorage.removeItem('ld_broadcasts_cleared');
+      setActiveBroadcast(convertActivityToBroadcast(chosen));
       return;
     }
 
-    // Otherwise, find the activity whose scheduled date & time has arrived right now
-    const arrivedActiveActivities = scheduledActivities.filter((act) => {
-      const schedule = parseActivitySchedule(act);
-      return (schedule.hasArrived && !schedule.isPastEnd) || act.status === 'ongoing';
-    });
-
-    if (arrivedActiveActivities.length > 0) {
-      const currentActive = arrivedActiveActivities[0];
-      if (currentActive.id !== lastActiveActivityIdRef.current) {
-        lastActiveActivityIdRef.current = currentActive.id;
-        if (typeof window !== 'undefined') localStorage.removeItem('ld_broadcasts_cleared');
-        setActiveBroadcast(convertActivityToBroadcast(currentActive));
-      }
-      return;
+    // 4. Default to first program in the Program button
+    if (allActivities.length > 0 && !activeBroadcast) {
+      setActiveBroadcast(convertActivityToBroadcast(allActivities[0]));
     }
-
-    // Fallback: Check if there is an upcoming scheduled activity for today (only if not explicitly cleared by admin)
-    const isCleared = typeof window !== 'undefined' && localStorage.getItem('ld_broadcasts_cleared') === 'true';
-    if (!isCleared) {
-      const upcomingTodayActivities = scheduledActivities.filter((act) => {
-        const schedule = parseActivitySchedule(act);
-        return !schedule.isPastEnd;
-      });
-
-      if (upcomingTodayActivities.length > 0 && !activeBroadcast) {
-        lastActiveActivityIdRef.current = upcomingTodayActivities[0].id;
-        setActiveBroadcast(convertActivityToBroadcast(upcomingTodayActivities[0]));
-      }
-    }
-  }, [scheduledActivities, selectedScheduledActivityId]);
+  }, [allActivities, selectedScheduledActivityId, propEventBroadcast]);
 
   const isBroadcastCleared = typeof window !== 'undefined' && localStorage.getItem('ld_broadcasts_cleared') === 'true';
-  const rawBroadcast = isBroadcastCleared ? null : (activeBroadcast || propEventBroadcast);
-  const eventBroadcast = (rawBroadcast && checkIsBroadcastActive(rawBroadcast)) ? rawBroadcast : null;
-
-  // Real-time ticker: automatically clears active broadcast as soon as PST time passes estimatedEndTime
-  useEffect(() => {
-    const checkExpiration = () => {
-      if (activeBroadcast && !checkIsBroadcastActive(activeBroadcast)) {
-        setActiveBroadcast(null);
-        setSelectedScheduledActivityId(null);
-      }
-    };
-    checkExpiration();
-    const interval = setInterval(checkExpiration, 1000);
-    return () => clearInterval(interval);
-  }, [activeBroadcast]);
+  const rawBroadcast = isBroadcastCleared
+    ? null
+    : (activeBroadcast || propEventBroadcast || (allActivities && allActivities.length > 0 ? convertActivityToBroadcast(allActivities[0]) : null));
+  const eventBroadcast = rawBroadcast;
 
   // Keep activeBroadcast synchronized with prop changes
   useEffect(() => {
@@ -1401,10 +1380,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             </motion.button>
           </div>
 
-          {/* Official Philippine Standard Time Clock Pill (Strictly Read-Only on Login Page - Bawal Baguhin Dito) */}
+          {/* Official Device Synchronized System Clock Pill (Strictly Read-Only on Login Page) */}
           <div
             className="hidden sm:flex items-center space-x-1.5 lg:space-x-1 text-[11px] lg:text-[10px] xl:text-[10.5px] font-mono px-3 py-1.5 lg:px-2.5 lg:py-1 rounded-full select-none shrink-0 bg-slate-900/90 border border-emerald-500/50 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.2)]"
-            title="Opisyal na Philippine Standard Time (PST, UTC+8) • Read-only sa Login Page"
+            title="Opisyal na Oras ng Device • Real-Time Synchronized"
           >
             <Clock className="w-3.5 h-3.5 lg:w-3 lg:h-3 shrink-0 text-emerald-400 animate-pulse" />
             <div className="flex items-center space-x-1 font-bold tracking-tight">
@@ -2212,20 +2191,52 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 /* ========================================================================= */
                 /* EVENT BROADCAST CARD: COMPACT ON MOBILE SCREEN TO PREVENT SCROLL          */
                 /* ========================================================================= */
-                <div className="relative rounded-xl sm:rounded-3xl border-2 border-emerald-400/80 shadow-[0_0_40px_rgba(16,185,129,0.35),inset_0_0_20px_rgba(16,185,129,0.15)] bg-slate-950/95 hover:bg-slate-950/98 backdrop-blur-md p-2.5 xs:p-3 sm:p-6 lg:p-7 space-y-1.5 xs:space-y-2 sm:space-y-4 transition-all duration-300 hover:border-emerald-300 animate-scaleIn w-full max-w-xl sm:max-w-2xl mx-auto text-left flex flex-col max-h-[calc(100dvh-65px)] sm:max-h-none overflow-y-auto sm:overflow-visible scrollbar-none [&::-webkit-scrollbar]:hidden">
-                  {/* Top Bar inside Card */}
-                  <div className="flex items-center justify-between border-b border-white/10 pb-1.5 sm:pb-3 gap-1.5">
-                    <div className="flex items-center space-x-1.5 sm:space-x-2.5 min-w-0">
-                      <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
-                      <span className="px-2 py-0.5 sm:px-3.5 sm:py-1 rounded-full text-[10px] sm:text-sm font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase tracking-wider flex items-center gap-1.5 backdrop-blur-sm truncate">
-                        <Radio className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-400 animate-pulse shrink-0" />
-                        <span className="truncate">Admin Guidelines & Advisory</span>
+                <div className="w-full max-w-xl sm:max-w-2xl mx-auto space-y-2">
+                  {/* Program Selector Bar (Pangalawang Picture mirrors Program button) */}
+                  {allActivities && allActivities.length > 0 && (
+                    <div className="flex items-center gap-1.5 p-1 sm:p-1.5 rounded-xl bg-slate-900/95 border border-emerald-500/30 overflow-x-auto scrollbar-none [&::-webkit-scrollbar]:hidden shadow-md">
+                      <span className="text-[9px] sm:text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider shrink-0 px-1 flex items-center gap-1">
+                        <Radio className="w-3 h-3 text-emerald-400 shrink-0" />
+                        <span>Program:</span>
                       </span>
+                      {allActivities.map((act) => {
+                        const isSelected = eventBroadcast?.activityId === act.id || eventBroadcast?.activityTitle === act.title;
+                        return (
+                          <button
+                            key={act.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedScheduledActivityId(act.id);
+                              setActiveBroadcast(convertActivityToBroadcast(act));
+                            }}
+                            className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[9px] sm:text-xs font-mono font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1 ${
+                              isSelected
+                                ? 'bg-emerald-500 text-slate-950 shadow-md font-black ring-1 ring-emerald-300'
+                                : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-700'
+                            }`}
+                            title={`Tingnan ang nilalaman ng "${act.title}" mula sa Programs button`}
+                          >
+                            <span className="truncate max-w-[120px] sm:max-w-[200px]">{act.title}</span>
+                          </button>
+                        );
+                      })}
                     </div>
+                  )}
+
+                  <div className="relative rounded-xl sm:rounded-3xl border-2 border-emerald-400/80 shadow-[0_0_40px_rgba(16,185,129,0.35),inset_0_0_20px_rgba(16,185,129,0.15)] bg-slate-950/95 hover:bg-slate-950/98 backdrop-blur-md p-2.5 xs:p-3 sm:p-6 lg:p-7 space-y-1.5 xs:space-y-2 sm:space-y-4 transition-all duration-300 hover:border-emerald-300 animate-scaleIn w-full text-left flex flex-col max-h-[calc(100dvh-65px)] sm:max-h-none overflow-y-auto sm:overflow-visible scrollbar-none [&::-webkit-scrollbar]:hidden">
+                    {/* Top Bar inside Card */}
+                    <div className="flex items-center justify-between border-b border-white/10 pb-1.5 sm:pb-3 gap-1.5">
+                      <div className="flex items-center space-x-1.5 sm:space-x-2.5 min-w-0">
+                        <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
+                        <span className="px-2 py-0.5 sm:px-3.5 sm:py-1 rounded-full text-[10px] sm:text-sm font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase tracking-wider flex items-center gap-1.5 backdrop-blur-sm truncate">
+                          <Radio className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-400 animate-pulse shrink-0" />
+                          <span className="truncate">Admin Guidelines & Advisory</span>
+                        </span>
+                      </div>
 
                     <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
                       <span className="text-[10px] sm:text-sm font-mono text-emerald-300 font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md sm:rounded-lg bg-emerald-950/60 border border-emerald-500/30">
-                        {eventBroadcast.startTime} PST
+                        {eventBroadcast.startTime}
                       </span>
                       <button
                         type="button"
@@ -2352,6 +2363,25 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     )}
                   </div>
 
+                  {/* Assigned Workforce / Naka-assign mula sa Program Button */}
+                  {eventBroadcast.assignedPersonnel && eventBroadcast.assignedPersonnel.length > 0 && (
+                    <div className="p-1.5 xs:p-2 sm:p-2.5 rounded-lg sm:rounded-xl bg-slate-950/60 border border-emerald-500/30 text-[9.5px] xs:text-[10.5px] sm:text-xs font-mono text-slate-200 text-left">
+                      <div className="flex items-center justify-between font-bold text-emerald-300 mb-1">
+                        <span className="flex items-center gap-1">
+                          <Users className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400 shrink-0" />
+                          <span>Naka-assign na Kalahok ({eventBroadcast.assignedPersonnel.length}):</span>
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden">
+                        {eventBroadcast.assignedPersonnel.map((person, idx) => (
+                          <span key={idx} className="px-1.5 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/30 text-emerald-200 text-[8.5px] sm:text-[10px] font-mono">
+                            {person}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Additional LGU Admin Notes */}
                   {eventBroadcast.additionalNotes && (
                     <div className="p-1.5 xs:p-2 sm:p-3 rounded-lg sm:rounded-xl bg-slate-950/50 border border-emerald-500/25 text-[9.5px] xs:text-[10.5px] sm:text-sm font-sans text-slate-100 leading-snug text-left line-clamp-2">
@@ -2399,6 +2429,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     </button>
                   </div>
                 </div>
+              </div>
               ) : activeView === 'event' ? (
                 /* ========================================================================= */
                 /* NO ACTIVE SCHEDULE: COMPACT PROFESSIONAL ADVISORY CARD (FITS MOBILE)      */

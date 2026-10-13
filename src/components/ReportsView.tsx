@@ -283,7 +283,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       'Full Name',
       'Barangay',
       'Activity Title',
-      'Date & Time (PST)',
+      'Date & Time',
       'Latitude',
       'Longitude',
       'Accuracy (m)',

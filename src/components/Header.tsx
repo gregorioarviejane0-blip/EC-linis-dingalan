@@ -247,7 +247,7 @@ export const Header: React.FC<HeaderProps> = ({
                   ? 'text-amber-300 bg-slate-950/95 border border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.35)]'
                   : 'text-emerald-300 bg-slate-950/90 border border-emerald-500/50 hover:border-emerald-400/80 hover:bg-slate-900'
               }`}
-              title="Admin Control: Pindutin para palitan o i-adjust ang opisyal na oras (PST)"
+              title="Admin Control: Pindutin para palitan o i-adjust ang oras ng sistema"
             >
               <Clock className={`w-2.5 h-2.5 lg:w-2.5 lg:h-2.5 xl:w-3 xl:h-3 shrink-0 ${isDingalanTimeOverridden() ? 'text-amber-400 animate-pulse' : 'text-emerald-400 animate-pulse'}`} />
               <div className="flex items-center space-x-1 font-bold">
@@ -270,7 +270,7 @@ export const Header: React.FC<HeaderProps> = ({
           ) : (
             <div
               className="hidden lg:flex items-center space-x-1 text-[9.5px] lg:text-[9px] xl:text-[10px] font-mono px-1.5 py-0.5 lg:px-1.5 lg:py-0.5 xl:px-2 xl:py-0.5 rounded-full shadow-inner select-none shrink-0 text-emerald-300 bg-slate-950/90 border border-emerald-500/50"
-              title="Opisyal na Oras (PST)"
+              title="Oras ng Device (Real-Time Synchronized)"
             >
               <Clock className="w-2.5 h-2.5 lg:w-2.5 lg:h-2.5 xl:w-3 xl:h-3 shrink-0 text-emerald-400 animate-pulse" />
               <div className="flex items-center space-x-1 font-bold">

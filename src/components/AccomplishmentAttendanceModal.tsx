@@ -347,7 +347,7 @@ export const AccomplishmentAttendanceModal: React.FC<AccomplishmentAttendanceMod
                           <span className="truncate font-semibold text-white">{att.activityTitle}</span>
                         </div>
                         <div className="flex items-center justify-between pt-1 border-t border-slate-800 text-[9px] font-mono text-cyan-300">
-                          <span>{dt.exactTimeWithSeconds} PST</span>
+                          <span>{dt.exactTimeWithSeconds}</span>
                           <span className="text-slate-400">{dt.monthTagalog} {dt.dayNum}, {dt.yearNum}</span>
                         </div>
                       </div>
@@ -382,7 +382,7 @@ export const AccomplishmentAttendanceModal: React.FC<AccomplishmentAttendanceMod
                         <th className="py-3 px-4 min-w-[200px]">Pangalan ng Attendee (Click to View Photos)</th>
                         <th className="py-3 px-4 min-w-[180px]">Barangay at Lokasyon</th>
                         <th className="py-3 px-4 min-w-[220px]">Gawain / Cleanup Activity</th>
-                        <th className="py-3 px-4 min-w-[170px]">Oras Naipasa (PST)</th>
+                        <th className="py-3 px-4 min-w-[170px]">Oras Naipasa</th>
                         <th className="py-3 px-3 text-center min-w-[100px]">Larawan</th>
                         <th className="py-3 px-3 text-center min-w-[120px]">Katayuan</th>
                         <th className="py-3 px-3.5 text-center min-w-[130px]">Aksyon</th>
@@ -454,7 +454,7 @@ export const AccomplishmentAttendanceModal: React.FC<AccomplishmentAttendanceMod
                                   <div className="flex flex-col text-[11px] text-cyan-300 bg-slate-900/80 px-2.5 py-1 rounded-lg border border-cyan-500/30">
                                     <span className="font-bold text-white flex items-center gap-1">
                                       <Clock className="w-3 h-3 text-cyan-400 shrink-0" />
-                                      <span>{dt.exactTimeWithSeconds} PST</span>
+                                      <span>{dt.exactTimeWithSeconds}</span>
                                     </span>
                                     <span className="text-[10px] text-slate-400">
                                       {dt.dayOfWeekTagalog}, {dt.monthTagalog} {dt.dayNum}, {dt.yearNum}
@@ -660,7 +660,7 @@ export const AccomplishmentAttendanceModal: React.FC<AccomplishmentAttendanceMod
                       <div className="flex items-center gap-1.5 text-cyan-300 bg-cyan-950/70 px-3 py-1.5 rounded-lg border border-cyan-500/40 font-mono text-[11px] font-bold shadow-sm">
                         <Clock className="w-3.5 h-3.5 text-cyan-400 shrink-0 animate-pulse" />
                         <span>
-                          <strong>Na-upload:</strong> {dt.dayOfWeekTagalog}, {dt.monthTagalog} {dt.dayNum}, {dt.yearNum} ganap na <strong className="text-white underline">{dt.exactTimeWithSeconds} PST</strong>
+                          <strong>Na-upload:</strong> {dt.dayOfWeekTagalog}, {dt.monthTagalog} {dt.dayNum}, {dt.yearNum} ganap na <strong className="text-white underline">{dt.exactTimeWithSeconds}</strong>
                         </span>
                       </div>
                     );

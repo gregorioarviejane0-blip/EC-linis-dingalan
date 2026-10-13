@@ -94,9 +94,11 @@ export interface Activity {
   qrDisplayEndDate?: string;
   qrDisplayEndTime?: string;
   estimatedEndTime?: string;
+  totalHours?: string;
   requiredTools?: string;
   waterReminder?: string;
   recommendedAttire?: string;
+  assignedPersonnel?: string[];
 }
 
 export interface ActivityAssignment {

@@ -687,7 +687,7 @@ export const FieldAttendancePortal: React.FC<FieldAttendancePortalProps> = ({
                 </p>
               </div>
               <span className="text-xs font-mono text-emerald-400 font-bold bg-slate-900 px-3 py-1 rounded-lg border border-slate-800">
-                PST: {formatPSTDate()}
+                Oras: {formatPSTDate()}
               </span>
             </div>
 

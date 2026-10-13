@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Activity, ActivityAssignment, AttendanceRecord, Beneficiary, DingalanBarangay, User } from '../types';
+import { Activity, ActivityAssignment, ActivityStatus, AttendanceRecord, Beneficiary, DingalanBarangay, User } from '../types';
 import {
   Calendar,
   Clock,
@@ -26,6 +26,10 @@ import {
   FileText,
   Printer,
   CheckCircle2,
+  Pencil,
+  Edit2,
+  Save,
+  Radio,
 } from 'lucide-react';
 
 interface ActivityManagementProps {
@@ -35,13 +39,16 @@ interface ActivityManagementProps {
   attendances?: AttendanceRecord[];
   currentUser: User;
   onCreateActivity: (data: Partial<Activity>) => Promise<void>;
+  onUpdateActivity?: (id: string, data: Partial<Activity>) => Promise<void> | void;
   onAssignBeneficiary: (activityId: string, beneficiaryId: string) => Promise<void>;
   onUnassignBeneficiary?: (activityId: string, beneficiaryId: string) => Promise<void>;
   onClearActivityAssignments?: (activityId: string) => Promise<void>;
   onSelectActivityForAttendance?: (activity: Activity) => void;
   onOpenGenerateQrModal?: () => void;
+  onOpenGenerateQrModalWithActivity?: (activity: Activity) => void;
   onDeleteActivity?: (activityId: string) => Promise<void>;
   onClearAllActivities?: () => Promise<void>;
+  onSetAsActiveLoginAdvisory?: (activity: Activity) => void;
 }
 
 const DINGALAN_BARANGAYS: DingalanBarangay[] = [
@@ -65,13 +72,16 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
   attendances = [],
   currentUser,
   onCreateActivity,
+  onUpdateActivity,
   onAssignBeneficiary,
   onUnassignBeneficiary,
   onClearActivityAssignments,
   onSelectActivityForAttendance,
   onOpenGenerateQrModal,
+  onOpenGenerateQrModalWithActivity,
   onDeleteActivity,
   onClearAllActivities,
+  onSetAsActiveLoginAdvisory,
 }) => {
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -79,6 +89,55 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
   const [autoReportActivity, setAutoReportActivity] = useState<Activity | null>(null);
   const [selectedBeneIds, setSelectedBeneIds] = useState<string[]>([]);
   const [isAssigning, setIsAssigning] = useState(false);
+
+  // Edit Activity States
+  const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+  const [editForm, setEditForm] = useState<{
+    title: string;
+    programType: 'TUPAD' | 'CASH_FOR_WORK' | 'COASTAL_CLEANUP' | 'MANGROVE_REHAB' | 'DRAINAGE_DECLOGGING';
+    status: Activity['status'];
+    description: string;
+    date: string;
+    callTime: string;
+    estimatedEndTime: string;
+    totalHours: string;
+    targetArea: string;
+    barangay: DingalanBarangay;
+    supervisorName: string;
+    targetBeneficiariesCount: number | string;
+    notes: string;
+    requiredTools: string;
+    waterReminder: string;
+    recommendedAttire: string;
+    qrScheduleEnabled: boolean;
+    qrDisplayStartDate: string;
+    qrDisplayStartTime: string;
+    qrDisplayEndDate: string;
+    qrDisplayEndTime: string;
+  }>({
+    title: '',
+    programType: 'COASTAL_CLEANUP',
+    status: 'ongoing',
+    description: '',
+    date: new Date().toISOString().split('T')[0],
+    callTime: '06:00 AM',
+    estimatedEndTime: '11:59 PM',
+    totalHours: '4 na Oras',
+    targetArea: '',
+    barangay: 'Paltic',
+    supervisorName: '',
+    targetBeneficiariesCount: '4',
+    notes: '',
+    requiredTools: '',
+    waterReminder: '',
+    recommendedAttire: '',
+    qrScheduleEnabled: false,
+    qrDisplayStartDate: '',
+    qrDisplayStartTime: '06:00',
+    qrDisplayEndDate: '',
+    qrDisplayEndTime: '23:59',
+  });
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   // Search & Filter for Assign Modal
   const [assignFilterTab, setAssignFilterTab] = useState<'ALL' | 'ASSIGNED' | 'AVAILABLE'>('ALL');
@@ -99,6 +158,8 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
     description: string;
     date: string;
     callTime: string;
+    estimatedEndTime: string;
+    totalHours: string;
     targetArea: string;
     barangay: DingalanBarangay;
     targetBeneficiariesCount: number | string;
@@ -117,7 +178,9 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
     programType: 'COASTAL_CLEANUP',
     description: '',
     date: new Date().toISOString().split('T')[0],
-    callTime: '06:00',
+    callTime: '06:00 AM',
+    estimatedEndTime: '11:59 PM',
+    totalHours: '4 na Oras',
     targetArea: 'Dingalan Feeder Port Rock Wall',
     barangay: 'Paltic',
     targetBeneficiariesCount: '20',
@@ -170,6 +233,50 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
       setIsCreateModalOpen(false);
     } catch (err: any) {
       alert(err.message || 'Failed to create work program');
+    }
+  };
+
+  const handleOpenEditModal = (act: Activity) => {
+    setEditingActivity(act);
+    setEditForm({
+      title: act.title || '',
+      programType: act.programType || 'COASTAL_CLEANUP',
+      status: act.status || 'ongoing',
+      description: act.description || '',
+      date: act.date || new Date().toISOString().split('T')[0],
+      callTime: act.callTime || '06:00 AM',
+      targetArea: act.targetArea || '',
+      barangay: act.barangay || 'Paltic',
+      supervisorName: act.supervisorName || '',
+      targetBeneficiariesCount: act.targetBeneficiariesCount || 4,
+      notes: act.notes || '',
+      requiredTools: act.requiredTools || '',
+      waterReminder: act.waterReminder || '',
+      recommendedAttire: act.recommendedAttire || '',
+      qrScheduleEnabled: act.qrScheduleEnabled ?? false,
+      qrDisplayStartDate: act.qrDisplayStartDate || act.date || new Date().toISOString().split('T')[0],
+      qrDisplayStartTime: act.qrDisplayStartTime || '06:00',
+      qrDisplayEndDate: act.qrDisplayEndDate || act.date || new Date().toISOString().split('T')[0],
+      qrDisplayEndTime: act.qrDisplayEndTime || '23:59',
+      estimatedEndTime: act.estimatedEndTime || act.qrDisplayEndTime || '11:59 PM',
+      totalHours: act.totalHours || '4 na Oras',
+    });
+  };
+
+  const handleSaveEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingActivity || !onUpdateActivity) return;
+    setIsSavingEdit(true);
+    try {
+      await onUpdateActivity(editingActivity.id, {
+        ...editForm,
+        targetBeneficiariesCount: Number(editForm.targetBeneficiariesCount) || 1,
+      });
+      setEditingActivity(null);
+    } catch (err: any) {
+      alert(err?.message || 'Nabigo ang pag-update sa work program.');
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -439,6 +546,16 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                     </span>
                     <div className="flex items-center space-x-1.5">
                       {getStatusBadge(act.status)}
+                      {onUpdateActivity && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditModal(act)}
+                          className="p-1 rounded-lg bg-amber-500/15 hover:bg-amber-600 text-amber-300 hover:text-white border border-amber-500/40 transition-all cursor-pointer shadow-sm"
+                          title="I-edit ang buong content ng work program box na ito"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                       {onDeleteActivity && (
                         <button
                           type="button"
@@ -526,10 +643,10 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                                   <button
                                     type="button"
                                     onClick={async (e) => {
-                                      e.stopPropagation();
-                                      if (onUnassignBeneficiary) {
-                                        await onUnassignBeneficiary(act.id, b.id);
-                                      }
+                                       e.stopPropagation();
+                                       if (onUnassignBeneficiary) {
+                                         await onUnassignBeneficiary(act.id, b.id);
+                                       }
                                     }}
                                     className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/20 p-1 rounded transition-colors shrink-0 cursor-pointer flex items-center gap-0.5 text-[10px]"
                                     title={`Burahin/Alisin si ${b.firstName} ${b.lastName} sa program`}
@@ -547,8 +664,8 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                 </div>
 
                 {/* Action Buttons */}
-                <div className="mt-3.5 sm:mt-5 pt-2.5 sm:pt-3 border-t border-slate-700/60 flex items-center justify-between gap-2">
-                  <div className="flex items-center space-x-1.5">
+                <div className="mt-3.5 sm:mt-5 pt-2.5 sm:pt-3 border-t border-slate-700/60 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <button
                       onClick={() => handleOpenAssignModal(act)}
                       className="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-slate-700/80 hover:bg-slate-700 text-xs font-semibold text-slate-200 rounded-lg transition-colors border border-slate-600 flex items-center shrink-0 cursor-pointer"
@@ -556,6 +673,18 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                       <Users className="w-3 h-3 mr-1 text-slate-400" />
                       Assign ({assignedCount})
                     </button>
+
+                    {onUpdateActivity && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditModal(act)}
+                        className="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-amber-500/15 hover:bg-amber-600 text-amber-300 hover:text-white text-xs font-semibold rounded-lg transition-colors border border-amber-500/40 flex items-center shrink-0 cursor-pointer shadow-sm"
+                        title="I-edit ang buong content ng work program box na ito"
+                      >
+                        <Pencil className="w-3 h-3 mr-1" />
+                        <span>I-edit</span>
+                      </button>
+                    )}
 
                     {onDeleteActivity && (
                       <button
@@ -570,15 +699,41 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                     )}
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setAutoReportActivity(act)}
-                    className="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-cyan-600/90 hover:bg-cyan-600 text-xs font-bold text-white rounded-lg transition-colors flex items-center gap-1 shadow cursor-pointer shrink-0"
-                    title="I-view ang Auto Report ng Work Program na ito"
-                  >
-                    <FileText className="w-3.5 h-3.5" />
-                    <span>Report</span>
-                  </button>
+                  <div className="flex items-center space-x-1.5 shrink-0">
+                    {onSetAsActiveLoginAdvisory && (
+                      <button
+                        type="button"
+                        onClick={() => onSetAsActiveLoginAdvisory(act)}
+                        className="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-slate-950 text-xs font-bold rounded-lg transition-all border border-emerald-500/40 flex items-center gap-1 shadow cursor-pointer shrink-0"
+                        title="Ipakita at i-sync ang content ng program na ito sa Login Advisory Card (Pangalawang Picture)"
+                      >
+                        <Radio className="w-3.5 h-3.5 animate-pulse text-emerald-400 group-hover:text-slate-950" />
+                        <span>Ipakita sa Login (Picture 2)</span>
+                      </button>
+                    )}
+
+                    {onOpenGenerateQrModalWithActivity && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenGenerateQrModalWithActivity(act)}
+                        className="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white text-xs font-bold rounded-lg transition-colors border border-emerald-500/40 flex items-center gap-1 shadow cursor-pointer shrink-0"
+                        title="I-load sa QR Event Generator ang program na ito"
+                      >
+                        <QrCode className="w-3.5 h-3.5" />
+                        <span className="hidden xs:inline">QR Notice</span>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => setAutoReportActivity(act)}
+                      className="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-cyan-600/90 hover:bg-cyan-600 text-xs font-bold text-white rounded-lg transition-colors flex items-center gap-1 shadow cursor-pointer shrink-0"
+                      title="I-view ang Auto Report ng Work Program na ito"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>Report</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -1157,7 +1312,7 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-300 mb-1">
                     Activity Date *
@@ -1185,7 +1340,7 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                     Call Time *
                   </label>
                   <input
-                    type="time"
+                    type="text"
                     required
                     value={newActivity.callTime}
                     onChange={(e) => {
@@ -1198,7 +1353,35 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                           : {}),
                       }));
                     }}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
+                    placeholder="06:00 AM"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                    End Time *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newActivity.estimatedEndTime}
+                    onChange={(e) => setNewActivity({ ...newActivity, estimatedEndTime: e.target.value })}
+                    placeholder="11:59 PM"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                    Total Hours
+                  </label>
+                  <input
+                    type="text"
+                    value={newActivity.totalHours}
+                    onChange={(e) => setNewActivity({ ...newActivity, totalHours: e.target.value })}
+                    placeholder="4 na Oras"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none font-mono"
                   />
                 </div>
               </div>
@@ -1419,7 +1602,7 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                         ⏰ <strong>Display Window:</strong> {newActivity.qrDisplayStartDate} ({newActivity.qrDisplayStartTime}) hanggang {newActivity.qrDisplayEndDate} ({newActivity.qrDisplayEndTime})
                       </span>
                       <span className="text-[10px] text-emerald-400 bg-emerald-500/20 px-1.5 py-0.5 rounded shrink-0">
-                        PST (Asia/Manila)
+                        Device Time Synchronized
                       </span>
                     </div>
                   </div>
@@ -1449,6 +1632,359 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
           </div>
         </div>
       )}
+
+      {/* Edit Program Activity Modal (I-edit ang Buong Content ng Nasa Picture) */}
+      {editingActivity && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-sm overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden animate-fadeIn">
+          <div className="relative w-full max-w-2xl bg-slate-900 border-2 border-amber-500/50 rounded-2xl sm:rounded-3xl shadow-[0_25px_70px_rgba(0,0,0,0.9),0_0_50px_rgba(245,158,11,0.25)] overflow-hidden my-4 sm:my-8 text-left">
+            {/* Modal Header */}
+            <div className="px-4 sm:px-6 py-4 border-b border-slate-800 bg-slate-900/95 flex items-center justify-between sticky top-0 z-10">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
+                  <Pencil className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400 block">
+                    I-edit ang Buong Content ng Work Program
+                  </span>
+                  <h3 className="text-base sm:text-lg font-black text-white">
+                    {editingActivity.title}
+                  </h3>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingActivity(null)}
+                className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                title="Isara"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleSaveEditSubmit} className="p-4 sm:p-6 space-y-4 max-h-[80vh] overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden">
+              {/* Row 1: Title */}
+              <div>
+                <label className="block text-xs font-mono font-bold text-slate-300 mb-1">
+                  Pamagat ng Gawain (Activity Title) <span className="text-rose-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editForm.title}
+                  onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                  placeholder="Hal. Dingalan Feeder Port & Paltic Coastal Cleanliness Operation"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:border-amber-400 focus:outline-none font-semibold"
+                />
+              </div>
+
+              {/* Row 2: Program Type & Status */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-mono font-bold text-slate-300 mb-1">
+                    Uri ng Programa (Program Classification)
+                  </label>
+                  <select
+                    value={editForm.programType}
+                    onChange={(e) => setEditForm({ ...editForm, programType: e.target.value as any })}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-amber-400 focus:outline-none"
+                  >
+                    <option value="COASTAL_CLEANUP">Coastal Cleanup</option>
+                    <option value="CASH_FOR_WORK">Cash For Work</option>
+                    <option value="TUPAD">TUPAD Program</option>
+                    <option value="MANGROVE_REHAB">Mangrove Rehabilitation</option>
+                    <option value="DRAINAGE_DECLOGGING">Drainage Declogging</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-mono font-bold text-slate-300 mb-1">
+                    Katayuan ng Gawain (Status)
+                  </label>
+                  <select
+                    value={editForm.status}
+                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value as ActivityStatus })}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-amber-400 focus:outline-none font-semibold"
+                  >
+                    <option value="ongoing">ONGOING (Kasalukuyang Ginaganap)</option>
+                    <option value="scheduled">SCHEDULED / UPCOMING (Nakatakda)</option>
+                    <option value="completed">COMPLETED (Tapos Na)</option>
+                    <option value="cancelled">CANCELLED (Nakansela)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Row 3: Barangay & Target Area */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-mono font-bold text-slate-300 mb-1">
+                    Barangay (Dingalan LGU)
+                  </label>
+                  <select
+                    value={editForm.barangay}
+                    onChange={(e) => setEditForm({ ...editForm, barangay: e.target.value as DingalanBarangay })}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-amber-400 focus:outline-none"
+                  >
+                    {DINGALAN_BARANGAYS.map((b) => (
+                      <option key={b} value={b}>Brgy. {b}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-mono font-bold text-slate-300 mb-1">
+                    Eksaktong Target Area / Lugar <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.targetArea}
+                    onChange={(e) => setEditForm({ ...editForm, targetArea: e.target.value })}
+                    placeholder="Hal. Dingalan Feeder Port & Paltic Rock Sea Wall"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:border-amber-400 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Row 4: Date, Call Time, Estimated End Time & Total Hours */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <div>
+                  <label className="block text-xs font-mono font-bold text-slate-300 mb-1">
+                    Petsa ng Gawain (Date) <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={editForm.date}
+                    onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-amber-400 focus:outline-none font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-mono font-bold text-slate-300 mb-1">
+                    Simula (Call Time) <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.callTime}
+                    onChange={(e) => setEditForm({ ...editForm, callTime: e.target.value })}
+                    placeholder="06:00 AM"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-amber-400 focus:outline-none font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-mono font-bold text-slate-300 mb-1">
+                    Pagtatapos (End Time) <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.estimatedEndTime}
+                    onChange={(e) => setEditForm({ ...editForm, estimatedEndTime: e.target.value })}
+                    placeholder="11:59 PM"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-amber-400 focus:outline-none font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-mono font-bold text-slate-300 mb-1">
+                    Oras (Total Hours)
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.totalHours}
+                    onChange={(e) => setEditForm({ ...editForm, totalHours: e.target.value })}
+                    placeholder="4 na Oras"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-amber-400 focus:outline-none font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Row 5: Workforce & Supervisor */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-mono font-bold text-slate-300 mb-1">
+                    Target Workforce (Bilang ng Kalahok)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={editForm.targetBeneficiariesCount}
+                    onChange={(e) => setEditForm({ ...editForm, targetBeneficiariesCount: e.target.value })}
+                    placeholder="Hal. 4"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-amber-400 focus:outline-none font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-mono font-bold text-slate-300 mb-1">
+                    Namumunong Supervisor / Lead Officer
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.supervisorName}
+                    onChange={(e) => setEditForm({ ...editForm, supervisorName: e.target.value })}
+                    placeholder="Hal. Engr. Maricel T. Dela Cruz"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:border-amber-400 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Row 6: Description */}
+              <div>
+                <label className="block text-xs font-mono font-bold text-slate-300 mb-1">
+                  Deskripsyon at Sakop ng Gawain (Description)
+                </label>
+                <textarea
+                  rows={3}
+                  value={editForm.description}
+                  onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                  placeholder="Debris removal along the shoreline, rock armoring inspection, and marine waste collection..."
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-xs text-white focus:border-amber-400 focus:outline-none"
+                />
+              </div>
+
+              {/* Row 7: Logistics Reminders (Tools, Water, Attire) */}
+              <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 space-y-2.5">
+                <span className="text-xs font-mono font-bold text-slate-200 block uppercase">
+                  Mga Paalala sa Kalahok (Logistics & Attire)
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                  <div>
+                    <label className="block text-[10px] text-slate-400 mb-0.5">Kagamitan (Tools)</label>
+                    <input
+                      type="text"
+                      value={editForm.requiredTools}
+                      onChange={(e) => setEditForm({ ...editForm, requiredTools: e.target.value })}
+                      placeholder="Guwantes, sako, walis..."
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-amber-400 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-400 mb-0.5">Kasuotan (Attire)</label>
+                    <input
+                      type="text"
+                      value={editForm.recommendedAttire}
+                      onChange={(e) => setEditForm({ ...editForm, recommendedAttire: e.target.value })}
+                      placeholder="Boots, vest, sumbrero..."
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-amber-400 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-400 mb-0.5">Paalala sa Tubig</label>
+                    <input
+                      type="text"
+                      value={editForm.waterReminder}
+                      onChange={(e) => setEditForm({ ...editForm, waterReminder: e.target.value })}
+                      placeholder="Reusable tumbler..."
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-amber-400 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 8: QR Code Notice Broadcast on Login Page */}
+              <div className="p-3.5 rounded-xl bg-slate-950/70 border border-amber-500/30 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-mono font-bold text-amber-300 flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editForm.qrScheduleEnabled}
+                      onChange={(e) => setEditForm({ ...editForm, qrScheduleEnabled: e.target.checked })}
+                      className="w-4 h-4 rounded text-amber-500 focus:ring-amber-400 bg-slate-900 border-slate-700 cursor-pointer"
+                    />
+                    <span>I-broadcast ang QR Code Paalala sa Login Page</span>
+                  </label>
+                  <span className="text-[10px] font-mono text-slate-400">
+                    {editForm.qrScheduleEnabled ? 'Aktibo ang paalala' : 'Naka-off'}
+                  </span>
+                </div>
+
+                {editForm.qrScheduleEnabled && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div className="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800 space-y-1.5">
+                      <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block">
+                        ▶️ Simula ng Paglabas (Start)
+                      </span>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] text-slate-400 mb-0.5">Petsa</label>
+                          <input
+                            type="date"
+                            value={editForm.qrDisplayStartDate}
+                            onChange={(e) => setEditForm({ ...editForm, qrDisplayStartDate: e.target.value })}
+                            className="w-full bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-xs text-white focus:border-amber-400 focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 mb-0.5">Oras</label>
+                          <input
+                            type="time"
+                            value={editForm.qrDisplayStartTime}
+                            onChange={(e) => setEditForm({ ...editForm, qrDisplayStartTime: e.target.value })}
+                            className="w-full bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-xs text-white focus:border-amber-400 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800 space-y-1.5">
+                      <span className="text-[10px] font-bold text-rose-400 uppercase tracking-wider block">
+                        ⏹️ Pagtatapos ng Paglabas (End)
+                      </span>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] text-slate-400 mb-0.5">Petsa</label>
+                          <input
+                            type="date"
+                            value={editForm.qrDisplayEndDate}
+                            onChange={(e) => setEditForm({ ...editForm, qrDisplayEndDate: e.target.value })}
+                            className="w-full bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-xs text-white focus:border-amber-400 focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 mb-0.5">Oras</label>
+                          <input
+                            type="time"
+                            value={editForm.qrDisplayEndTime}
+                            onChange={(e) => setEditForm({ ...editForm, qrDisplayEndTime: e.target.value })}
+                            className="w-full bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-xs text-white focus:border-amber-400 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Form Action Buttons */}
+              <div className="pt-3 border-t border-slate-800 flex items-center justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingActivity(null)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl cursor-pointer transition-colors"
+                >
+                  Kanselahin
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingEdit}
+                  className="px-5 py-2 text-xs font-bold text-slate-950 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 rounded-xl shadow-lg cursor-pointer transition-all disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{isSavingEdit ? 'Sine-save...' : 'I-save ang mga Pagbabago'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Auto Report Modal */}
       {autoReportActivity && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-sm overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden animate-fadeIn">

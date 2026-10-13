@@ -60,9 +60,8 @@ export const TimeAdjusterModal: React.FC<TimeAdjusterModalProps> = ({
         return;
       }
 
-      // Create target date in Dingalan timezone (UTC+8)
-      const targetUtcEpoch = Date.UTC(year, month - 1, day, hours - 8, minutes, 0);
-      const targetDate = new Date(targetUtcEpoch);
+      // Create target date in device time
+      const targetDate = new Date(year, month - 1, day, hours, minutes, 0);
 
       setDingalanTimeOverride(targetDate);
       setIsOverridden(true);
@@ -79,7 +78,7 @@ export const TimeAdjusterModal: React.FC<TimeAdjusterModalProps> = ({
   const handleResetToRealTime = () => {
     resetDingalanTimeOverride();
     setIsOverridden(false);
-    setSaveSuccessMsg('Na-reset na ang oras sa opisyal na Philippine Standard Time (Real-Time)!');
+    setSaveSuccessMsg('Na-reset at na-sync na ang oras sa eksaktong oras ng iyong Device (Real-Time)!');
     setTimeout(() => {
       setSaveSuccessMsg(null);
       onClose();
@@ -103,7 +102,7 @@ export const TimeAdjusterModal: React.FC<TimeAdjusterModalProps> = ({
             <div>
               <div className="flex items-center space-x-1.5">
                 <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase tracking-wider">
-                  PST CLOCK CONTROL
+                  DEVICE CLOCK CONTROL
                 </span>
                 {isOverridden && (
                   <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 uppercase">
@@ -132,14 +131,14 @@ export const TimeAdjusterModal: React.FC<TimeAdjusterModalProps> = ({
           <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-emerald-500/40 space-y-1">
             <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-              KASALUKUYANG ORAS SA SYSTEM (DINGALAN, AURORA):
+              KASALUKUYANG ORAS SA SYSTEM (DEVICE CLOCK):
             </span>
             <div className="flex items-center justify-between pt-0.5">
               <div className="text-white font-mono font-black text-sm sm:text-base">
                 {clock.dayOfWeek}, {clock.dateFormatted} • <span className="text-emerald-300">{clock.timeWithSeconds}</span>
               </div>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
-                UTC+8
+                DEVICE SYNC
               </span>
             </div>
           </div>
@@ -252,7 +251,7 @@ export const TimeAdjusterModal: React.FC<TimeAdjusterModalProps> = ({
             className="flex-1 py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 hover:text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all uppercase"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span>I-RESET SA REAL-TIME PST</span>
+            <span>I-RESET SA REAL-TIME ORAS NG DEVICE</span>
           </button>
 
           <button

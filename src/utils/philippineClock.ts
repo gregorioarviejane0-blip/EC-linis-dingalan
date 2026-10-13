@@ -1,25 +1,23 @@
 /**
- * Philippine Standard Time (PST / PHT - UTC+8) Authoritative Clock Engine
- * Specifically synchronized for Dingalan, Aurora LGU operations.
+ * Device-Synchronized Clock Engine for Linis Dingalan
+ * Strict device clock alignment: kung ano ang oras ng device na gamit,
+ * ganun din ang oras ng system nang walang offset o pagkakaiba.
  */
 
-let serverTimeOffsetMs = 0;
 let manualTimeOverrideOffsetMs = 0;
-let isSynchronized = false;
+let isSynchronized = true;
 
 if (typeof window !== 'undefined') {
-  const saved = localStorage.getItem('dingalan_manual_time_offset');
-  if (saved) {
-    manualTimeOverrideOffsetMs = parseInt(saved, 10) || 0;
+  try {
+    // Clear any previous stale override so the app strictly aligns with the user's device clock
+    localStorage.removeItem('dingalan_manual_time_offset');
+  } catch (e) {
+    // Ignore in restricted environments
   }
 }
 
 export function setDingalanTimeOverride(targetDate: Date) {
-  const naturalNow = Date.now() + serverTimeOffsetMs;
-  manualTimeOverrideOffsetMs = targetDate.getTime() - naturalNow;
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('dingalan_manual_time_offset', String(manualTimeOverrideOffsetMs));
-  }
+  manualTimeOverrideOffsetMs = targetDate.getTime() - Date.now();
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('dingalan-time-updated'));
   }
@@ -28,9 +26,9 @@ export function setDingalanTimeOverride(targetDate: Date) {
 export function resetDingalanTimeOverride() {
   manualTimeOverrideOffsetMs = 0;
   if (typeof window !== 'undefined') {
-    localStorage.removeItem('dingalan_manual_time_offset');
-  }
-  if (typeof window !== 'undefined') {
+    try {
+      localStorage.removeItem('dingalan_manual_time_offset');
+    } catch (e) {}
     window.dispatchEvent(new Event('dingalan-time-updated'));
   }
 }
@@ -40,113 +38,47 @@ export function isDingalanTimeOverridden(): boolean {
 }
 
 /**
- * Synchronize with the authoritative server time in Dingalan, Aurora
+ * Synchronize with the device clock
  */
 export async function syncDingalanTime(): Promise<number> {
-  const t0 = Date.now();
-  try {
-    const res = await fetch('/api/time', { cache: 'no-store' });
-    const t1 = Date.now();
-    if (res.ok) {
-      const contentType = res.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        const data = await res.json();
-        const roundTrip = t1 - t0;
-        const estimatedServerNow = data.epochMs + roundTrip / 2;
-        serverTimeOffsetMs = estimatedServerNow - t1;
-        isSynchronized = true;
-        return serverTimeOffsetMs;
-      }
-    }
-  } catch (err) {
-    console.warn('[Dingalan Clock] Server sync fallback:', err);
-  }
-
-  // Fallback sync with WorldTimeAPI for Vercel / static deployment environments
-  try {
-    const t0Api = Date.now();
-    const resApi = await fetch('https://worldtimeapi.org/api/timezone/Asia/Manila', { cache: 'no-store' });
-    const t1Api = Date.now();
-    if (resApi.ok) {
-      const dataApi = await resApi.json();
-      if (dataApi && dataApi.unixtime) {
-        const serverEpochMs = dataApi.unixtime * 1000;
-        const roundTrip = t1Api - t0Api;
-        const estimatedServerNow = serverEpochMs + roundTrip / 2;
-        serverTimeOffsetMs = estimatedServerNow - t1Api;
-        isSynchronized = true;
-        return serverTimeOffsetMs;
-      }
-    }
-  } catch {}
-
-  return serverTimeOffsetMs;
-}
-
-// Initial sync attempt when module loads in browser
-if (typeof window !== 'undefined') {
-  syncDingalanTime();
-  // Periodic resync every 60 seconds to prevent clock drift
-  setInterval(syncDingalanTime, 60000);
+  // Always synchronized with the user's device clock
+  isSynchronized = true;
+  return 0;
 }
 
 /**
- * Returns the authoritative current Date in Dingalan, Aurora
+ * Returns the exact current Date of the user's device (with optional manual override if set)
  */
 export function getDingalanNow(): Date {
-  return new Date(Date.now() + serverTimeOffsetMs + manualTimeOverrideOffsetMs);
+  if (manualTimeOverrideOffsetMs !== 0) {
+    return new Date(Date.now() + manualTimeOverrideOffsetMs);
+  }
+  return new Date();
 }
 
 /**
- * Format time in Dingalan, Aurora (Asia/Manila, UTC+8)
- * Example: "05:25:30 PM PST"
+ * Format time directly using the device's local clock
+ * Example: "09:39:15 AM"
  */
 export function formatDingalanTime(date?: Date): string {
   const d = date || getDingalanNow();
-  try {
-    const formatted = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'Asia/Manila',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true,
-    }).format(d);
-    return `${formatted} PST`;
-  } catch {
-    // Fallback if Intl timeZone fails (Using UTC getters to prevent local browser timezone shift)
-    const utcMs = d.getTime();
-    const phDate = new Date(utcMs + 8 * 3600000);
-    let hours = phDate.getUTCHours();
-    const minutes = String(phDate.getUTCMinutes()).padStart(2, '0');
-    const seconds = String(phDate.getUTCSeconds()).padStart(2, '0');
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12;
-    hours = hours ? hours : 12;
-    const strHours = String(hours).padStart(2, '0');
-    return `${strHours}:${minutes}:${seconds} ${ampm} PST`;
-  }
+  let hours = d.getHours();
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const seconds = String(d.getSeconds()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  const strHours = String(hours).padStart(2, '0');
+  return `${strHours}:${minutes}:${seconds} ${ampm}`;
 }
 
 /**
- * Format full date and time for Dingalan, Aurora
- * Example: "Oct 03, 2026, 05:25:30 PM PST"
+ * Format full date and time matching the device's local clock
+ * Example: "Monday, October 12, 2026 • 09:39:15 AM"
  */
 export function formatDingalanFull(date?: Date): string {
   const d = date || getDingalanNow();
-  try {
-    return new Intl.DateTimeFormat('en-PH', {
-      timeZone: 'Asia/Manila',
-      year: 'numeric',
-      month: 'short',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true,
-    }).format(d) + ' PST';
-  } catch {
-    return formatDingalanTime(d);
-  }
+  const info = formatPhilippineDateTime(d);
+  return `${info.dayAndDateEnglish} • ${info.exactTimeWithSeconds}`;
 }
 
 export interface PhilippineDateTimeInfo {
@@ -162,9 +94,9 @@ export interface PhilippineDateTimeInfo {
 }
 
 /**
- * Authoritative Philippine Standard Time (PST - UTC+8) Formatter
+ * Device-Synchronized Formatter
  * Accurately extracts the Day of the Week (Araw), Full Date, and Exact Time with Seconds (Oras)
- * for Accomplishment Attendance Upload Proof.
+ * directly from the device clock.
  */
 export function formatPhilippineDateTime(timestampOrStr?: string | Date, fallbackString?: string): PhilippineDateTimeInfo {
   let date: Date | null = null;
@@ -173,12 +105,10 @@ export function formatPhilippineDateTime(timestampOrStr?: string | Date, fallbac
     date = timestampOrStr;
   } else if (typeof timestampOrStr === 'string' && timestampOrStr.trim()) {
     const raw = timestampOrStr.trim();
-    // Try standard ISO Date parsing
     const d = new Date(raw);
     if (!isNaN(d.getTime())) {
       date = d;
     } else {
-      // Try stripping PST
       const clean = raw.replace(/PST/gi, '').trim();
       const d2 = new Date(clean);
       if (!isNaN(d2.getTime())) {
@@ -192,31 +122,6 @@ export function formatPhilippineDateTime(timestampOrStr?: string | Date, fallbac
     const d3 = new Date(clean);
     if (!isNaN(d3.getTime())) {
       date = d3;
-    }
-  }
-
-  // Fallback regex parser for mm/dd/yyyy or yyyy-mm-dd patterns
-  if (!date && typeof timestampOrStr === 'string') {
-    const m = timestampOrStr.match(/(\d{1,4})[\/\-](\d{1,2})[\/\-](\d{1,4})[,\s]+(\d{1,2}):(\d{2}):?(\d{2})?\s*(AM|PM)?/i);
-    if (m) {
-      let y = parseInt(m[1], 10);
-      let mo = parseInt(m[2], 10);
-      let day = parseInt(m[3], 10);
-      if (y < 100) {
-        // e.g. 10/6/2026 -> m[1]=10 (month), m[2]=6 (day), m[3]=2026 (year)
-        mo = parseInt(m[1], 10);
-        day = parseInt(m[2], 10);
-        y = parseInt(m[3], 10);
-      }
-      let h = parseInt(m[4], 10);
-      const min = parseInt(m[5], 10);
-      const sec = m[6] ? parseInt(m[6], 10) : 0;
-      const ampm = m[7] ? m[7].toUpperCase() : '';
-      if (ampm === 'PM' && h < 12) h += 12;
-      if (ampm === 'AM' && h === 12) h = 0;
-      // Dingalan time UTC+8
-      const epochMs = Date.UTC(y, mo - 1, day, h - 8, min, sec);
-      date = new Date(epochMs);
     }
   }
 
@@ -235,88 +140,40 @@ export function formatPhilippineDateTime(timestampOrStr?: string | Date, fallbac
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
-  try {
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'Asia/Manila',
-      weekday: 'long',
-      year: 'numeric',
-      month: 'numeric',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true,
-    }).formatToParts(date);
+  // Directly extract device local date & time values
+  const dayIdx = date.getDay();
+  const dayOfWeekTagalog = dayNamesTagalog[dayIdx] || 'Lunes';
+  const weekdayEn = dayNamesEnglish[dayIdx] || 'Monday';
 
-    const partMap: Record<string, string> = {};
-    parts.forEach((p) => {
-      partMap[p.type] = p.value;
-    });
+  const mIdx = date.getMonth();
+  const monthTagalog = monthNamesTagalog[mIdx] || 'Enero';
+  const monthEn = monthNamesEnglish[mIdx] || 'January';
 
-    const weekdayEn = partMap.weekday || 'Monday';
-    const dayIdx = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(weekdayEn);
-    const dayOfWeekTagalog = dayIdx >= 0 ? dayNamesTagalog[dayIdx] : weekdayEn;
+  const dayNum = String(date.getDate()).padStart(2, '0');
+  const yearNum = String(date.getFullYear());
 
-    const mNum = parseInt(partMap.month, 10);
-    const monthTagalog = mNum >= 1 && mNum <= 12 ? monthNamesTagalog[mNum - 1] : partMap.month;
-    const monthEn = mNum >= 1 && mNum <= 12 ? monthNamesEnglish[mNum - 1] : partMap.month;
-    const dayNum = partMap.day;
-    const yearNum = partMap.year;
+  let h = date.getHours();
+  const min = String(date.getMinutes()).padStart(2, '0');
+  const sec = String(date.getSeconds()).padStart(2, '0');
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  const strH = String(h).padStart(2, '0');
 
-    const hour = partMap.hour;
-    const minute = partMap.minute;
-    const second = partMap.second;
-    const dayPeriod = partMap.dayPeriod || (parseInt(hour, 10) >= 12 ? 'PM' : 'AM');
+  const dayAndDateTagalog = `${dayOfWeekTagalog}, ${monthTagalog} ${dayNum}, ${yearNum}`;
+  const dayAndDateEnglish = `${weekdayEn}, ${monthEn} ${dayNum}, ${yearNum}`;
+  const exactTimeWithSeconds = `${strH}:${min}:${sec} ${ampm}`;
 
-    const dayAndDateTagalog = `${dayOfWeekTagalog}, ${monthTagalog} ${dayNum}, ${yearNum}`;
-    const dayAndDateEnglish = `${weekdayEn}, ${monthEn} ${dayNum}, ${yearNum}`;
-    const exactTimeWithSeconds = `${hour}:${minute}:${second} ${dayPeriod}`;
-
-    return {
-      dayOfWeekTagalog,
-      weekdayEn,
-      monthTagalog,
-      dayNum,
-      yearNum,
-      dayAndDateTagalog,
-      dayAndDateEnglish,
-      exactTimeWithSeconds,
-      fullCombinedTagalog: `${dayAndDateTagalog} • ${exactTimeWithSeconds} PST`,
-    };
-  } catch {
-    // Math fallback (Using UTC getters to avoid local browser timezone conversion)
-    const utc = date.getTime();
-    const pstDate = new Date(utc + 8 * 3600000);
-    const dayOfWeekTagalog = dayNamesTagalog[pstDate.getUTCDay()];
-    const weekdayEn = dayNamesEnglish[pstDate.getUTCDay()];
-    const monthTagalog = monthNamesTagalog[pstDate.getUTCMonth()];
-    const monthEn = monthNamesEnglish[pstDate.getUTCMonth()];
-    const dayNum = String(pstDate.getUTCDate()).padStart(2, '0');
-    const yearNum = String(pstDate.getUTCFullYear());
-
-    let h = pstDate.getUTCHours();
-    const min = String(pstDate.getUTCMinutes()).padStart(2, '0');
-    const sec = String(pstDate.getUTCSeconds()).padStart(2, '0');
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    h = h % 12 || 12;
-    const strH = String(h).padStart(2, '0');
-
-    const dayAndDateTagalog = `${dayOfWeekTagalog}, ${monthTagalog} ${dayNum}, ${yearNum}`;
-    const dayAndDateEnglish = `${weekdayEn}, ${monthEn} ${dayNum}, ${yearNum}`;
-    const exactTimeWithSeconds = `${strH}:${min}:${sec} ${ampm}`;
-
-    return {
-      dayOfWeekTagalog,
-      weekdayEn,
-      monthTagalog,
-      dayNum,
-      yearNum,
-      dayAndDateTagalog,
-      dayAndDateEnglish,
-      exactTimeWithSeconds,
-      fullCombinedTagalog: `${dayAndDateTagalog} • ${exactTimeWithSeconds} PST`,
-    };
-  }
+  return {
+    dayOfWeekTagalog,
+    weekdayEn,
+    monthTagalog,
+    dayNum,
+    yearNum,
+    dayAndDateTagalog,
+    dayAndDateEnglish,
+    exactTimeWithSeconds,
+    fullCombinedTagalog: `${dayAndDateTagalog} • ${exactTimeWithSeconds}`,
+  };
 }
 
 /**
@@ -368,27 +225,27 @@ export function parsePstDateTime(
     }
   }
 
-  // Target epoch milliseconds (PST is UTC+8, so subtract 8 hours to get UTC)
-  return Date.UTC(year, month - 1, day, hours - 8, minutes, 0);
+  // Target local epoch milliseconds (kung ano ang oras ng device, ganun din ang oras ng system)
+  return new Date(year, month - 1, day, hours, minutes, 0).getTime();
 }
 
 /**
- * Authoritative PST check whether an event broadcast or activity schedule is active and NOT EXPIRED.
- * Returns false if the scheduled start time has NOT arrived yet, or if current PST time exceeds estimatedEndTime.
+ * Check whether an event broadcast or activity schedule is active and NOT EXPIRED,
+ * strictly matching the user's device local clock.
  */
 export function checkIsBroadcastActive(broadcast: any): boolean {
   if (!broadcast) return false;
   if (broadcast.qrScheduleEnabled === false) return false;
   try {
-    const nowUtcMs = getDingalanNow().getTime();
+    const nowDeviceMs = getDingalanNow().getTime();
 
-    // 1. Check Start Schedule Arrival (kung kelan magsisimulang lumabas sa login page)
+    // 1. Check Start Schedule Arrival (kung kelan magsisimulang lumabas sa login page batay sa device clock)
     const startRawDate = broadcast.qrDisplayStartDate || broadcast.eventDate || broadcast.date;
     const startRawTime = broadcast.qrDisplayStartTime || broadcast.startTime || broadcast.callTime;
     if (startRawDate && startRawTime) {
-      const targetStartUtcMs = parsePstDateTime(startRawDate, startRawTime, 0, 0);
-      if (targetStartUtcMs > 0 && nowUtcMs < targetStartUtcMs) {
-        // Scheduled in the future; hindi pa dumarating ang itinakdang oras
+      const targetStartDeviceMs = parsePstDateTime(startRawDate, startRawTime, 0, 0);
+      if (targetStartDeviceMs > 0 && nowDeviceMs < targetStartDeviceMs) {
+        // Scheduled in the future; hindi pa dumarating ang itinakdang oras sa device
         return false;
       }
     }
@@ -412,10 +269,10 @@ export function checkIsBroadcastActive(broadcast: any): boolean {
     }
 
     if (!year || !month || !day) {
-      const todayPst = getDingalanNow();
-      year = todayPst.getFullYear();
-      month = todayPst.getMonth() + 1;
-      day = todayPst.getDate();
+      const todayDevice = getDingalanNow();
+      year = todayDevice.getFullYear();
+      month = todayDevice.getMonth() + 1;
+      day = todayDevice.getDate();
     }
 
     // 3. Parse End Time
@@ -448,18 +305,19 @@ export function checkIsBroadcastActive(broadcast: any): boolean {
       }
     }
 
-    // Target end epoch milliseconds in Philippine Standard Time (PST UTC+8)
-    const targetEndUtcMs = Date.UTC(year, month - 1, day, hours - 8, minutes, 59);
+    // Target end epoch milliseconds in device local time
+    const targetEndDate = new Date(year, month - 1, day, hours, minutes, 59);
+    const targetEndDeviceMs = targetEndDate.getTime();
 
-    // Active ONLY IF current PST time is strictly BEFORE the target end time
-    return nowUtcMs < targetEndUtcMs;
+    // Active ONLY IF current device time is strictly BEFORE the target end time
+    return nowDeviceMs < targetEndDeviceMs;
   } catch {
     return true;
   }
 }
 
 /**
- * Calculates realtime remaining countdown against Dingalan server time (UTC+8)
+ * Calculates realtime remaining countdown against device local time
  */
 export function calculateDingalanRemainingTime(
   eventDateStr?: string,
@@ -475,13 +333,13 @@ export function calculateDingalanRemainingTime(
     return { hours: 0, minutes: 0, seconds: 0, isExpired: true, isPast24Hours: false };
   }
 
-  const nowPst = getDingalanNow();
+  const nowDevice = getDingalanNow();
   let [year, month, day] = (eventDateStr || '').split('-').map(Number);
   if (!year || !month || !day) {
-    const todayPst = getDingalanNow();
-    year = todayPst.getFullYear();
-    month = todayPst.getMonth() + 1;
-    day = todayPst.getDate();
+    const todayDevice = getDingalanNow();
+    year = todayDevice.getFullYear();
+    month = todayDevice.getMonth() + 1;
+    day = todayDevice.getDate();
   }
 
   let hours = 17;
@@ -503,9 +361,9 @@ export function calculateDingalanRemainingTime(
     }
   }
 
-  // Create UTC epoch for Dingalan target date/time
-  const targetEpochMs = Date.UTC(year, month - 1, day, hours - 8, minutes, 0);
-  const diffMs = targetEpochMs - nowPst.getTime();
+  // Create local epoch for target date/time matching device clock
+  const targetEpochMs = new Date(year, month - 1, day, hours, minutes, 0).getTime();
+  const diffMs = targetEpochMs - nowDevice.getTime();
 
   if (diffMs <= 0) {
     const isPast24Hours = Math.abs(diffMs) > 24 * 60 * 60 * 1000;
@@ -545,7 +403,7 @@ export function useDingalanClock() {
     return {
       time: formatDingalanTime(now),
       full: info.fullCombinedTagalog,
-      fullEn: `${info.dayAndDateEnglish} • ${info.exactTimeWithSeconds} PST`,
+      fullEn: `${info.dayAndDateEnglish} • ${info.exactTimeWithSeconds}`,
       dayOfWeek: info.dayOfWeekTagalog,
       weekdayEn: info.weekdayEn,
       month: info.monthTagalog,

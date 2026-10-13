@@ -202,7 +202,7 @@ export const AuditTrailView: React.FC<AuditTrailViewProps> = ({
               </div>
 
               <div className="flex items-center justify-between text-[9px] font-mono text-slate-400 pt-1 border-t border-slate-800">
-                <span>{new Date(log.timestamp).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })} PST</span>
+                <span>{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                 <span>{log.entityType} • {log.ipAddress}</span>
               </div>
             </div>
@@ -214,7 +214,7 @@ export const AuditTrailView: React.FC<AuditTrailViewProps> = ({
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-700 bg-slate-900/60 text-[10px] font-mono uppercase text-slate-400 tracking-wider">
-                <th className="py-3 px-4">Timestamp (UTC/Local)</th>
+                <th className="py-3 px-4">Timestamp (Device Local)</th>
                 <th className="py-3 px-4">Officer / User</th>
                 <th className="py-3 px-4">Action Event</th>
                 <th className="py-3 px-4">Entity Type</th>
@@ -230,8 +230,7 @@ export const AuditTrailView: React.FC<AuditTrailViewProps> = ({
                   className="hover:bg-slate-700/30 transition-colors cursor-pointer group"
                 >
                   <td className="py-3 px-4 font-mono text-[11px] text-slate-300">
-                    {new Date(log.timestamp).toLocaleString('en-PH', {
-                      timeZone: 'Asia/Manila',
+                    {new Date(log.timestamp).toLocaleString(undefined, {
                       month: 'short',
                       day: '2-digit',
                       hour: '2-digit',

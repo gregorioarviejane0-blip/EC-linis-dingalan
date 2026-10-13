@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, User, EventQrBroadcast } from '../types';
+import { Activity, User, EventQrBroadcast, ActivityAssignment, Beneficiary } from '../types';
 import { api } from '../services/api';
 import { INITIAL_ACTIVITIES, INITIAL_EVENT_BROADCAST } from '../data/seedData';
 import QRCode from 'qrcode';
@@ -52,6 +52,9 @@ interface GenerateQrEventModalProps {
   onBroadcastSuccess: (broadcast: EventQrBroadcast) => void;
   onCreateActivity?: (activity: Activity | Partial<Activity>) => void | Promise<any>;
   onDeleteActivity?: (id: string) => void | Promise<any>;
+  assignments?: ActivityAssignment[];
+  beneficiaries?: Beneficiary[];
+  initialActivityId?: string | null;
 }
 
 const isBroadcastActive = (broadcast: any): boolean => {
@@ -66,6 +69,9 @@ export const GenerateQrEventModal: React.FC<GenerateQrEventModalProps> = ({
   onBroadcastSuccess,
   onCreateActivity,
   onDeleteActivity,
+  assignments = [],
+  beneficiaries = [],
+  initialActivityId = null,
 }) => {
   const [localActivities, setLocalActivities] = useState<Activity[]>(
     Array.isArray(activities) && activities.length > 0 ? activities : INITIAL_ACTIVITIES
@@ -77,7 +83,10 @@ export const GenerateQrEventModal: React.FC<GenerateQrEventModalProps> = ({
     }
   }, [activities]);
 
-  const safeActs = localActivities.length > 0 ? localActivities : INITIAL_ACTIVITIES;
+  // Synchronized strictly with the Program button (activities list)
+  const safeActs = Array.isArray(activities) && activities.length > 0
+    ? activities
+    : (localActivities.length > 0 ? localActivities : INITIAL_ACTIVITIES);
 
   const [selectedActivityId, setSelectedActivityId] = useState<string>('');
   const [activityTitle, setActivityTitle] = useState<string>('');
@@ -175,13 +184,17 @@ export const GenerateQrEventModal: React.FC<GenerateQrEventModalProps> = ({
     }
   }, [isOpen]);
 
-  // Clean / Zero-data initialization when modal opens
+  // Initialization when modal opens
   useEffect(() => {
     if (isOpen) {
       setIsSuccessSent(false);
-      handleClearAllFields();
+      if (initialActivityId) {
+        handleActivityChange(initialActivityId);
+      } else {
+        handleClearAllFields();
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, initialActivityId]);
 
   // Generate dynamic QR Code when activity or details change
   useEffect(() => {
@@ -219,6 +232,7 @@ export const GenerateQrEventModal: React.FC<GenerateQrEventModalProps> = ({
   const safeHistory = Array.isArray(broadcastHistory) ? broadcastHistory : [];
   const currentAct = safeActs.find((a) => a.id === selectedActivityId);
 
+  // Synchronize entire content from Program button into this modal
   const handleActivityChange = (actId: string) => {
     setSelectedActivityId(actId);
     if (!actId) {
@@ -227,11 +241,65 @@ export const GenerateQrEventModal: React.FC<GenerateQrEventModalProps> = ({
     }
     const act = safeActs.find((a) => a.id === actId);
     if (act) {
+      // 1. Core Logistics from Program Button (Picture 1)
       setActivityTitle(act.title || '');
       setBarangay(act.barangay || '');
       setTargetArea(act.targetArea || '');
       if (act.date) setEventDate(act.date);
       if (act.callTime) setStartTime(act.callTime);
+
+      // 2. Times & Reminders from Program Button
+      if (act.estimatedEndTime || act.qrDisplayEndTime) {
+        setEstimatedEndTime(act.estimatedEndTime || act.qrDisplayEndTime || '11:59 PM');
+      } else {
+        setEstimatedEndTime('11:59 PM');
+      }
+      if (act.totalHours) {
+        setTotalHours(act.totalHours);
+      } else {
+        setTotalHours('4 na Oras');
+      }
+
+      if (act.requiredTools) {
+        setRequiredTools(act.requiredTools);
+      } else {
+        setRequiredTools('Guwantes, sako ng basura, walis tingting, tongs');
+      }
+
+      if (act.waterReminder || (act as any).waterTumblerReminder) {
+        setWaterTumblerReminder(act.waterReminder || (act as any).waterTumblerReminder || '');
+      } else {
+        setWaterTumblerReminder('Magdala ng sariling reusable tumbler na may inuming tubig.');
+      }
+
+      if (act.recommendedAttire) {
+        setRecommendedAttire(act.recommendedAttire);
+      } else {
+        setRecommendedAttire('Linis Dingalan t-shirt o komportableng damit, bota/shoes, sumbrero');
+      }
+
+      // 3. Description & Notes
+      if (act.description || act.notes) {
+        setAdditionalNotes(act.description || act.notes || '');
+      }
+
+      // 4. Assigned Workforce from Program Button (Picture 1)
+      if (Array.isArray(assignments) && Array.isArray(beneficiaries) && assignments.length > 0) {
+        const assignedBenes = beneficiaries.filter((b) =>
+          assignments.some((asg) => asg.activityId === act.id && asg.beneficiaryId === b.id)
+        );
+        if (assignedBenes.length > 0) {
+          setAssignedPersonnel(assignedBenes.map((b) => `${b.firstName} ${b.lastName} (${b.beneCode})`));
+        } else if ((act as any).assignedPersonnel && (act as any).assignedPersonnel.length > 0) {
+          setAssignedPersonnel((act as any).assignedPersonnel);
+        } else {
+          setAssignedPersonnel([]);
+        }
+      } else if ((act as any).assignedPersonnel && (act as any).assignedPersonnel.length > 0) {
+        setAssignedPersonnel((act as any).assignedPersonnel);
+      } else {
+        setAssignedPersonnel([]);
+      }
     }
   };
 
@@ -566,12 +634,31 @@ export const GenerateQrEventModal: React.FC<GenerateQrEventModalProps> = ({
                     className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs sm:text-sm text-white focus:border-emerald-400 focus:outline-none"
                   >
                     <option value="">-- Pumili ng Activity (Iwanang Malinis / Clean) --</option>
-                    {safeActs.map((act) => (
-                      <option key={act.id} value={act.id}>
-                        {act.title} — Brgy. {act.barangay} ({act.targetArea})
-                      </option>
-                    ))}
+                    {safeActs.length === 0 ? (
+                      <option value="" disabled>Walang active program (Magdagdag sa Programs button)</option>
+                    ) : (
+                      safeActs.map((act) => (
+                        <option key={act.id} value={act.id}>
+                          {act.title} — Brgy. {act.barangay} ({act.targetArea})
+                        </option>
+                      ))
+                    )}
                   </select>
+
+                  {/* Active Synced Banner from Program Button */}
+                  {selectedActivityId && currentAct && (
+                    <div className="p-2.5 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-200 text-xs font-mono flex flex-col xs:flex-row items-start xs:items-center justify-between gap-1 shadow-inner animate-fadeIn">
+                      <div className="flex items-center gap-1.5 truncate">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                        <span className="truncate">
+                          Naka-sync sa Program: <strong className="text-white">{currentAct.title}</strong>
+                        </span>
+                      </div>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
+                        Brgy. {currentAct.barangay} • {currentAct.date}
+                      </span>
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-[11px] font-mono text-slate-400 mb-1">

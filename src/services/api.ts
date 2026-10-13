@@ -920,7 +920,7 @@ export class ApiService {
 
       const now = getDingalanNow();
       const dtInfo = formatPhilippineDateTime(now);
-      const localPhTime = `${dtInfo.dayOfWeekTagalog}, ${dtInfo.monthTagalog} ${dtInfo.dayNum}, ${dtInfo.yearNum} • ${dtInfo.exactTimeWithSeconds} PST`;
+      const localPhTime = `${dtInfo.dayOfWeekTagalog}, ${dtInfo.monthTagalog} ${dtInfo.dayNum}, ${dtInfo.yearNum} • ${dtInfo.exactTimeWithSeconds}`;
 
       resultRecord = {
         id: `att-${Date.now()}-${Math.floor(Math.random() * 1000)}`,

@@ -106,7 +106,7 @@ export const OfficialQrPassCard: React.FC<OfficialQrPassCardProps> = ({
               <span>{isLiveEvent ? 'LIVE EVENT' : 'VERIFIED ID'}</span>
             </span>
             <span className="text-[9px] text-slate-400 font-mono">
-              PST (UTC+8)
+              DEVICE SYNC
             </span>
           </div>
         </div>
@@ -239,7 +239,7 @@ export const OfficialQrPassCard: React.FC<OfficialQrPassCardProps> = ({
 
           {/* Live Authority Clock Timestamp */}
           <div className="flex items-center justify-between pt-0.5 text-[10px] text-emerald-400/90">
-            <span>Oras ng Sistema (PST):</span>
+            <span>Oras ng Sistema:</span>
             <span className="font-bold">{clock.timeWithSeconds} • {clock.dateFormatted}</span>
           </div>
         </div>
