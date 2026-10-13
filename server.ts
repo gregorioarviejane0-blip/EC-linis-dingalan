@@ -377,6 +377,16 @@ app.use((req: Request, res: Response, next: NextFunction) => {
       status: 'scheduled',
       notes: body.notes || '',
       createdAt: new Date().toISOString(),
+      qrScheduleEnabled: body.qrScheduleEnabled ?? true,
+      qrDisplayMode: body.qrDisplayMode || 'match_event',
+      qrDisplayStartDate: body.qrDisplayStartDate || body.date,
+      qrDisplayStartTime: body.qrDisplayStartTime || body.callTime,
+      qrDisplayEndDate: body.qrDisplayEndDate || body.date,
+      qrDisplayEndTime: body.qrDisplayEndTime || '11:59 PM',
+      estimatedEndTime: body.estimatedEndTime || body.qrDisplayEndTime || '11:59 PM',
+      requiredTools: body.requiredTools || '',
+      waterReminder: body.waterReminder || '',
+      recommendedAttire: body.recommendedAttire || '',
     };
 
     activities.unshift(newAct);

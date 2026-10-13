@@ -5,7 +5,7 @@ import { api } from '../services/api';
 import { INITIAL_EVENT_BROADCAST } from '../data/seedData';
 import QRCode from 'qrcode';
 import { checkEventCutoff, burnGeotagWatermark, getGpsCoordinates, detectDingalanAreaByCoordinates } from '../utils/watermarkEngine';
-import { useDingalanClock, getDingalanNow, checkIsBroadcastActive, formatPhilippineDateTime, isDingalanTimeOverridden } from '../utils/philippineClock';
+import { useDingalanClock, getDingalanNow, checkIsBroadcastActive, formatPhilippineDateTime, isDingalanTimeOverridden, parsePstDateTime } from '../utils/philippineClock';
 import { generateStyledLguQrDataUrl } from '../utils/qrPassGenerator';
 import { SendAnonymousMessageModal } from './SendAnonymousMessageModal';
 import { FullScreenPhotoViewer } from './FullScreenPhotoViewer';
@@ -493,34 +493,59 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   // Helper to parse activity schedule in Dingalan PST
   const parseActivitySchedule = (act: any) => {
     try {
-      const isCurrentlyActive = checkIsBroadcastActive(convertActivityToBroadcast(act));
+      if (act.qrScheduleEnabled === false) {
+        return {
+          startUtcMs: 0,
+          endUtcMs: 0,
+          hasArrived: false,
+          isCurrentlyActive: false,
+          isPastEnd: true,
+          datePart: act?.date || '',
+          timePart: act?.callTime || '',
+        };
+      }
+
+      const nowUtcMs = getDingalanNow().getTime();
+      const startDateStr = act.qrDisplayStartDate || act.date;
+      const startTimeStr = act.qrDisplayStartTime || act.callTime || '06:00 AM';
+      const endDateStr = act.qrDisplayEndDate || act.date;
+      const endTimeStr = act.qrDisplayEndTime || act.estimatedEndTime || '11:59 PM';
+
+      const startUtcMs = parsePstDateTime(startDateStr, startTimeStr, 6, 0);
+      const endUtcMs = parsePstDateTime(endDateStr, endTimeStr, 23, 59);
+
+      const hasArrived = startUtcMs === 0 || nowUtcMs >= startUtcMs;
+      const isPastEnd = endUtcMs > 0 && nowUtcMs > endUtcMs;
+      const isCurrentlyActive = hasArrived && !isPastEnd;
+
       return {
-        startUtcMs: 0,
-        endUtcMs: 0,
-        hasArrived: true,
+        startUtcMs,
+        endUtcMs,
+        hasArrived,
         isCurrentlyActive,
-        isPastEnd: !isCurrentlyActive,
-        datePart: act?.date || '',
-        timePart: act?.callTime || '',
+        isPastEnd,
+        datePart: startDateStr,
+        timePart: startTimeStr,
       };
     } catch {
       return {
         startUtcMs: 0,
         endUtcMs: 0,
-        hasArrived: false,
-        isCurrentlyActive: false,
-        isPastEnd: true,
+        hasArrived: true,
+        isCurrentlyActive: true,
+        isPastEnd: false,
         datePart: act?.date || '',
         timePart: act?.callTime || '',
       };
     }
   };
 
-  // Convert an Activity to a full EventQrBroadcast object with complete reminders
+  // Convert an Activity to a full EventQrBroadcast object with complete reminders and schedule
   const convertActivityToBroadcast = (act: any): EventQrBroadcast => {
-    const formattedCallTime = act.callTime
-      ? (act.callTime.includes('AM') || act.callTime.includes('PM') ? act.callTime : `${act.callTime} AM`)
-      : '06:00 AM';
+    const rawCallTime = act.qrDisplayStartTime || act.callTime || '06:00 AM';
+    const formattedCallTime = rawCallTime.includes('AM') || rawCallTime.includes('PM')
+      ? rawCallTime
+      : `${rawCallTime}`;
 
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://linis-dingalan.aurora.gov.ph';
     const payload = `${origin}/?action=upload&act_id=${act.id}&brgy=${encodeURIComponent(act.barangay || 'Paltic')}&date=${encodeURIComponent(act.date || '')}`;
@@ -532,16 +557,21 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       targetArea: act.targetArea || 'Dingalan Feeder Port & Rock Wall',
       barangay: act.barangay || 'Paltic',
       qrPayload: payload,
-      eventDate: act.date || new Date().toISOString().split('T')[0],
+      eventDate: act.qrDisplayStartDate || act.date || new Date().toISOString().split('T')[0],
       startTime: formattedCallTime,
-      estimatedEndTime: act.estimatedEndTime || (formattedCallTime.includes('PM') ? '05:00 PM' : '11:00 AM'),
+      estimatedEndTime: act.qrDisplayEndTime || act.estimatedEndTime || (formattedCallTime.includes('PM') ? '05:00 PM' : '11:00 AM'),
       totalHours: '4 Oras (4 Hours)',
       requiredTools: act.requiredTools || 'Guwantes (Gloves), Sako para sa Basura, Walis Tingting, Pandakot at Tongs / Pang-ipit',
-      waterTumblerReminder: act.waterReminder || 'Magdala ng sariling reusable tumbler na may inuming tubig. Mahigpit na ipinagbabawal ang single-use plastic bottles alinsunod sa Dingalan MENRO Ordinance.',
+      waterTumblerReminder: act.waterReminder || act.waterTumblerReminder || 'Magdala ng sariling reusable tumbler na may inuming tubig. Mahigpit na ipinagbabawal ang single-use plastic bottles alinsunod sa Dingalan MENRO Ordinance.',
       recommendedAttire: act.recommendedAttire || 'Boots o Rubber Shoes, Sumbrero / Cap laban sa araw, at MENRO/PESO Reflectorized Vest o komportableng damit pansaka.',
       additionalNotes: act.description || `Opisyal na itinakdang gawain para sa ${act.title} sa ${act.targetArea || 'Dingalan'}. Mag-scan ng QR code at mag-upload ng patunay na larawan bago matapos ang oras.`,
       sentAt: new Date().toISOString(),
       sentByAdminName: act.supervisorName || 'Admin Officer (Operations Administrator)',
+      qrScheduleEnabled: act.qrScheduleEnabled !== false,
+      qrDisplayStartDate: act.qrDisplayStartDate,
+      qrDisplayStartTime: act.qrDisplayStartTime,
+      qrDisplayEndDate: act.qrDisplayEndDate,
+      qrDisplayEndTime: act.qrDisplayEndTime,
     };
   };
 

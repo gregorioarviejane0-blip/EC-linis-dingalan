@@ -25,6 +25,8 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
+  Plus,
+  AlertTriangle,
 } from 'lucide-react';
 
 const DINGALAN_BARANGAYS: DingalanBarangay[] = [
@@ -49,6 +51,7 @@ interface ReportsViewProps {
   assignments?: ActivityAssignment[];
   onAssignBeneficiary?: (activityId: string, beneficiaryId: string) => void;
   onUnassignBeneficiary?: (activityId: string, beneficiaryId: string) => void;
+  onCreateActivity?: (data: Partial<Activity>) => void | Promise<any>;
   onUpdateActivity?: (id: string, data: Partial<Activity>) => void;
   onDeleteActivity?: (id: string) => void;
 }
@@ -61,6 +64,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   assignments = [],
   onAssignBeneficiary,
   onUnassignBeneficiary,
+  onCreateActivity,
   onUpdateActivity,
   onDeleteActivity,
 }) => {
@@ -72,6 +76,83 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   const [activeChartModal, setActiveChartModal] = useState<'photos' | 'assigned' | 'potential' | 'barangays' | null>(null);
   const [managingAssignmentsActivity, setManagingAssignmentsActivity] = useState<Activity | null>(null);
   const [assignSearchTerm, setAssignSearchTerm] = useState('');
+
+  // Adding program / list state
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+  const [isSubmittingNew, setIsSubmittingNew] = useState<boolean>(false);
+  const [newProgramForm, setNewProgramForm] = useState<{
+    title: string;
+    barangay: DingalanBarangay;
+    targetArea: string;
+    description: string;
+    targetBeneficiariesCount: number | string;
+    date: string;
+    callTime: string;
+  }>({
+    title: '',
+    barangay: 'Paltic',
+    targetArea: '',
+    description: '',
+    targetBeneficiariesCount: 20,
+    date: new Date().toISOString().split('T')[0],
+    callTime: '06:00 AM',
+  });
+
+  // Deleting program / list state
+  const [deletingActivity, setDeletingActivity] = useState<Activity | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
+  const handleCreateProgram = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newProgramForm.title.trim()) return;
+    setIsSubmittingNew(true);
+    try {
+      if (onCreateActivity) {
+        await onCreateActivity({
+          title: newProgramForm.title.trim(),
+          barangay: newProgramForm.barangay,
+          targetArea: newProgramForm.targetArea.trim() || `Barangay ${newProgramForm.barangay} Zone`,
+          description: newProgramForm.description.trim() || 'Linis Dingalan Community Work Program',
+          targetBeneficiariesCount: Number(newProgramForm.targetBeneficiariesCount) || 20,
+          date: newProgramForm.date || new Date().toISOString().split('T')[0],
+          callTime: newProgramForm.callTime || '06:00 AM',
+          status: 'scheduled',
+          qrScheduleEnabled: true,
+          qrDisplayMode: 'match_event',
+          qrDisplayStartDate: newProgramForm.date || new Date().toISOString().split('T')[0],
+          qrDisplayStartTime: newProgramForm.callTime || '06:00 AM',
+          qrDisplayEndDate: newProgramForm.date || new Date().toISOString().split('T')[0],
+          qrDisplayEndTime: '23:59',
+        });
+      }
+      setIsCreateModalOpen(false);
+      setNewProgramForm({
+        title: '',
+        barangay: 'Paltic',
+        targetArea: '',
+        description: '',
+        targetBeneficiariesCount: 20,
+        date: new Date().toISOString().split('T')[0],
+        callTime: '06:00 AM',
+      });
+      setProgramPage(1);
+    } finally {
+      setIsSubmittingNew(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingActivity) return;
+    setIsDeleting(true);
+    try {
+      if (onDeleteActivity) {
+        await onDeleteActivity(deletingActivity.id);
+      }
+      setDeletingActivity(null);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // Editing activity state
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
@@ -105,9 +186,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   };
 
   const handleDeleteAct = (act: Activity) => {
-    if (window.confirm(`Sigurado ka bang nais mong burahin ang work program "${act.title}"?`)) {
-      if (onDeleteActivity) onDeleteActivity(act.id);
-    }
+    setDeletingActivity(act);
   };
 
   const photoUploadedCount = useMemo(() => {
@@ -405,6 +484,14 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               {activities.length} Active Programs {totalProgramPages > 1 && `• Pahina ${safeProgramPage} ng ${totalProgramPages}`}
             </span>
             <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="px-3 py-1 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-[11px] rounded-lg shadow-lg flex items-center transition-all cursor-pointer"
+              title="Magdagdag ng bagong program sa listahan"
+            >
+              <Plus className="w-3.5 h-3.5 mr-1 text-slate-950" />
+              <span>+ Mag-Add ng List</span>
+            </button>
+            <button
               onClick={handleExportExcel}
               className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] rounded-lg shadow flex items-center transition-all cursor-pointer"
             >
@@ -464,7 +551,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                       </button>
                       <button
                         onClick={() => handleDeleteAct(act)}
-                        title="I-delete ang Program"
+                        title="I-delete ang Program sa List"
                         className="p-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg border border-rose-500/30 transition-colors cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -500,7 +587,17 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             );
           })}
           {filteredActivities.length === 0 && (
-            <p className="text-xs text-slate-400 col-span-full italic">Walang tumugmang detalye ng program content sa iyong isinulat o napiling filter.</p>
+            <div className="col-span-full py-8 text-center bg-slate-950/60 border border-slate-800/80 rounded-2xl p-6 space-y-3">
+              <p className="text-xs text-slate-400 italic">Walang tumugmang detalye ng program content sa iyong isinulat o napiling filter.</p>
+              <button
+                type="button"
+                onClick={() => setIsCreateModalOpen(true)}
+                className="inline-flex items-center space-x-1.5 px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-lg transition-all cursor-pointer"
+              >
+                <Plus className="w-4 h-4 mr-1 text-emerald-100" />
+                <span>+ Mag-Add ng Bagong Program sa Listahan</span>
+              </button>
+            </div>
           )}
         </div>
 
@@ -876,6 +973,223 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add New Program / List Item Modal */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-slate-900 border border-emerald-500/50 rounded-3xl p-5 sm:p-6 w-full max-w-lg shadow-2xl relative">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center space-x-2">
+                <div className="p-2 bg-emerald-500/20 rounded-xl text-emerald-300">
+                  <Plus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white uppercase tracking-wider">
+                    Mag-Add ng Program sa List
+                  </h3>
+                  <p className="text-[10px] text-slate-400 font-mono">
+                    Magdagdag ng bagong operational box sa report grid.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsCreateModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateProgram} className="mt-4 space-y-3.5 text-xs font-mono">
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">
+                  Pamagat ng Gawain (Program Title) *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Hal. Coastal Shoreline Cleanup & Waste Collection"
+                  value={newProgramForm.title}
+                  onChange={(e) => setNewProgramForm({ ...newProgramForm, title: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-slate-100 placeholder-slate-600 focus:border-emerald-500 focus:outline-none font-sans"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-300 font-bold block mb-1">
+                    Barangay *
+                  </label>
+                  <select
+                    value={newProgramForm.barangay}
+                    onChange={(e) => setNewProgramForm({ ...newProgramForm, barangay: e.target.value as DingalanBarangay })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-slate-100 focus:border-emerald-500 focus:outline-none"
+                  >
+                    {DINGALAN_BARANGAYS.map((b) => (
+                      <option key={b} value={b}>Brgy. {b}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-slate-300 font-bold block mb-1">
+                    Target Beneficiaries *
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    required
+                    value={newProgramForm.targetBeneficiariesCount}
+                    onChange={(e) => setNewProgramForm({ ...newProgramForm, targetBeneficiariesCount: Number(e.target.value) })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-slate-100 focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">
+                  Sakop na Lugar (Target Area / Scope)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Hal. Purok 3 Beachfront Corridor"
+                  value={newProgramForm.targetArea}
+                  onChange={(e) => setNewProgramForm({ ...newProgramForm, targetArea: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-slate-100 placeholder-slate-600 focus:border-emerald-500 focus:outline-none font-sans"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-300 font-bold block mb-1">
+                    Petsa (Date)
+                  </label>
+                  <input
+                    type="date"
+                    value={newProgramForm.date}
+                    onChange={(e) => setNewProgramForm({ ...newProgramForm, date: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-slate-100 focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-slate-300 font-bold block mb-1">
+                    Oras ng Call Time
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="06:00 AM"
+                    value={newProgramForm.callTime}
+                    onChange={(e) => setNewProgramForm({ ...newProgramForm, callTime: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-slate-100 focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">
+                  Mga Gagawin sa Event / Deskripsyon *
+                </label>
+                <textarea
+                  rows={2}
+                  required
+                  placeholder="Isulat ang detalye ng gagawing linis operasyon o pamamahagi..."
+                  value={newProgramForm.description}
+                  onChange={(e) => setNewProgramForm({ ...newProgramForm, description: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-slate-100 placeholder-slate-600 focus:border-emerald-500 focus:outline-none font-sans"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  disabled={isSubmittingNew}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold cursor-pointer transition-colors"
+                >
+                  Kanselahin
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingNew}
+                  className="px-5 py-2 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 rounded-xl font-black cursor-pointer transition-colors shadow-lg shadow-emerald-950/40 flex items-center space-x-1.5"
+                >
+                  <Plus className="w-4 h-4 text-slate-950" />
+                  <span>{isSubmittingNew ? 'Idinadagdag...' : '+ Idagdag sa Listahan'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deletingActivity && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-slate-900 border border-rose-500/50 rounded-3xl p-5 sm:p-6 w-full max-w-md shadow-2xl relative">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center space-x-2">
+                <div className="p-2 bg-rose-500/20 rounded-xl text-rose-400">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <h3 className="text-base font-black text-white uppercase tracking-wider">
+                  Kumpirmahin ang Pagbura
+                </h3>
+              </div>
+              <button
+                onClick={() => setDeletingActivity(null)}
+                className="p-1.5 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3 font-mono text-xs">
+              <p className="text-slate-300">
+                Sigurado ka bang nais mong burahin ang item na ito mula sa listahan?
+              </p>
+
+              <div className="bg-slate-950/80 border border-rose-500/30 rounded-2xl p-3.5 space-y-1.5">
+                <p className="text-emerald-400 font-bold text-sm font-sans">
+                  {deletingActivity.title}
+                </p>
+                <p className="text-slate-400 text-[11px]">
+                  📍 Barangay: <strong className="text-white">Brgy. {deletingActivity.barangay}</strong>
+                </p>
+                {deletingActivity.description && (
+                  <p className="text-slate-300 text-[11px] italic font-sans">
+                    "{deletingActivity.description}"
+                  </p>
+                )}
+              </div>
+
+              <p className="text-rose-400 text-[11px]">
+                Paunawa: Kapag binura, mawawala ang box na ito sa report grid at sa listahan ng programs.
+              </p>
+
+              <div className="flex justify-end space-x-2 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setDeletingActivity(null)}
+                  disabled={isDeleting}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold cursor-pointer transition-colors"
+                >
+                  Kanselahin
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDelete}
+                  disabled={isDeleting}
+                  className="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-bold cursor-pointer transition-colors shadow-lg shadow-rose-950/40 flex items-center space-x-1.5"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>{isDeleting ? 'Binubura...' : 'Oo, Burahin ang List Item'}</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

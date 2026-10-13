@@ -24,6 +24,8 @@ import {
   Edit3,
   Save,
   Calendar,
+  Plus,
+  List,
 } from 'lucide-react';
 import { getDingalanNow, checkIsBroadcastActive } from '../utils/philippineClock';
 import { generateStyledLguQrDataUrl } from '../utils/qrPassGenerator';
@@ -48,6 +50,8 @@ interface GenerateQrEventModalProps {
   activities: Activity[];
   currentUser: User;
   onBroadcastSuccess: (broadcast: EventQrBroadcast) => void;
+  onCreateActivity?: (activity: Activity | Partial<Activity>) => void | Promise<any>;
+  onDeleteActivity?: (id: string) => void | Promise<any>;
 }
 
 const isBroadcastActive = (broadcast: any): boolean => {
@@ -60,8 +64,20 @@ export const GenerateQrEventModal: React.FC<GenerateQrEventModalProps> = ({
   activities,
   currentUser,
   onBroadcastSuccess,
+  onCreateActivity,
+  onDeleteActivity,
 }) => {
-  const safeActs = Array.isArray(activities) && activities.length > 0 ? activities : INITIAL_ACTIVITIES;
+  const [localActivities, setLocalActivities] = useState<Activity[]>(
+    Array.isArray(activities) && activities.length > 0 ? activities : INITIAL_ACTIVITIES
+  );
+
+  useEffect(() => {
+    if (Array.isArray(activities) && activities.length > 0) {
+      setLocalActivities(activities);
+    }
+  }, [activities]);
+
+  const safeActs = localActivities.length > 0 ? localActivities : INITIAL_ACTIVITIES;
 
   const [selectedActivityId, setSelectedActivityId] = useState<string>('');
   const [activityTitle, setActivityTitle] = useState<string>('');

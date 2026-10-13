@@ -87,6 +87,16 @@ export interface Activity {
   status: ActivityStatus;
   notes?: string;
   createdAt: string;
+  qrScheduleEnabled?: boolean;
+  qrDisplayMode?: 'match_event' | 'custom_schedule' | 'immediate';
+  qrDisplayStartDate?: string;
+  qrDisplayStartTime?: string;
+  qrDisplayEndDate?: string;
+  qrDisplayEndTime?: string;
+  estimatedEndTime?: string;
+  requiredTools?: string;
+  waterReminder?: string;
+  recommendedAttire?: string;
 }
 
 export interface ActivityAssignment {
@@ -181,6 +191,11 @@ export interface EventQrBroadcast {
   assignedPersonnel?: string[];
   sentByAdminName: string;
   sentAt: string;
+  qrScheduleEnabled?: boolean;
+  qrDisplayStartDate?: string;
+  qrDisplayStartTime?: string;
+  qrDisplayEndDate?: string;
+  qrDisplayEndTime?: string;
 }
 
 export interface AnonymousMessage {

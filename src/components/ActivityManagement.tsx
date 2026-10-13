@@ -103,6 +103,15 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
     barangay: DingalanBarangay;
     targetBeneficiariesCount: number | string;
     notes: string;
+    qrScheduleEnabled: boolean;
+    qrDisplayMode: 'match_event' | 'custom_schedule' | 'immediate';
+    qrDisplayStartDate: string;
+    qrDisplayStartTime: string;
+    qrDisplayEndDate: string;
+    qrDisplayEndTime: string;
+    requiredTools: string;
+    waterReminder: string;
+    recommendedAttire: string;
   }>({
     title: '',
     programType: 'COASTAL_CLEANUP',
@@ -113,6 +122,15 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
     barangay: 'Paltic',
     targetBeneficiariesCount: '20',
     notes: '',
+    qrScheduleEnabled: true,
+    qrDisplayMode: 'match_event',
+    qrDisplayStartDate: new Date().toISOString().split('T')[0],
+    qrDisplayStartTime: '06:00',
+    qrDisplayEndDate: new Date().toISOString().split('T')[0],
+    qrDisplayEndTime: '23:59',
+    requiredTools: 'Guwantes, Sako ng Basura, Walis Tingting, Pandakot at Tongs',
+    waterReminder: 'Magdala ng sariling reusable tumbler na may inuming tubig.',
+    recommendedAttire: 'Boots o Rubber Shoes, Sumbrero, at Reflectorized Vest.',
   });
 
   const filteredActivities = activities.filter((a) => {
@@ -123,7 +141,32 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await onCreateActivity(newActivity);
+      const resolvedStartDate = newActivity.qrDisplayMode === 'immediate'
+        ? new Date().toISOString().split('T')[0]
+        : (newActivity.qrDisplayMode === 'match_event' ? newActivity.date : newActivity.qrDisplayStartDate);
+
+      const resolvedStartTime = newActivity.qrDisplayMode === 'immediate'
+        ? '00:00'
+        : (newActivity.qrDisplayMode === 'match_event' ? newActivity.callTime : newActivity.qrDisplayStartTime);
+
+      const resolvedEndDate = newActivity.qrDisplayMode === 'custom_schedule'
+        ? newActivity.qrDisplayEndDate
+        : newActivity.date;
+
+      const resolvedEndTime = newActivity.qrDisplayMode === 'custom_schedule'
+        ? newActivity.qrDisplayEndTime
+        : '23:59';
+
+      const payload = {
+        ...newActivity,
+        qrDisplayStartDate: resolvedStartDate,
+        qrDisplayStartTime: resolvedStartTime,
+        qrDisplayEndDate: resolvedEndDate,
+        qrDisplayEndTime: resolvedEndTime,
+        estimatedEndTime: resolvedEndTime,
+      };
+
+      await onCreateActivity(payload);
       setIsCreateModalOpen(false);
     } catch (err: any) {
       alert(err.message || 'Failed to create work program');
@@ -1016,19 +1059,25 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
 
       {/* Create Activity Modal */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden">
-          <div className="relative w-full max-w-xl bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden my-8">
-            <div className="px-6 py-4 border-b border-slate-800 bg-slate-900/90 flex items-center justify-between">
-              <h3 className="text-base font-bold text-white">Create Work Program Activity</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-sm overflow-y-auto">
+          <div className="relative w-full max-w-xl max-h-[92dvh] flex flex-col bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden my-auto">
+            <div className="px-5 sm:px-6 py-3.5 sm:py-4 border-b border-slate-800 bg-slate-900/95 flex items-center justify-between shrink-0">
+              <div className="flex items-center space-x-2.5">
+                <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
+                  <Calendar className="w-4 h-4" />
+                </div>
+                <h3 className="text-sm sm:text-base font-bold text-white">Create Work Program Activity</h3>
+              </div>
               <button
+                type="button"
                 onClick={() => setIsCreateModalOpen(false)}
-                className="text-slate-400 hover:text-white"
+                className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleCreateSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleCreateSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
               <div>
                 <label className="block text-[11px] font-semibold text-slate-300 mb-1">
                   Activity Title *
@@ -1117,7 +1166,16 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                     type="date"
                     required
                     value={newActivity.date}
-                    onChange={(e) => setNewActivity({ ...newActivity, date: e.target.value })}
+                    onChange={(e) => {
+                      const newDate = e.target.value;
+                      setNewActivity((prev) => ({
+                        ...prev,
+                        date: newDate,
+                        ...(prev.qrDisplayMode === 'match_event'
+                          ? { qrDisplayStartDate: newDate, qrDisplayEndDate: newDate }
+                          : {}),
+                      }));
+                    }}
                     className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
                   />
                 </div>
@@ -1130,7 +1188,16 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                     type="time"
                     required
                     value={newActivity.callTime}
-                    onChange={(e) => setNewActivity({ ...newActivity, callTime: e.target.value })}
+                    onChange={(e) => {
+                      const newTime = e.target.value;
+                      setNewActivity((prev) => ({
+                        ...prev,
+                        callTime: newTime,
+                        ...(prev.qrDisplayMode === 'match_event'
+                          ? { qrDisplayStartTime: newTime }
+                          : {}),
+                      }));
+                    }}
                     className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
                   />
                 </div>
@@ -1149,17 +1216,231 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                 />
               </div>
 
+              {/* QR Code Paalala Schedule Configuration Section */}
+              <div className="p-3.5 sm:p-4 rounded-xl bg-slate-950/85 border border-emerald-500/40 space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-800/80">
+                  <div className="flex items-center space-x-2">
+                    <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
+                      <QrCode className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-white flex items-center gap-1.5 flex-wrap">
+                        <span>Schedule ng QR Code Paalala sa Login Page</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono">
+                          Login Advisory
+                        </span>
+                      </h4>
+                      <p className="text-[10px] text-slate-400">
+                        Itakda kung kailan lalabas at kailan matatapos ang QR code at paalala sa Login Screen.
+                      </p>
+                    </div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer ml-2">
+                    <input
+                      type="checkbox"
+                      checked={newActivity.qrScheduleEnabled}
+                      onChange={(e) => setNewActivity({ ...newActivity, qrScheduleEnabled: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                  </label>
+                </div>
+
+                {newActivity.qrScheduleEnabled ? (
+                  <div className="space-y-3 pt-1">
+                    {/* Mode Selector */}
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-300 mb-1.5">
+                        Kailan Lalabas sa Login Page?
+                      </label>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                        <button
+                          type="button"
+                          onClick={() => setNewActivity({
+                            ...newActivity,
+                            qrDisplayMode: 'match_event',
+                            qrDisplayStartDate: newActivity.date,
+                            qrDisplayStartTime: newActivity.callTime,
+                            qrDisplayEndDate: newActivity.date,
+                            qrDisplayEndTime: '23:59',
+                          })}
+                          className={`p-2 rounded-lg border text-left transition-all cursor-pointer ${
+                            newActivity.qrDisplayMode === 'match_event'
+                              ? 'bg-emerald-950/70 border-emerald-500 text-white font-bold ring-1 ring-emerald-400'
+                              : 'bg-slate-900 border-slate-700 text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          <div className="text-[11px] font-semibold flex items-center gap-1 text-emerald-300">
+                            <span>🎯 Sa Oras ng Event</span>
+                          </div>
+                          <div className="text-[9px] text-slate-400 mt-0.5">Lalabas sa mismong petsa at call time</div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setNewActivity({
+                            ...newActivity,
+                            qrDisplayMode: 'custom_schedule',
+                          })}
+                          className={`p-2 rounded-lg border text-left transition-all cursor-pointer ${
+                            newActivity.qrDisplayMode === 'custom_schedule'
+                              ? 'bg-emerald-950/70 border-emerald-500 text-white font-bold ring-1 ring-emerald-400'
+                              : 'bg-slate-900 border-slate-700 text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          <div className="text-[11px] font-semibold flex items-center gap-1 text-cyan-300">
+                            <span>🗓️ Custom Schedule</span>
+                          </div>
+                          <div className="text-[9px] text-slate-400 mt-0.5">Pumili ng sariling petsa at oras</div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setNewActivity({
+                            ...newActivity,
+                            qrDisplayMode: 'immediate',
+                            qrDisplayStartDate: new Date().toISOString().split('T')[0],
+                            qrDisplayStartTime: '00:00',
+                            qrDisplayEndDate: newActivity.date,
+                            qrDisplayEndTime: '23:59',
+                          })}
+                          className={`p-2 rounded-lg border text-left transition-all cursor-pointer ${
+                            newActivity.qrDisplayMode === 'immediate'
+                              ? 'bg-emerald-950/70 border-emerald-500 text-white font-bold ring-1 ring-emerald-400'
+                              : 'bg-slate-900 border-slate-700 text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          <div className="text-[11px] font-semibold flex items-center gap-1 text-amber-300">
+                            <span>⚡ Agad Ilabas</span>
+                          </div>
+                          <div className="text-[9px] text-slate-400 mt-0.5">Aktibo na kaagad ngayon sa login</div>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Date & Time Inputs */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                      {/* Start Schedule */}
+                      <div className="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800 space-y-2">
+                        <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block">
+                          ▶️ Petsa at Oras ng Paglabas (Start)
+                        </span>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[10px] text-slate-400 mb-0.5">Petsa</label>
+                            <input
+                              type="date"
+                              required={newActivity.qrScheduleEnabled}
+                              value={newActivity.qrDisplayStartDate}
+                              onChange={(e) => setNewActivity({ ...newActivity, qrDisplayStartDate: e.target.value })}
+                              className="w-full bg-slate-800 border border-slate-700 rounded-md px-2 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] text-slate-400 mb-0.5">Oras</label>
+                            <input
+                              type="time"
+                              required={newActivity.qrScheduleEnabled}
+                              value={newActivity.qrDisplayStartTime}
+                              onChange={(e) => setNewActivity({ ...newActivity, qrDisplayStartTime: e.target.value })}
+                              className="w-full bg-slate-800 border border-slate-700 rounded-md px-2 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* End Schedule */}
+                      <div className="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800 space-y-2">
+                        <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">
+                          ⏹️ Petsa at Oras ng Pagkawala (End)
+                        </span>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[10px] text-slate-400 mb-0.5">Petsa</label>
+                            <input
+                              type="date"
+                              required={newActivity.qrScheduleEnabled}
+                              value={newActivity.qrDisplayEndDate}
+                              onChange={(e) => setNewActivity({ ...newActivity, qrDisplayEndDate: e.target.value })}
+                              className="w-full bg-slate-800 border border-slate-700 rounded-md px-2 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] text-slate-400 mb-0.5">Oras</label>
+                            <input
+                              type="time"
+                              required={newActivity.qrScheduleEnabled}
+                              value={newActivity.qrDisplayEndTime}
+                              onChange={(e) => setNewActivity({ ...newActivity, qrDisplayEndTime: e.target.value })}
+                              className="w-full bg-slate-800 border border-slate-700 rounded-md px-2 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Additional Paalala (Reminders) details for QR Code */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-[11px]">
+                      <div>
+                        <label className="block text-[10px] text-slate-400 mb-0.5">Kailangang Kagamitan (Tools)</label>
+                        <input
+                          type="text"
+                          placeholder="Guwantes, sako, walis..."
+                          value={newActivity.requiredTools}
+                          onChange={(e) => setNewActivity({ ...newActivity, requiredTools: e.target.value })}
+                          className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:border-emerald-500 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-slate-400 mb-0.5">Paalala sa Tubig (Tumbler)</label>
+                        <input
+                          type="text"
+                          placeholder="Magdala ng reusable tumbler..."
+                          value={newActivity.waterReminder}
+                          onChange={(e) => setNewActivity({ ...newActivity, waterReminder: e.target.value })}
+                          className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:border-emerald-500 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-slate-400 mb-0.5">Kasoutan (Attire)</label>
+                        <input
+                          type="text"
+                          placeholder="Boots, vest, sumbrero..."
+                          value={newActivity.recommendedAttire}
+                          onChange={(e) => setNewActivity({ ...newActivity, recommendedAttire: e.target.value })}
+                          className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:border-emerald-500 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Live Schedule Info Banner */}
+                    <div className="p-2 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-[10px] sm:text-[11px] text-emerald-200 flex flex-col xs:flex-row items-start xs:items-center justify-between gap-1 font-mono">
+                      <span>
+                        ⏰ <strong>Display Window:</strong> {newActivity.qrDisplayStartDate} ({newActivity.qrDisplayStartTime}) hanggang {newActivity.qrDisplayEndDate} ({newActivity.qrDisplayEndTime})
+                      </span>
+                      <span className="text-[10px] text-emerald-400 bg-emerald-500/20 px-1.5 py-0.5 rounded shrink-0">
+                        PST (Asia/Manila)
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800 text-xs text-slate-400 italic">
+                    Naka-off ang QR Code paalala sa login page para sa activity na ito.
+                  </div>
+                )}
+              </div>
+
               <div className="pt-3 border-t border-slate-800 flex justify-end space-x-3">
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 rounded-xl"
+                  className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 rounded-xl cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-lg"
+                  className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-lg cursor-pointer"
                 >
                   Create Program
                 </button>

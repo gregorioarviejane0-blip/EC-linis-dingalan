@@ -983,6 +983,7 @@ export default function App() {
                 attendances={attendances}
                 currentUser={currentUser}
                 onCreateActivity={handleCreateActivity}
+                onUpdateActivity={handleUpdateActivity}
                 onAssignBeneficiary={handleAssignBeneficiary}
                 onUnassignBeneficiary={handleUnassignBeneficiary}
                 onClearActivityAssignments={handleClearActivityAssignments}
@@ -1005,6 +1006,7 @@ export default function App() {
                 assignments={assignments}
                 onAssignBeneficiary={handleAssignBeneficiary}
                 onUnassignBeneficiary={handleUnassignBeneficiary}
+                onCreateActivity={handleCreateActivity}
                 onUpdateActivity={handleUpdateActivity}
                 onDeleteActivity={handleDeleteActivity}
               />
@@ -1142,6 +1144,8 @@ export default function App() {
                 handleBroadcastSuccess(broadcast);
                 setIsGenerateQrModalOpen(false);
               }}
+              onCreateActivity={handleCreateActivity}
+              onDeleteActivity={handleDeleteActivity}
             />
           )}
         </ErrorBoundary>

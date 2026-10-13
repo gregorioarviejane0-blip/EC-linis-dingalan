@@ -320,19 +320,84 @@ export function formatPhilippineDateTime(timestampOrStr?: string | Date, fallbac
 }
 
 /**
+ * Converts a Philippine Standard Time (PST, UTC+8) date string and time string to UTC epoch milliseconds
+ */
+export function parsePstDateTime(
+  dateStr?: string,
+  timeStr?: string,
+  defaultHour = 6,
+  defaultMinute = 0
+): number {
+  if (!dateStr) return 0;
+  let year = 0, month = 0, day = 0;
+  const parts = String(dateStr).trim().split(/[\/\-]/).map(Number);
+  if (parts.length === 3) {
+    if (parts[0] > 1000) {
+      year = parts[0];
+      month = parts[1];
+      day = parts[2];
+    } else if (parts[2] > 1000) {
+      month = parts[0];
+      day = parts[1];
+      year = parts[2];
+    }
+  }
+  if (!year || !month || !day) {
+    const todayPst = getDingalanNow();
+    year = todayPst.getFullYear();
+    month = todayPst.getMonth() + 1;
+    day = todayPst.getDate();
+  }
+
+  let hours = defaultHour;
+  let minutes = defaultMinute;
+
+  if (timeStr) {
+    let clean = String(timeStr).trim();
+    if (clean.includes('-')) {
+      clean = clean.split('-')[0].trim();
+    }
+    clean = clean.replace(/\(.*?\)/g, '').trim();
+    const match = clean.match(/(\d+)[:;](\d+)\s*(AM|PM)?/i);
+    if (match) {
+      hours = parseInt(match[1], 10);
+      minutes = parseInt(match[2], 10);
+      const ampm = match[3] ? match[3].toUpperCase() : '';
+      if (ampm === 'PM' && hours < 12) hours += 12;
+      if (ampm === 'AM' && hours === 12) hours = 0;
+    }
+  }
+
+  // Target epoch milliseconds (PST is UTC+8, so subtract 8 hours to get UTC)
+  return Date.UTC(year, month - 1, day, hours - 8, minutes, 0);
+}
+
+/**
  * Authoritative PST check whether an event broadcast or activity schedule is active and NOT EXPIRED.
- * Returns false as soon as the current PST time exceeds the event's estimatedEndTime or date.
+ * Returns false if the scheduled start time has NOT arrived yet, or if current PST time exceeds estimatedEndTime.
  */
 export function checkIsBroadcastActive(broadcast: any): boolean {
   if (!broadcast) return false;
+  if (broadcast.qrScheduleEnabled === false) return false;
   try {
-    const rawDate = broadcast.eventDate || broadcast.date;
     const nowUtcMs = getDingalanNow().getTime();
 
-    // 1. Determine Date (YYYY-MM-DD or MM/DD/YYYY)
+    // 1. Check Start Schedule Arrival (kung kelan magsisimulang lumabas sa login page)
+    const startRawDate = broadcast.qrDisplayStartDate || broadcast.eventDate || broadcast.date;
+    const startRawTime = broadcast.qrDisplayStartTime || broadcast.startTime || broadcast.callTime;
+    if (startRawDate && startRawTime) {
+      const targetStartUtcMs = parsePstDateTime(startRawDate, startRawTime, 0, 0);
+      if (targetStartUtcMs > 0 && nowUtcMs < targetStartUtcMs) {
+        // Scheduled in the future; hindi pa dumarating ang itinakdang oras
+        return false;
+      }
+    }
+
+    // 2. Determine End Date (YYYY-MM-DD or MM/DD/YYYY)
+    const rawEndDate = broadcast.qrDisplayEndDate || broadcast.eventDate || broadcast.date;
     let year = 0, month = 0, day = 0;
-    if (rawDate && typeof rawDate === 'string') {
-      const parts = rawDate.split(/[\/\-]/).map(Number);
+    if (rawEndDate && typeof rawEndDate === 'string') {
+      const parts = rawEndDate.split(/[\/\-]/).map(Number);
       if (parts.length === 3) {
         if (parts[0] > 1000) {
           year = parts[0];
@@ -353,20 +418,18 @@ export function checkIsBroadcastActive(broadcast: any): boolean {
       day = todayPst.getDate();
     }
 
-    // 2. Parse End Time
-    let rawTimeStr = broadcast.estimatedEndTime || broadcast.endTime || broadcast.callTime || '11:59 PM';
+    // 3. Parse End Time
+    let rawTimeStr = broadcast.qrDisplayEndTime || broadcast.estimatedEndTime || broadcast.endTime || broadcast.callTime || '11:59 PM';
     rawTimeStr = String(rawTimeStr).trim();
 
-    // Handle range strings like "6:00 am - 3;55 Pm (4 na Oras)" -> extract the second part "3;55 Pm (4 na Oras)"
+    // Handle range strings like "6:00 am - 3;55 Pm (4 na Oras)" -> extract the second part
     if (rawTimeStr.includes('-')) {
       const subParts = rawTimeStr.split('-');
       rawTimeStr = subParts[subParts.length - 1].trim();
     }
 
-    // Remove text inside parentheses like "(4 na Oras)"
     rawTimeStr = rawTimeStr.replace(/\(.*?\)/g, '').trim();
 
-    // Match hh:mm or hh;mm with optional AM/PM
     const timeMatch = rawTimeStr.match(/(\d+)[:;](\d+)\s*(AM|PM)?/i);
 
     let hours = 23;
@@ -380,7 +443,6 @@ export function checkIsBroadcastActive(broadcast: any): boolean {
       if (ampm === 'PM' && hours < 12) hours += 12;
       if (ampm === 'AM' && hours === 12) hours = 0;
 
-      // If no AM/PM specified but hours is 1-11, assume PM for afternoon/evening cleanup tasks
       if (!ampm && hours >= 1 && hours <= 11) {
         hours += 12;
       }

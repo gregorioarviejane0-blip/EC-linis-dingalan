@@ -614,6 +614,17 @@ export class ApiService {
       status: 'scheduled',
       notes: activityData.notes || '',
       createdAt: new Date().toISOString(),
+      qrScheduleEnabled: activityData.qrScheduleEnabled ?? true,
+      qrDisplayMode: activityData.qrDisplayMode || 'match_event',
+      qrDisplayStartDate: activityData.qrDisplayStartDate || activityData.date,
+      qrDisplayStartTime: activityData.qrDisplayStartTime || activityData.callTime,
+      qrDisplayEndDate: activityData.qrDisplayEndDate || activityData.date,
+      qrDisplayEndTime: activityData.qrDisplayEndTime || '11:59 PM',
+      estimatedEndTime: activityData.estimatedEndTime || activityData.qrDisplayEndTime || '11:59 PM',
+      requiredTools: activityData.requiredTools || '',
+      waterReminder: activityData.waterReminder || '',
+      recommendedAttire: activityData.recommendedAttire || '',
+      ...activityData,
     };
     acts.unshift(newAct);
     localStorage.setItem(LS_ACTIVITIES, JSON.stringify(acts));
