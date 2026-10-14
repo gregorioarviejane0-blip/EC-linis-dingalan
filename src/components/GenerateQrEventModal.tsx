@@ -257,25 +257,25 @@ export const GenerateQrEventModal: React.FC<GenerateQrEventModalProps> = ({
       if (act.totalHours) {
         setTotalHours(act.totalHours);
       } else {
-        setTotalHours('4 na Oras');
+        setTotalHours('');
       }
 
       if (act.requiredTools) {
         setRequiredTools(act.requiredTools);
       } else {
-        setRequiredTools('Guwantes, sako ng basura, walis tingting, tongs');
+        setRequiredTools('');
       }
 
       if (act.waterReminder || (act as any).waterTumblerReminder) {
         setWaterTumblerReminder(act.waterReminder || (act as any).waterTumblerReminder || '');
       } else {
-        setWaterTumblerReminder('Magdala ng sariling reusable tumbler na may inuming tubig.');
+        setWaterTumblerReminder('');
       }
 
       if (act.recommendedAttire) {
         setRecommendedAttire(act.recommendedAttire);
       } else {
-        setRecommendedAttire('Linis Dingalan t-shirt o komportableng damit, bota/shoes, sumbrero');
+        setRecommendedAttire('');
       }
 
       // 3. Description & Notes

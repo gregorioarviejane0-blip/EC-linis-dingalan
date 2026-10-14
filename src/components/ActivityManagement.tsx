@@ -165,7 +165,6 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
     targetBeneficiariesCount: number | string;
     notes: string;
     qrScheduleEnabled: boolean;
-    qrDisplayMode: 'match_event' | 'custom_schedule' | 'immediate';
     qrDisplayStartDate: string;
     qrDisplayStartTime: string;
     qrDisplayEndDate: string;
@@ -180,20 +179,19 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
     date: new Date().toISOString().split('T')[0],
     callTime: '06:00 AM',
     estimatedEndTime: '11:59 PM',
-    totalHours: '4 na Oras',
-    targetArea: 'Dingalan Feeder Port Rock Wall',
+    totalHours: '',
+    targetArea: '',
     barangay: 'Paltic',
-    targetBeneficiariesCount: '20',
+    targetBeneficiariesCount: '4',
     notes: '',
-    qrScheduleEnabled: true,
-    qrDisplayMode: 'match_event',
+    qrScheduleEnabled: false,
     qrDisplayStartDate: new Date().toISOString().split('T')[0],
     qrDisplayStartTime: '06:00',
     qrDisplayEndDate: new Date().toISOString().split('T')[0],
     qrDisplayEndTime: '23:59',
-    requiredTools: 'Guwantes, Sako ng Basura, Walis Tingting, Pandakot at Tongs',
-    waterReminder: 'Magdala ng sariling reusable tumbler na may inuming tubig.',
-    recommendedAttire: 'Boots o Rubber Shoes, Sumbrero, at Reflectorized Vest.',
+    requiredTools: '',
+    waterReminder: '',
+    recommendedAttire: '',
   });
 
   const filteredActivities = activities.filter((a) => {
@@ -204,29 +202,14 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const resolvedStartDate = newActivity.qrDisplayMode === 'immediate'
-        ? new Date().toISOString().split('T')[0]
-        : (newActivity.qrDisplayMode === 'match_event' ? newActivity.date : newActivity.qrDisplayStartDate);
-
-      const resolvedStartTime = newActivity.qrDisplayMode === 'immediate'
-        ? '00:00'
-        : (newActivity.qrDisplayMode === 'match_event' ? newActivity.callTime : newActivity.qrDisplayStartTime);
-
-      const resolvedEndDate = newActivity.qrDisplayMode === 'custom_schedule'
-        ? newActivity.qrDisplayEndDate
-        : newActivity.date;
-
-      const resolvedEndTime = newActivity.qrDisplayMode === 'custom_schedule'
-        ? newActivity.qrDisplayEndTime
-        : '23:59';
-
       const payload = {
         ...newActivity,
-        qrDisplayStartDate: resolvedStartDate,
-        qrDisplayStartTime: resolvedStartTime,
-        qrDisplayEndDate: resolvedEndDate,
-        qrDisplayEndTime: resolvedEndTime,
-        estimatedEndTime: resolvedEndTime,
+        targetBeneficiariesCount: Number(newActivity.targetBeneficiariesCount) || 1,
+        qrDisplayStartDate: newActivity.qrDisplayStartDate || newActivity.date,
+        qrDisplayStartTime: newActivity.qrDisplayStartTime || newActivity.callTime || '06:00',
+        qrDisplayEndDate: newActivity.qrDisplayEndDate || newActivity.date,
+        qrDisplayEndTime: newActivity.qrDisplayEndTime || newActivity.estimatedEndTime || '23:59',
+        estimatedEndTime: newActivity.estimatedEndTime || newActivity.qrDisplayEndTime || '11:59 PM',
       };
 
       await onCreateActivity(payload);
@@ -271,6 +254,14 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
       await onUpdateActivity(editingActivity.id, {
         ...editForm,
         targetBeneficiariesCount: Number(editForm.targetBeneficiariesCount) || 1,
+        date: editForm.date,
+        callTime: editForm.callTime,
+        estimatedEndTime: editForm.estimatedEndTime,
+        totalHours: editForm.totalHours,
+        qrDisplayStartDate: editForm.qrDisplayStartDate || editForm.date,
+        qrDisplayStartTime: editForm.qrDisplayStartTime || editForm.callTime || '06:00',
+        qrDisplayEndDate: editForm.qrDisplayEndDate || editForm.date,
+        qrDisplayEndTime: editForm.qrDisplayEndTime || editForm.estimatedEndTime || '23:59',
       });
       setEditingActivity(null);
     } catch (err: any) {
@@ -286,7 +277,8 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
     const alreadyAssigned = assignments
       .filter((asg) => asg.activityId === activity.id)
       .map((asg) => asg.beneficiaryId);
-    setSelectedBeneIds(alreadyAssigned);
+    const allMasterlistIds = beneficiaries.map((b) => b.id);
+    setSelectedBeneIds(alreadyAssigned.length > 0 ? alreadyAssigned : allMasterlistIds);
     setAssignFilterTab('ALL');
     setAssignSearchQuery('');
     setQuickAddName('');
@@ -1326,9 +1318,8 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                       setNewActivity((prev) => ({
                         ...prev,
                         date: newDate,
-                        ...(prev.qrDisplayMode === 'match_event'
-                          ? { qrDisplayStartDate: newDate, qrDisplayEndDate: newDate }
-                          : {}),
+                        qrDisplayStartDate: newDate,
+                        qrDisplayEndDate: newDate,
                       }));
                     }}
                     className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
@@ -1348,9 +1339,7 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                       setNewActivity((prev) => ({
                         ...prev,
                         callTime: newTime,
-                        ...(prev.qrDisplayMode === 'match_event'
-                          ? { qrDisplayStartTime: newTime }
-                          : {}),
+                        qrDisplayStartTime: newTime,
                       }));
                     }}
                     placeholder="06:00 AM"
@@ -1366,7 +1355,14 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                     type="text"
                     required
                     value={newActivity.estimatedEndTime}
-                    onChange={(e) => setNewActivity({ ...newActivity, estimatedEndTime: e.target.value })}
+                    onChange={(e) => {
+                      const newEndTime = e.target.value;
+                      setNewActivity((prev) => ({
+                        ...prev,
+                        estimatedEndTime: newEndTime,
+                        qrDisplayEndTime: newEndTime,
+                      }));
+                    }}
                     placeholder="11:59 PM"
                     className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none font-mono"
                   />
@@ -1431,76 +1427,6 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
 
                 {newActivity.qrScheduleEnabled ? (
                   <div className="space-y-3 pt-1">
-                    {/* Mode Selector */}
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-300 mb-1.5">
-                        Kailan Lalabas sa Login Page?
-                      </label>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                        <button
-                          type="button"
-                          onClick={() => setNewActivity({
-                            ...newActivity,
-                            qrDisplayMode: 'match_event',
-                            qrDisplayStartDate: newActivity.date,
-                            qrDisplayStartTime: newActivity.callTime,
-                            qrDisplayEndDate: newActivity.date,
-                            qrDisplayEndTime: '23:59',
-                          })}
-                          className={`p-2 rounded-lg border text-left transition-all cursor-pointer ${
-                            newActivity.qrDisplayMode === 'match_event'
-                              ? 'bg-emerald-950/70 border-emerald-500 text-white font-bold ring-1 ring-emerald-400'
-                              : 'bg-slate-900 border-slate-700 text-slate-400 hover:text-slate-200'
-                          }`}
-                        >
-                          <div className="text-[11px] font-semibold flex items-center gap-1 text-emerald-300">
-                            <span>🎯 Sa Oras ng Event</span>
-                          </div>
-                          <div className="text-[9px] text-slate-400 mt-0.5">Lalabas sa mismong petsa at call time</div>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setNewActivity({
-                            ...newActivity,
-                            qrDisplayMode: 'custom_schedule',
-                          })}
-                          className={`p-2 rounded-lg border text-left transition-all cursor-pointer ${
-                            newActivity.qrDisplayMode === 'custom_schedule'
-                              ? 'bg-emerald-950/70 border-emerald-500 text-white font-bold ring-1 ring-emerald-400'
-                              : 'bg-slate-900 border-slate-700 text-slate-400 hover:text-slate-200'
-                          }`}
-                        >
-                          <div className="text-[11px] font-semibold flex items-center gap-1 text-cyan-300">
-                            <span>🗓️ Custom Schedule</span>
-                          </div>
-                          <div className="text-[9px] text-slate-400 mt-0.5">Pumili ng sariling petsa at oras</div>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setNewActivity({
-                            ...newActivity,
-                            qrDisplayMode: 'immediate',
-                            qrDisplayStartDate: new Date().toISOString().split('T')[0],
-                            qrDisplayStartTime: '00:00',
-                            qrDisplayEndDate: newActivity.date,
-                            qrDisplayEndTime: '23:59',
-                          })}
-                          className={`p-2 rounded-lg border text-left transition-all cursor-pointer ${
-                            newActivity.qrDisplayMode === 'immediate'
-                              ? 'bg-emerald-950/70 border-emerald-500 text-white font-bold ring-1 ring-emerald-400'
-                              : 'bg-slate-900 border-slate-700 text-slate-400 hover:text-slate-200'
-                          }`}
-                        >
-                          <div className="text-[11px] font-semibold flex items-center gap-1 text-amber-300">
-                            <span>⚡ Agad Ilabas</span>
-                          </div>
-                          <div className="text-[9px] text-slate-400 mt-0.5">Aktibo na kaagad ngayon sa login</div>
-                        </button>
-                      </div>
-                    </div>
-
                     {/* Date & Time Inputs */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                       {/* Start Schedule */}
@@ -1757,7 +1683,15 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                     type="date"
                     required
                     value={editForm.date}
-                    onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
+                    onChange={(e) => {
+                      const newD = e.target.value;
+                      setEditForm((prev) => ({
+                        ...prev,
+                        date: newD,
+                        qrDisplayStartDate: newD,
+                        qrDisplayEndDate: newD,
+                      }));
+                    }}
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-amber-400 focus:outline-none font-mono"
                   />
                 </div>
@@ -1770,7 +1704,14 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                     type="text"
                     required
                     value={editForm.callTime}
-                    onChange={(e) => setEditForm({ ...editForm, callTime: e.target.value })}
+                    onChange={(e) => {
+                      const newT = e.target.value;
+                      setEditForm((prev) => ({
+                        ...prev,
+                        callTime: newT,
+                        qrDisplayStartTime: newT,
+                      }));
+                    }}
                     placeholder="06:00 AM"
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-amber-400 focus:outline-none font-mono"
                   />
@@ -1784,7 +1725,14 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                     type="text"
                     required
                     value={editForm.estimatedEndTime}
-                    onChange={(e) => setEditForm({ ...editForm, estimatedEndTime: e.target.value })}
+                    onChange={(e) => {
+                      const newEnd = e.target.value;
+                      setEditForm((prev) => ({
+                        ...prev,
+                        estimatedEndTime: newEnd,
+                        qrDisplayEndTime: newEnd,
+                      }));
+                    }}
                     placeholder="11:59 PM"
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-amber-400 focus:outline-none font-mono"
                   />

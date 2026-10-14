@@ -190,13 +190,21 @@ export function parsePstDateTime(
   const parts = String(dateStr).trim().split(/[\/\-]/).map(Number);
   if (parts.length === 3) {
     if (parts[0] > 1000) {
+      // YYYY-MM-DD
       year = parts[0];
       month = parts[1];
       day = parts[2];
     } else if (parts[2] > 1000) {
-      month = parts[0];
-      day = parts[1];
-      year = parts[2];
+      // DD/MM/YYYY or MM/DD/YYYY
+      if (parts[0] > 12) {
+        day = parts[0];
+        month = parts[1];
+        year = parts[2];
+      } else {
+        month = parts[0];
+        day = parts[1];
+        year = parts[2];
+      }
     }
   }
   if (!year || !month || !day) {
@@ -222,6 +230,11 @@ export function parsePstDateTime(
       const ampm = match[3] ? match[3].toUpperCase() : '';
       if (ampm === 'PM' && hours < 12) hours += 12;
       if (ampm === 'AM' && hours === 12) hours = 0;
+
+      // If no AM/PM provided and defaultHour was end time (e.g. 23) and hours <= 11 (e.g. "11:59" or "5:00")
+      if (!ampm && defaultHour >= 12 && hours >= 1 && hours <= 11) {
+        hours += 12;
+      }
     }
   }
 

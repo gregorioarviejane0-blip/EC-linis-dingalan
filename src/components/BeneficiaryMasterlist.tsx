@@ -6,7 +6,6 @@ import {
   Search,
   Filter,
   Plus,
-  QrCode,
   Trash2,
   AlertTriangle,
   CheckCircle,
@@ -294,15 +293,6 @@ export const BeneficiaryMasterlist: React.FC<BeneficiaryMasterlistProps> = ({
                   </span>
                   <div className="flex items-center space-x-1.5 shrink-0">
                     <button
-                      onClick={() => setActiveModalBene(bene)}
-                      title="Digital ID Card"
-                      className="px-2 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 rounded-lg border border-emerald-500/30 text-[10px] font-mono font-bold flex items-center space-x-1 transition-all"
-                    >
-                      <QrCode className="w-3 h-3" />
-                      <span>ID QR</span>
-                    </button>
-
-                    <button
                       onClick={() => handleOpenEdit(bene)}
                       title="Edit beneficiary record"
                       className="p-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 rounded-lg border border-amber-500/30 transition-colors"
@@ -400,14 +390,6 @@ export const BeneficiaryMasterlist: React.FC<BeneficiaryMasterlistProps> = ({
 
                     <td className="py-3 px-4 text-right">
                       <div className="flex items-center justify-end space-x-1.5">
-                        <button
-                          onClick={() => setActiveModalBene(bene)}
-                          title="Generate & View Printable Digital ID Card"
-                          className="p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 rounded-lg border border-emerald-500/30 transition-colors"
-                        >
-                          <QrCode className="w-3.5 h-3.5" />
-                        </button>
-
                         <button
                           onClick={() => handleOpenEdit(bene)}
                           title="Edit beneficiary record"

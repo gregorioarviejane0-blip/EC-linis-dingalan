@@ -905,6 +905,10 @@ export default function App() {
           }}
           onOpenScanQrModal={() => setIsScanQrModalOpen(true)}
           eventBroadcast={latestEventBroadcast}
+          onClearBroadcast={() => {
+            setLatestEventBroadcast(null);
+            showToast('Nabura na ang nilalaman at larawan sa login page advisory.', 'info');
+          }}
         />
 
         {/* Standalone Personal QR Generator & Registration Modal */}
@@ -1384,6 +1388,10 @@ export default function App() {
             showToast(`Naka-register na si ${newBene.firstName} ${newBene.lastName}! Na-generate na ang kanyang Personal QR Code.`, 'success');
           }}
           eventBroadcast={latestEventBroadcast}
+          onClearBroadcast={() => {
+            setLatestEventBroadcast(null);
+            showToast('Nabura na ang nilalaman at larawan sa login page advisory.', 'info');
+          }}
         />
 
         {/* Standalone Personal QR Generator & Registration Modal */}

@@ -64,6 +64,7 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
   const [realtimeDetectedArea, setRealtimeDetectedArea] = useState<string>('Brgy. Paltic (Dingalan Feeder Port & Seawall Area)');
   const [gpsLoading, setGpsLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isAreaGreen, setIsAreaGreen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
   const [submittedRecord, setSubmittedRecord] = useState<AttendanceRecord | null>(null);
@@ -103,6 +104,7 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
 
       // Initialize Field 2: Cleaned Area (Clean - no prefilled example data)
       setCleanedArea('');
+      setIsAreaGreen(false);
 
       refreshGps();
     }
@@ -428,7 +430,7 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
                 </div>
               </div>
 
-              {/* ========================================================================= */}
+                            {/* ========================================================================= */}
               {/* FIELD 2: LUGAR KUNG SAANG AREA NAKAPAGLINIS (Malaya nyang ilalagay) */}
               {/* ========================================================================= */}
               <div className="space-y-0.5 sm:space-y-1.5 pt-0.5 sm:pt-1">
@@ -439,7 +441,6 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
                   </label>
                   <span className="text-[8.5px] sm:text-[10px] font-mono text-cyan-400 uppercase font-semibold hidden xs:inline">KAYO ANG MAGPAPASYA NG ILALAGAY</span>
                 </div>
-
                 <div className="relative">
                   <input
                     type="text"
@@ -450,8 +451,25 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
                   />
                   <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-400 absolute right-3 sm:right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
+                {/* Button for Field 2 that turns green ONLY when clicked */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (realtimeDetectedArea) {
+                      setCleanedArea(realtimeDetectedArea);
+                    }
+                    setIsAreaGreen(true);
+                  }}
+                  className={`w-full py-2.5 px-3 rounded-xl font-mono font-bold text-xs flex items-center justify-center space-x-2 transition-all cursor-pointer uppercase shadow-md ${
+                    isAreaGreen
+                      ? "bg-emerald-500 text-slate-950 shadow-[0_0_20px_rgba(16,185,129,0.5)] border border-emerald-300"
+                      : "bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700"
+                  }`}
+                >
+                  <MapPin className="w-4 h-4" />
+                  <span>{`PINDUTIN PARA I-GREEN AT GAMITIN ANG AREA${isAreaGreen ? " (NA-APPLY NA)" : ""}`}</span>
+                </button>
               </div>
-
               {/* Upload Action Area: Kahit Ilang Picture */}
               <div className="space-y-1.5 sm:space-y-3 pt-0.5 sm:pt-1">
                 <div className="flex items-center justify-between">
@@ -463,7 +481,19 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
                     {uploadedPhotos.length} LARAWAN NA-UPLOAD
                   </span>
                 </div>
-
+                {/* Event info matching Login Page */}
+                <div className="p-3 rounded-xl bg-slate-950/90 border border-emerald-500/40 space-y-1 mb-2">
+                  <div className="flex items-center justify-between text-[10px] font-mono text-emerald-400 font-bold uppercase">
+                    <span>EVENT MULA SA LOGIN PAGE:</span>
+                    <span className="bg-emerald-500/20 px-2 py-0.5 rounded text-emerald-300">ACTIVE</span>
+                  </div>
+                  <p className="text-xs font-black text-white uppercase">
+                    {eventBroadcast?.activityTitle || activity?.title || "Linis Dingalan Environmental Compliance Program"}
+                  </p>
+                  <p className="text-[11px] font-mono text-cyan-300">
+                    Brgy. {eventBroadcast?.barangay || activity?.barangay || "Paltic"} • {eventBroadcast?.targetArea || activity?.targetArea || "Dingalan Coastal Area"}
+                  </p>
+                </div>
                 {/* Big Action Buttons - Fitted 100% Inside Container */}
                 <div className="grid grid-cols-2 gap-1.5 sm:gap-3 w-full">
                   <button
@@ -480,7 +510,6 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
                       (KAHIT ILANG PICTURE / WALANG LIMIT)
                     </span>
                   </button>
-
                   <button
                     type="button"
                     onClick={() => cameraInputRef.current?.click()}
@@ -496,7 +525,6 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
                     </span>
                   </button>
                 </div>
-
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -513,7 +541,6 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
                   onChange={handleMultipleFiles}
                   className="hidden"
                 />
-
                 {uploadedPhotos.length === 0 && (
                   <button
                     type="button"
@@ -526,7 +553,6 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
                   </button>
                 )}
               </div>
-
               {/* Photos Gallery */}
               {uploadedPhotos.length > 0 && (
                 <div className="space-y-2">
@@ -554,7 +580,7 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
                           className="w-full h-full object-cover"
                         />
                         <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-slate-950/80 text-[9px] font-mono text-emerald-300 font-bold border border-emerald-500/30">
-                          #{index + 1}
+                          #${index + 1}
                         </div>
                         <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                           <span className="text-[10px] font-mono text-white bg-slate-950/80 px-2 py-1 rounded-lg border border-emerald-400/50 uppercase">
@@ -574,7 +600,6 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
                         </button>
                       </div>
                     ))}
-
                     <div
                       onClick={() => fileInputRef.current?.click()}
                       className="aspect-video rounded-xl border-2 border-dashed border-slate-700 hover:border-emerald-400 bg-slate-950/40 flex flex-col items-center justify-center text-slate-400 hover:text-emerald-300 transition-colors cursor-pointer uppercase"
