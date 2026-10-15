@@ -713,7 +713,17 @@ export default function App() {
   const handleDeleteActivity = async (id: string) => {
     try {
       await api.deleteActivity(id);
-      setActivities((prev) => prev.filter((a) => a.id !== id));
+      setActivities((prev) => {
+        const next = prev.filter((a) => a.id !== id);
+        if (next.length === 0) {
+          setLatestEventBroadcast(null);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('ld_broadcasts_cleared', 'true');
+            localStorage.removeItem('ld_latest_event_broadcast');
+          }
+        }
+        return next;
+      });
       setAssignments((prev) => prev.filter((asg) => asg.activityId !== id));
       showToast('Matagumpay na nabura ang napiling work program box.', 'info');
     } catch (err: any) {
@@ -727,6 +737,11 @@ export default function App() {
       await api.clearAllActivities();
       setActivities([]);
       setAssignments([]);
+      setLatestEventBroadcast(null);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('ld_broadcasts_cleared', 'true');
+        localStorage.removeItem('ld_latest_event_broadcast');
+      }
       showToast('Matagumpay na permanenteng nabura ang lahat ng work program boxes.', 'info');
     } catch (err: any) {
       showToast(err.message || 'Nabigo ang pagbura sa lahat ng programs', 'error');
@@ -905,10 +920,6 @@ export default function App() {
           }}
           onOpenScanQrModal={() => setIsScanQrModalOpen(true)}
           eventBroadcast={latestEventBroadcast}
-          onClearBroadcast={() => {
-            setLatestEventBroadcast(null);
-            showToast('Nabura na ang nilalaman at larawan sa login page advisory.', 'info');
-          }}
         />
 
         {/* Standalone Personal QR Generator & Registration Modal */}
@@ -1233,6 +1244,7 @@ export default function App() {
               activities[0] ||
               null
             }
+            eventBroadcast={latestEventBroadcast}
             currentUser={currentUser}
             onSubmitAttendance={handleSubmitAttendance}
             onSuccessSubmitted={(att) => {
@@ -1388,10 +1400,6 @@ export default function App() {
             showToast(`Naka-register na si ${newBene.firstName} ${newBene.lastName}! Na-generate na ang kanyang Personal QR Code.`, 'success');
           }}
           eventBroadcast={latestEventBroadcast}
-          onClearBroadcast={() => {
-            setLatestEventBroadcast(null);
-            showToast('Nabura na ang nilalaman at larawan sa login page advisory.', 'info');
-          }}
         />
 
         {/* Standalone Personal QR Generator & Registration Modal */}

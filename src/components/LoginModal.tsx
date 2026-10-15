@@ -2647,35 +2647,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                         )}
                       </div>
 
-                      {/* 1-Tap Quick Admin Access Buttons */}
-                      <div className="pt-1 space-y-1.5">
-                        <div className="flex items-center space-x-2 text-slate-400 font-mono text-[9px] uppercase font-bold tracking-wider">
-                          <div className="flex-1 h-px bg-slate-700/60" />
-                          <span>O DIRETSO PUMASOK (1-TAP ACCESS)</span>
-                          <div className="flex-1 h-px bg-slate-700/60" />
-                        </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleDirectLogin('admin', 'admin123')}
-                            className="w-full py-2 px-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/60 hover:border-emerald-300 text-emerald-200 hover:text-white font-mono text-xs font-bold flex items-center justify-center space-x-1.5 transition-all cursor-pointer shadow-md active:scale-95"
-                            title="Diretsong pumasok sa Admin Dashboard nang walang error"
-                          >
-                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                            <span className="truncate">ADMIN OFFICER</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDirectLogin('superadmin', 'pesoadmin')}
-                            className="w-full py-2 px-2.5 rounded-xl bg-teal-500/20 hover:bg-teal-500/30 border border-teal-400/60 hover:border-teal-300 text-teal-200 hover:text-white font-mono text-xs font-bold flex items-center justify-center space-x-1.5 transition-all cursor-pointer shadow-md active:scale-95"
-                            title="Diretsong pumasok bilang Super Admin"
-                          >
-                            <Sparkles className="w-3.5 h-3.5 text-teal-300 shrink-0" />
-                            <span className="truncate">SUPER ADMIN</span>
-                          </button>
-                        </div>
-                      </div>
                     </form>
                   </div>
 
