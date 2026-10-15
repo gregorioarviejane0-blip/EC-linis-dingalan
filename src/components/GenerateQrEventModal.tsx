@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, User, EventQrBroadcast, ActivityAssignment, Beneficiary } from '../types';
+import { Activity, User, EventQrBroadcast, ActivityAssignment, Beneficiary, DingalanBarangay } from '../types';
 import { api } from '../services/api';
 import { INITIAL_ACTIVITIES, INITIAL_EVENT_BROADCAST } from '../data/seedData';
 import QRCode from 'qrcode';
@@ -18,6 +18,7 @@ import {
   AlertCircle,
   FileText,
   Users,
+  UserCheck,
   ShieldCheck,
   Coffee,
   Trash2,
@@ -51,6 +52,7 @@ interface GenerateQrEventModalProps {
   currentUser: User;
   onBroadcastSuccess: (broadcast: EventQrBroadcast) => void;
   onCreateActivity?: (activity: Activity | Partial<Activity>) => void | Promise<any>;
+  onUpdateActivity?: (id: string, activity: Partial<Activity>) => void | Promise<any>;
   onDeleteActivity?: (id: string) => void | Promise<any>;
   assignments?: ActivityAssignment[];
   beneficiaries?: Beneficiary[];
@@ -68,6 +70,7 @@ export const GenerateQrEventModal: React.FC<GenerateQrEventModalProps> = ({
   currentUser,
   onBroadcastSuccess,
   onCreateActivity,
+  onUpdateActivity,
   onDeleteActivity,
   assignments = [],
   beneficiaries = [],
@@ -84,9 +87,9 @@ export const GenerateQrEventModal: React.FC<GenerateQrEventModalProps> = ({
   }, [activities]);
 
   // Synchronized strictly with the Program button (activities list)
-  const safeActs = Array.isArray(activities) && activities.length > 0
+  const safeActs = Array.isArray(activities)
     ? activities
-    : (localActivities.length > 0 ? localActivities : INITIAL_ACTIVITIES);
+    : (Array.isArray(localActivities) ? localActivities : []);
 
   const [selectedActivityId, setSelectedActivityId] = useState<string>('');
   const [activityTitle, setActivityTitle] = useState<string>('');
@@ -105,11 +108,176 @@ export const GenerateQrEventModal: React.FC<GenerateQrEventModalProps> = ({
   const [recommendedAttire, setRecommendedAttire] = useState<string>('');
   const [additionalNotes, setAdditionalNotes] = useState<string>('');
   const [assignedPersonnel, setAssignedPersonnel] = useState<string[]>([]);
+  const [selectedLeaderToAssign, setSelectedLeaderToAssign] = useState<string>("");
+  const [editSelectedLeaderToAssign, setEditSelectedLeaderToAssign] = useState<string>("");
+
+  const handleAssignLeader = (leaderId: string) => {
+    if (!leaderId) return;
+    const leader = beneficiaries.find((b) => b.id === leaderId);
+    if (!leader) return;
+    const label = `${leader.firstName} ${leader.lastName} (${leader.beneCode} • Brgy. ${leader.barangay})`;
+    if (!assignedPersonnel.includes(label)) {
+      setAssignedPersonnel((prev) => [...prev, label]);
+    }
+  };
+
+  const handleToggleLeader = (leader: Beneficiary) => {
+    const label = `${leader.firstName} ${leader.lastName} (${leader.beneCode} • Brgy. ${leader.barangay})`;
+    if (assignedPersonnel.includes(label)) {
+      setAssignedPersonnel((prev) => prev.filter((p) => p !== label));
+    } else {
+      setAssignedPersonnel((prev) => [...prev, label]);
+    }
+  };
+
+  const handleEditAssignLeader = (leaderId: string) => {
+    if (!leaderId) return;
+    const leader = beneficiaries.find((b) => b.id === leaderId);
+    if (!leader) return;
+    const label = `${leader.firstName} ${leader.lastName} (${leader.beneCode} • Brgy. ${leader.barangay})`;
+    if (!editAssignedPersonnel.includes(label)) {
+      setEditAssignedPersonnel((prev) => [...prev, label]);
+    }
+  };
+
+  const handleEditToggleLeader = (leader: Beneficiary) => {
+    const label = `${leader.firstName} ${leader.lastName} (${leader.beneCode} • Brgy. ${leader.barangay})`;
+    if (editAssignedPersonnel.includes(label)) {
+      setEditAssignedPersonnel((prev) => prev.filter((p) => p !== label));
+    } else {
+      setEditAssignedPersonnel((prev) => [...prev, label]);
+    }
+  };
   const [newPersonInput, setNewPersonInput] = useState<string>('');
+  const [editingPersonIndex, setEditingPersonIndex] = useState<number | null>(null);
+  const [editingPersonValue, setEditingPersonValue] = useState<string>('');
+  const [editingEditPersonIndex, setEditingEditPersonIndex] = useState<number | null>(null);
+  const [editingEditPersonValue, setEditingEditPersonValue] = useState<string>('');
+
+  const handleStartEditPerson = (index: number) => {
+    setEditingPersonIndex(index);
+    setEditingPersonValue(assignedPersonnel[index] || '');
+  };
+
+  const handleSavePersonEdit = (index: number) => {
+    if (!editingPersonValue.trim()) return;
+    setAssignedPersonnel((prev) => {
+      const next = [...prev];
+      next[index] = editingPersonValue.trim();
+      return next;
+    });
+    setEditingPersonIndex(null);
+    setEditingPersonValue('');
+  };
+
+  const handleCancelPersonEdit = () => {
+    setEditingPersonIndex(null);
+    setEditingPersonValue('');
+  };
+
+  const handleStartEditModalPerson = (index: number) => {
+    setEditingEditPersonIndex(index);
+    setEditingEditPersonValue(editAssignedPersonnel[index] || '');
+  };
+
+  const handleSaveEditModalPerson = (index: number) => {
+    if (!editingEditPersonValue.trim()) return;
+    setEditAssignedPersonnel((prev) => {
+      const next = [...prev];
+      next[index] = editingEditPersonValue.trim();
+      return next;
+    });
+    setEditingEditPersonIndex(null);
+    setEditingEditPersonValue('');
+  };
+
+  const handleCancelEditModalPerson = () => {
+    setEditingEditPersonIndex(null);
+    setEditingEditPersonValue('');
+  };
 
   const [isSending, setIsSending] = useState<boolean>(false);
   const [isSuccessSent, setIsSuccessSent] = useState<boolean>(false);
   const [broadcastHistory, setBroadcastHistory] = useState<EventQrBroadcast[]>([]);
+
+  // Activity Edit & Delete States (For Content shown in the dropdown picture)
+  const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+  const [editActivityForm, setEditActivityForm] = useState({
+    title: "",
+    barangay: "Paltic" as DingalanBarangay,
+    targetArea: "",
+    date: "",
+    callTime: "",
+    estimatedEndTime: "",
+    totalHours: "",
+    requiredTools: "",
+    waterReminder: "",
+    recommendedAttire: "",
+    notes: "",
+  });
+  const [activityToDelete, setActivityToDelete] = useState<Activity | null>(null);
+  const [isDeletingActivity, setIsDeletingActivity] = useState<boolean>(false);
+  const [isSavingActivity, setIsSavingActivity] = useState<boolean>(false);
+
+  const handleOpenEditActivity = (act: Activity) => {
+    setEditingActivity(act);
+    setEditActivityForm({
+      title: act.title || "",
+      barangay: (act.barangay as DingalanBarangay) || "Paltic",
+      targetArea: act.targetArea || "",
+      date: act.date || "",
+      callTime: act.callTime || "06:00 AM",
+      estimatedEndTime: act.estimatedEndTime || "10:00 AM",
+      totalHours: act.totalHours || "4 na Oras",
+      requiredTools: act.requiredTools || "",
+      waterReminder: act.waterReminder || "",
+      recommendedAttire: act.recommendedAttire || "",
+      notes: act.notes || "",
+    });
+  };
+
+  const handleSaveActivityEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingActivity || !onUpdateActivity) return;
+    setIsSavingActivity(true);
+    try {
+      await onUpdateActivity(editingActivity.id, editActivityForm);
+      if (selectedActivityId === editingActivity.id) {
+        setActivityTitle(editActivityForm.title);
+        setBarangay(editActivityForm.barangay);
+        setTargetArea(editActivityForm.targetArea);
+        setEventDate(editActivityForm.date);
+        setStartTime(editActivityForm.callTime);
+        setEstimatedEndTime(editActivityForm.estimatedEndTime);
+        setTotalHours(editActivityForm.totalHours);
+        setRequiredTools(editActivityForm.requiredTools);
+        setWaterTumblerReminder(editActivityForm.waterReminder);
+        setRecommendedAttire(editActivityForm.recommendedAttire);
+        setAdditionalNotes(editActivityForm.notes);
+      }
+      setEditingActivity(null);
+    } catch (err: any) {
+      alert(err.message || "Nabigo ang pag-update sa activity");
+    } finally {
+      setIsSavingActivity(false);
+    }
+  };
+
+  const handleConfirmDeleteActivity = async () => {
+    if (!activityToDelete || !onDeleteActivity) return;
+    setIsDeletingActivity(true);
+    try {
+      await onDeleteActivity(activityToDelete.id);
+      if (selectedActivityId === activityToDelete.id) {
+        handleClearAllFields();
+      }
+      setActivityToDelete(null);
+    } catch (err: any) {
+      alert(err.message || "Nabigo ang pag-delete sa activity");
+    } finally {
+      setIsDeletingActivity(false);
+    }
+  };
 
   // Edit Broadcast Modal States
   const [editingBroadcast, setEditingBroadcast] = useState<EventQrBroadcast | null>(null);
@@ -610,7 +778,7 @@ export const GenerateQrEventModal: React.FC<GenerateQrEventModalProps> = ({
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <label className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wide flex items-center space-x-2">
                       <FileText className="w-4 h-4 text-emerald-400" />
-                      <span>Pumili ng Cleanup Activity o Maglagay ng Custom Title:</span>
+                      <span>Pamagat ng Programa / Activity Title (Free Text Field):</span>
                     </label>
                     <div className="flex items-center space-x-2">
                       <button
@@ -622,58 +790,90 @@ export const GenerateQrEventModal: React.FC<GenerateQrEventModalProps> = ({
                         <Trash2 className="w-3 h-3" />
                         <span>Linisin Lahat ng Field</span>
                       </button>
-                      <span className="text-[10px] font-mono text-emerald-400 hidden sm:inline">
-                        Synchronized sa Active Program List
-                      </span>
                     </div>
                   </div>
 
-                  <select
-                    value={selectedActivityId}
-                    onChange={(e) => handleActivityChange(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs sm:text-sm text-white focus:border-emerald-400 focus:outline-none"
-                  >
-                    <option value="">-- Pumili ng Activity (Iwanang Malinis / Clean) --</option>
-                    {safeActs.length === 0 ? (
-                      <option value="" disabled>Walang active program (Magdagdag sa Programs button)</option>
-                    ) : (
-                      safeActs.map((act) => (
-                        <option key={act.id} value={act.id}>
-                          {act.title} — Brgy. {act.barangay} ({act.targetArea})
-                        </option>
-                      ))
-                    )}
-                  </select>
+                  {/* Primary Free Text Field for Title */}
+                  <div>
+                    <input
+                      type="text"
+                      value={activityTitle}
+                      onChange={(e) => setActivityTitle(e.target.value)}
+                      placeholder="I-type dito ang Pamagat ng Cleanup Activity / Programa (Free text field)..."
+                      className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs sm:text-sm text-white placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none font-semibold shadow-inner"
+                    />
+                  </div>
+
+                  {/* Optional Quick Select from Active Programs Pills */}
+                  {safeActs.length > 0 && (
+                    <div className="pt-2 border-t border-slate-800/80">
+                      <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 mb-1.5">
+                        <span className="flex items-center gap-1.5 font-bold text-emerald-400">
+                          <List className="w-3.5 h-3.5 text-emerald-400" />
+                          Mabilisang Piliin mula sa Programa (Optional):
+                        </span>
+                        {selectedActivityId && currentAct && (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditActivity(currentAct)}
+                              className="px-2 py-0.5 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[10px] font-mono font-bold flex items-center gap-1 cursor-pointer"
+                              title="I-edit ang program na ito"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setActivityToDelete(currentAct)}
+                              className="px-2 py-0.5 rounded bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-[10px] font-mono font-bold flex items-center gap-1 cursor-pointer"
+                              title="Burahin ang program na ito"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              <span>Delete</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden">
+                        {safeActs.map((act) => {
+                          const isSelected = selectedActivityId === act.id;
+                          return (
+                            <button
+                              key={act.id}
+                              type="button"
+                              onClick={() => handleActivityChange(isSelected ? "" : act.id)}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-mono transition-all flex items-center gap-1.5 cursor-pointer ${
+                                isSelected
+                                  ? "bg-emerald-500 text-slate-950 font-bold border border-emerald-400 shadow-sm"
+                                  : "bg-slate-900 border border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white"
+                              }`}
+                            >
+                              <span>{isSelected ? "✓" : "•"}</span>
+                              <span className="truncate max-w-[180px]">{act.title}</span>
+                              <span className="text-[10px] opacity-75">({act.barangay})</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Active Synced Banner from Program Button */}
                   {selectedActivityId && currentAct && (
-                    <div className="p-2.5 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-200 text-xs font-mono flex flex-col xs:flex-row items-start xs:items-center justify-between gap-1 shadow-inner animate-fadeIn">
+                    <div className="p-2 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-200 text-xs font-mono flex items-center justify-between gap-1 shadow-inner animate-fadeIn">
                       <div className="flex items-center gap-1.5 truncate">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                         <span className="truncate">
                           Naka-sync sa Program: <strong className="text-white">{currentAct.title}</strong>
                         </span>
                       </div>
                       <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
-                        Brgy. {currentAct.barangay} • {currentAct.date}
+                        Brgy. {currentAct.barangay}
                       </span>
                     </div>
                   )}
-
-                  <div>
-                    <label className="block text-[11px] font-mono text-slate-400 mb-1">
-                      Pangalan ng Cleanup Activity (Customizable Title):
-                    </label>
-                    <input
-                      type="text"
-                      value={activityTitle}
-                      onChange={(e) => setActivityTitle(e.target.value)}
-                      placeholder="Hal. Dingalan Feeder Port & Paltic Coastal Cleanliness Operation"
-                      className="w-full px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:border-emerald-400 focus:outline-none font-semibold"
-                    />
-                  </div>
                 </div>
-
                 {/* Section 2: Location and Schedule Grids */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Barangay & Target Area */}
@@ -841,61 +1041,159 @@ export const GenerateQrEventModal: React.FC<GenerateQrEventModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Naka-Assign / Assigned Personnel Section */}
-                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-700 space-y-2">
-                    <label className="block text-[11px] font-mono text-emerald-400 font-bold uppercase flex items-center space-x-1.5">
-                      <Users className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                      <span>Naka-Assign na Personnel / Staff (Assigned Personnel):</span>
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={newPersonInput}
-                        onChange={(e) => setNewPersonInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            handleAddPerson();
-                          }
-                        }}
-                        placeholder="I-type ang pangalan ng naka-assign..."
-                        className="flex-1 px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:border-emerald-400 focus:outline-none"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAddPerson}
-                        className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-mono font-bold rounded-xl transition-all cursor-pointer"
-                      >
-                        + Mag-Add
-                      </button>
+                  {/* Naka-Assign / Assigned Leader Section (Free Text Field) */}
+                  <div className="p-3.5 rounded-xl bg-slate-900 border border-emerald-500/40 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 border-b border-slate-800 pb-2">
+                      <label className="text-[11px] font-mono text-emerald-400 font-bold uppercase flex items-center space-x-1.5">
+                        <UserCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                        <span>Naka-assign na Personnel / Lider (Free Text Field):</span>
+                      </label>
+                      <span className="text-[10px] text-emerald-300/80 font-mono bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-500/30">
+                        {assignedPersonnel.length} Naka-assign
+                      </span>
                     </div>
 
-                    {/* Assigned Personnel Badges with Delete button */}
-                    {assignedPersonnel.length > 0 ? (
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        {assignedPersonnel.map((person, idx) => (
-                          <span
-                            key={idx}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-950 border border-emerald-500/50 text-emerald-300 text-xs font-mono"
-                          >
-                            <span>👤 {person}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleRemovePerson(idx)}
-                              className="text-slate-400 hover:text-rose-400 ml-1 transition-colors cursor-pointer"
-                              title="Burahin ang naka assign"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
+                    {/* Free Text Field Input & Mag-Add Button */}
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newPersonInput}
+                          onChange={(e) => setNewPersonInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleAddPerson();
+                            }
+                          }}
+                          placeholder="I-type ang pangalan ng lider / tauhan na ia-assign (Free text field)..."
+                          className="flex-1 px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs sm:text-sm text-white placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none font-medium"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddPerson}
+                          disabled={!newPersonInput.trim()}
+                          className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-800 disabled:text-slate-600 disabled:cursor-not-allowed text-slate-950 text-xs font-mono font-bold rounded-xl transition-all cursor-pointer shrink-0 shadow-md flex items-center gap-1.5"
+                        >
+                          <Plus className="w-3.5 h-3.5 text-slate-950" />
+                          <span>+ Mag-Add</span>
+                        </button>
+                      </div>
+
+                      {/* Optional Quick-Pick Chips from Asign Leader list if available */}
+                      {beneficiaries && beneficiaries.length > 0 && (
+                        <div className="pt-1">
+                          <span className="text-[10px] uppercase font-mono text-slate-400 block mb-1">
+                            Pumili mula sa Asign Leader (Optional):
                           </span>
-                        ))}
+                          <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden">
+                            {beneficiaries.map((b) => {
+                              const label = `${b.firstName} ${b.lastName} (${b.beneCode} • Brgy. ${b.barangay})`;
+                              const isAssigned = assignedPersonnel.includes(label);
+                              return (
+                                <button
+                                  key={b.id}
+                                  type="button"
+                                  onClick={() => handleToggleLeader(b)}
+                                  className={`px-2 py-0.5 rounded text-[10px] font-mono transition-all flex items-center gap-1 cursor-pointer ${
+                                    isAssigned
+                                      ? "bg-emerald-500 text-slate-950 font-bold border border-emerald-400 shadow-sm"
+                                      : "bg-slate-950/90 text-slate-300 border border-slate-800 hover:border-emerald-500/50 hover:text-white"
+                                  }`}
+                                  title="I-click upang i-assign o tanggalin"
+                                >
+                                  <span>{isAssigned ? "✓" : "+"}</span>
+                                  <span>{b.firstName} {b.lastName}</span>
+                                  <span className="text-[9px] opacity-75">({b.barangay})</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Assigned Personnel Badges with Edit and Delete capabilities */}
+                    {assignedPersonnel.length > 0 ? (
+                      <div className="pt-2 border-t border-slate-800/80 space-y-1.5">
+                        <div className="flex items-center justify-between text-[11px] font-mono text-emerald-300">
+                          <span>Mga Lider / Tauhan na Naka-assign sa Event QR ({assignedPersonnel.length}):</span>
+                          <button
+                            type="button"
+                            onClick={() => setAssignedPersonnel([])}
+                            className="text-[10px] text-rose-400 hover:text-rose-300 cursor-pointer font-sans"
+                          >
+                            Tanggalin Lahat
+                          </button>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {assignedPersonnel.map((person, idx) => (
+                            <div
+                              key={idx}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-950 border border-emerald-500/60 text-emerald-200 text-xs font-mono shadow-sm"
+                            >
+                              {editingPersonIndex === idx ? (
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="text"
+                                    value={editingPersonValue}
+                                    onChange={(e) => setEditingPersonValue(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") handleSavePersonEdit(idx);
+                                      if (e.key === "Escape") handleCancelPersonEdit();
+                                    }}
+                                    className="px-2 py-0.5 bg-slate-900 border border-emerald-400 rounded text-xs text-white focus:outline-none"
+                                    autoFocus
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSavePersonEdit(idx)}
+                                    className="text-emerald-400 hover:text-emerald-300 cursor-pointer text-[10px] font-bold px-1"
+                                    title="I-save ang pagbabago"
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={handleCancelPersonEdit}
+                                    className="text-slate-400 hover:text-slate-300 cursor-pointer text-[10px] px-1"
+                                    title="Kanselahin"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ) : (
+                                <>
+                                  <span className="font-semibold text-emerald-100">👤 {person}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleStartEditPerson(idx)}
+                                    className="text-amber-400 hover:text-amber-300 p-0.5 rounded hover:bg-amber-500/20 transition-colors cursor-pointer"
+                                    title="I-edit ang pangalan na ito"
+                                  >
+                                    <Edit3 className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemovePerson(idx)}
+                                    className="text-rose-400 hover:text-rose-300 p-0.5 rounded hover:bg-rose-500/20 transition-colors cursor-pointer"
+                                    title="Burahin / Delete"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     ) : (
-                      <span className="text-[10px] font-mono text-slate-500 block">Walang naka-assign pa. Mag-add sa itaas.</span>
+                      <div className="p-2.5 rounded-lg bg-slate-950/60 border border-dashed border-slate-800 text-center text-[11px] text-slate-400 font-mono">
+                        Walang naka-assign na tauhan. I-type sa free text field sa itaas at pindutin ang "+ Mag-Add".
+                      </div>
                     )}
                   </div>
                 </div>
-
                 {/* Section 4: Event QR Code Canvas & Primary Action */}
                 <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950/40 border-2 border-emerald-500/50 shadow-xl flex flex-col sm:flex-row items-center gap-4 sm:gap-5">
                   {/* QR Canvas Box */}
@@ -1073,6 +1371,217 @@ export const GenerateQrEventModal: React.FC<GenerateQrEventModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* EDIT ACTIVITY MODAL OVERLAY                                               */}
+      {/* ========================================================================= */}
+      {editingActivity && (
+        <div className="fixed inset-0 z-[10600] flex items-center justify-center p-3 sm:p-6 bg-slate-950/95 backdrop-blur-xl overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden select-none animate-fadeIn">
+          <div className="relative w-full max-w-2xl bg-slate-900 border-2 border-amber-500/80 rounded-3xl shadow-[0_25px_80px_rgba(0,0,0,0.95),0_0_50px_rgba(245,158,11,0.3)] overflow-hidden my-auto flex flex-col max-h-[90vh] text-slate-100">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-slate-800 bg-slate-950/95 flex items-center justify-between shrink-0">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
+                  <Edit3 className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400 block">
+                    I-edit ang Content ng Activity
+                  </span>
+                  <h3 className="text-base sm:text-lg font-black text-white">
+                    Baguhin ang Detalye ng Program ({editingActivity.barangay})
+                  </h3>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingActivity(null)}
+                className="p-1.5 rounded-xl bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSaveActivityEdit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
+              <div>
+                <label className="block text-[11px] font-mono text-slate-300 mb-1">
+                  Pangalan ng Activity / Program Title *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editActivityForm.title}
+                  onChange={(e) => setEditActivityForm({ ...editActivityForm, title: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:border-amber-400 focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-mono text-slate-300 mb-1">
+                    Barangay *
+                  </label>
+                  <select
+                    value={editActivityForm.barangay}
+                    onChange={(e) => setEditActivityForm({ ...editActivityForm, barangay: e.target.value as any })}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:border-amber-400 focus:outline-none"
+                  >
+                    {DINGALAN_BARANGAYS.map((b) => (
+                      <option key={b} value={b}>Brgy. {b}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-mono text-slate-300 mb-1">
+                    Target Work Area / Zone *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editActivityForm.targetArea}
+                    onChange={(e) => setEditActivityForm({ ...editActivityForm, targetArea: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:border-amber-400 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[11px] font-mono text-slate-300 mb-1">Petsa (Date) *</label>
+                  <input
+                    type="date"
+                    required
+                    value={editActivityForm.date}
+                    onChange={(e) => setEditActivityForm({ ...editActivityForm, date: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:border-amber-400 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-mono text-slate-300 mb-1">Call Time *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editActivityForm.callTime}
+                    onChange={(e) => setEditActivityForm({ ...editActivityForm, callTime: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:border-amber-400 focus:outline-none font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-mono text-slate-300 mb-1">Kabuuang Oras</label>
+                  <input
+                    type="text"
+                    value={editActivityForm.totalHours}
+                    onChange={(e) => setEditActivityForm({ ...editActivityForm, totalHours: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:border-amber-400 focus:outline-none font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-mono text-slate-300 mb-1">Kailangang Kagamitan (Tools)</label>
+                  <input
+                    type="text"
+                    value={editActivityForm.requiredTools}
+                    onChange={(e) => setEditActivityForm({ ...editActivityForm, requiredTools: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:border-amber-400 focus:outline-none"
+                    placeholder="Walis tingting, sako, gloves..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-mono text-slate-300 mb-1">Inirerekomendang Kasuotan (Attire)</label>
+                  <input
+                    type="text"
+                    value={editActivityForm.recommendedAttire}
+                    onChange={(e) => setEditActivityForm({ ...editActivityForm, recommendedAttire: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:border-amber-400 focus:outline-none"
+                    placeholder="Bota, sumbrero, Linis Dingalan shirt..."
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-mono text-slate-300 mb-1">Mga Karagdagang Paalala (Notes)</label>
+                <textarea
+                  rows={2}
+                  value={editActivityForm.notes}
+                  onChange={(e) => setEditActivityForm({ ...editActivityForm, notes: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:border-amber-400 focus:outline-none resize-none"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-800 flex items-center justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingActivity(null)}
+                  disabled={isSavingActivity}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono font-bold transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingActivity}
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 text-xs font-mono font-black flex items-center space-x-2 shadow-[0_0_20px_rgba(245,158,11,0.4)] transition-all cursor-pointer"
+                >
+                  <Save className="w-4 h-4 text-slate-950" />
+                  <span>{isSavingActivity ? "Saving..." : "I-save ang Pagbabago"}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* DELETE CONFIRMATION MODAL OVERLAY                                         */}
+      {/* ========================================================================= */}
+      {activityToDelete && (
+        <div className="fixed inset-0 z-[10700] flex items-center justify-center p-3 sm:p-4 bg-slate-950/90 backdrop-blur-md select-none animate-fadeIn">
+          <div className="relative w-full max-w-md bg-slate-900 border-2 border-rose-500/60 rounded-3xl shadow-[0_25px_70px_rgba(0,0,0,0.9),0_0_40px_rgba(244,63,94,0.3)] p-5 sm:p-6 space-y-4 text-left">
+            <div className="flex items-center space-x-3 border-b border-slate-800 pb-3">
+              <div className="w-10 h-10 rounded-2xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-base font-bold text-white">Burahin ang Activity?</h4>
+                <p className="text-[11px] text-rose-300">Permanenteng aalisin sa dropdown at listahan</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1.5 text-xs text-slate-300">
+              <p className="font-bold text-white text-sm">{activityToDelete.title}</p>
+              <p className="text-[11px] text-emerald-300">Brgy. {activityToDelete.barangay} • {activityToDelete.targetArea}</p>
+              <p className="text-[11px] text-slate-400">{activityToDelete.date} • {activityToDelete.callTime}</p>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Sigurado ka bang nais mong burahin ang content na ito? Hindi na ito lilitaw sa dropdown o sa mga aktibong programa.
+            </p>
+
+            <div className="pt-2 border-t border-slate-800 flex justify-end space-x-3">
+              <button
+                type="button"
+                disabled={isDeletingActivity}
+                onClick={() => setActivityToDelete(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 rounded-xl cursor-pointer"
+              >
+                Kanselahin
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingActivity}
+                onClick={handleConfirmDeleteActivity}
+                className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 active:bg-rose-700 rounded-xl shadow-lg shadow-rose-950/40 flex items-center space-x-1.5 cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{isDeletingActivity ? "Binubura..." : "Oo, Burahin"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* EDIT BROADCAST MODAL OVERLAY                                              */}
@@ -1261,60 +1770,154 @@ export const GenerateQrEventModal: React.FC<GenerateQrEventModalProps> = ({
                 />
               </div>
 
-              {/* Naka-Assign / Assigned Personnel Manager in Edit Modal */}
-              <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-                <label className="block text-xs font-mono font-bold text-emerald-400 uppercase flex items-center space-x-1.5">
-                  <Users className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span>Naka-Assign na Personnel / Staff (Assigned Personnel)</span>
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={editPersonInput}
-                    onChange={(e) => setEditPersonInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleEditAddPerson();
-                      }
-                    }}
-                    placeholder="I-type ang bagong naka-assign..."
-                    className="flex-1 px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:border-emerald-400 outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleEditAddPerson}
-                    className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-mono font-bold rounded-xl transition-all cursor-pointer"
-                  >
-                    + Mag-Add
-                  </button>
+              {/* Naka-Assign / Assigned Personnel Manager in Edit Modal (Free Text Field) */}
+              <div className="p-3.5 rounded-xl bg-slate-950 border border-emerald-500/40 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 border-b border-slate-800 pb-2">
+                  <label className="text-xs font-mono font-bold text-emerald-400 uppercase flex items-center space-x-1.5">
+                    <UserCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>Naka-assign na Personnel / Lider (Free Text Field)</span>
+                  </label>
+                  <span className="text-[10px] text-emerald-300/80 font-mono bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-500/30">
+                    {editAssignedPersonnel.length} Naka-assign
+                  </span>
                 </div>
 
-                {/* List of assigned personnel in edit modal */}
-                {editAssignedPersonnel.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {editAssignedPersonnel.map((person, idx) => (
-                      <span
-                        key={idx}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-950/80 border border-emerald-500/60 text-emerald-300 text-xs font-mono font-semibold"
-                      >
-                        <span>👤 {person}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleEditRemovePerson(idx)}
-                          className="text-slate-400 hover:text-rose-400 ml-1 transition-colors cursor-pointer"
-                          title="Burahin ang naka-assign"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
+                {/* Free Text Input & Mag-Add Button in Edit Modal */}
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={editPersonInput}
+                      onChange={(e) => setEditPersonInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleEditAddPerson();
+                        }
+                      }}
+                      placeholder="I-type ang pangalan ng lider / tauhan (Free text field)..."
+                      className="flex-1 px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder:text-slate-500 focus:border-emerald-400 outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleEditAddPerson}
+                      disabled={!editPersonInput.trim()}
+                      className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-800 disabled:text-slate-600 disabled:cursor-not-allowed text-slate-950 text-xs font-mono font-bold rounded-xl transition-all cursor-pointer shrink-0"
+                    >
+                      + Mag-Add
+                    </button>
+                  </div>
+
+                  {/* Optional Quick-Pick Chips in Edit Modal */}
+                  {beneficiaries && beneficiaries.length > 0 && (
+                    <div className="pt-1">
+                      <span className="text-[10px] uppercase font-mono text-slate-400 block mb-1">
+                        Pumili mula sa Asign Leader (Optional):
                       </span>
-                    ))}
+                      <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden">
+                        {beneficiaries.map((b) => {
+                          const label = `${b.firstName} ${b.lastName} (${b.beneCode} • Brgy. ${b.barangay})`;
+                          const isAssigned = editAssignedPersonnel.includes(label);
+                          return (
+                            <button
+                              key={b.id}
+                              type="button"
+                              onClick={() => handleEditToggleLeader(b)}
+                              className={`px-2 py-0.5 rounded text-[10px] font-mono transition-all flex items-center gap-1 cursor-pointer ${
+                                isAssigned
+                                  ? "bg-emerald-500 text-slate-950 font-bold border border-emerald-400"
+                                  : "bg-slate-900 text-slate-300 border border-slate-800 hover:border-emerald-500/50 hover:text-white"
+                              }`}
+                            >
+                              <span>{isAssigned ? "✓" : "+"}</span>
+                              <span>{b.firstName} {b.lastName}</span>
+                              <span className="text-[9px] opacity-75">({b.barangay})</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* List of assigned personnel in edit modal with EDIT and DELETE */}
+                {editAssignedPersonnel.length > 0 ? (
+                  <div className="pt-2 border-t border-slate-800 space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px] font-mono text-emerald-300">
+                      <span>Mga Naka-asign na Lider ({editAssignedPersonnel.length}):</span>
+                      <button
+                        type="button"
+                        onClick={() => setEditAssignedPersonnel([])}
+                        className="text-[10px] text-rose-400 hover:text-rose-300 cursor-pointer font-sans"
+                      >
+                        Tanggalin Lahat
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {editAssignedPersonnel.map((person, idx) => (
+                        <div
+                          key={idx}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-950/80 border border-emerald-500/60 text-emerald-300 text-xs font-mono font-semibold"
+                        >
+                          {editingEditPersonIndex === idx ? (
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="text"
+                                value={editingEditPersonValue}
+                                onChange={(e) => setEditingEditPersonValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") handleSaveEditModalPerson(idx);
+                                  if (e.key === "Escape") handleCancelEditModalPerson();
+                                }}
+                                className="px-2 py-0.5 bg-slate-900 border border-emerald-400 rounded text-xs text-white focus:outline-none"
+                                autoFocus
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleSaveEditModalPerson(idx)}
+                                className="text-emerald-400 hover:text-emerald-300 cursor-pointer text-[10px] font-bold px-1"
+                              >
+                                Save
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleCancelEditModalPerson}
+                                className="text-slate-400 hover:text-slate-300 cursor-pointer text-[10px] px-1"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <span>👤 {person}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleStartEditModalPerson(idx)}
+                                className="text-amber-400 hover:text-amber-300 p-0.5 rounded hover:bg-amber-500/20 transition-colors cursor-pointer"
+                                title="I-edit ang pangalan"
+                              >
+                                <Edit3 className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleEditRemovePerson(idx)}
+                                className="text-rose-400 hover:text-rose-300 p-0.5 rounded hover:bg-rose-500/20 transition-colors cursor-pointer"
+                                title="Burahin ang naka-assign"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ) : (
-                  <span className="text-[10px] font-mono text-slate-500 block">Walang naka-assign sa kasalukuyan.</span>
+                  <div className="p-2.5 rounded-lg bg-slate-900/60 border border-dashed border-slate-700 text-center text-xs text-slate-400 font-mono">
+                    Walang naka-assign na tauhan. I-type sa free text field sa itaas at pindutin ang "+ Mag-Add".
+                  </div>
                 )}
               </div>
-
               <div className="pt-3 border-t border-slate-800 flex items-center justify-end space-x-3">
                 <button
                   type="button"

@@ -68,6 +68,23 @@ export default function App() {
   const [isEventQrNoticeModalOpen, setIsEventQrNoticeModalOpen] = useState<boolean>(false);
   const [isAnonymousInboxModalOpen, setIsAnonymousInboxModalOpen] = useState<boolean>(false);
   const [anonymousMessages, setAnonymousMessages] = useState<AnonymousMessage[]>([]);
+  // Real-time synchronization for Login Page advisory & Homepage picture content
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      const bc = new BroadcastChannel('ld_sync');
+      bc.onmessage = (event) => {
+        if (event.data?.type === 'LOGIN_ADVISORY_CHANGED') {
+          setLatestEventBroadcast(event.data.broadcast);
+        } else if (event.data?.type === 'CLEAR_BROADCASTS') {
+          setLatestEventBroadcast(null);
+        } else if (event.data?.type === 'NEW_BROADCAST' && event.data.broadcast) {
+          setLatestEventBroadcast(event.data.broadcast);
+        }
+      };
+      return () => bc.close();
+    }
+  }, []);
+
   const [latestEventBroadcast, setLatestEventBroadcast] = useState<EventQrBroadcast | null>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -920,6 +937,7 @@ export default function App() {
           }}
           onOpenScanQrModal={() => setIsScanQrModalOpen(true)}
           eventBroadcast={latestEventBroadcast}
+          onActiveBroadcastChange={(b) => setLatestEventBroadcast(b)}
         />
 
         {/* Standalone Personal QR Generator & Registration Modal */}
@@ -1315,6 +1333,7 @@ export default function App() {
                 setSelectedQrActivityId(null);
               }}
               onCreateActivity={handleCreateActivity}
+              onUpdateActivity={handleUpdateActivity}
               onDeleteActivity={handleDeleteActivity}
             />
           )}
@@ -1400,6 +1419,7 @@ export default function App() {
             showToast(`Naka-register na si ${newBene.firstName} ${newBene.lastName}! Na-generate na ang kanyang Personal QR Code.`, 'success');
           }}
           eventBroadcast={latestEventBroadcast}
+          onActiveBroadcastChange={(b) => setLatestEventBroadcast(b)}
         />
 
         {/* Standalone Personal QR Generator & Registration Modal */}

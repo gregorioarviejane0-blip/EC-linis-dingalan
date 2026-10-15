@@ -1280,7 +1280,7 @@ export class ApiService {
       return null;
     }
 
-    return INITIAL_EVENT_BROADCAST;
+    return null;
   }
 
   async getAllEventBroadcasts(): Promise<EventQrBroadcast[]> {

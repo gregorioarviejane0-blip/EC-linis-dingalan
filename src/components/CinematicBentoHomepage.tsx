@@ -275,8 +275,8 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
           </div>
         </section>
 
-        {/* LATEST EVENT QR & PAALALA BROADCAST BANNER */}
-        {eventBroadcast && (
+        {/* LATEST EVENT QR & PAALALA BROADCAST BANNER (Synchronized with Login Page Advisory) */}
+        {eventBroadcast && (typeof window === 'undefined' || localStorage.getItem('ld_broadcasts_cleared') !== 'true') && (
           <section className="mb-6 animate-fadeIn">
             <div className="bg-gradient-to-r from-slate-900/90 via-emerald-950/40 to-slate-900/90 border-2 border-emerald-500/50 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 shadow-2xl relative overflow-hidden">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

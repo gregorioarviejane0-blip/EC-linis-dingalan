@@ -27,8 +27,8 @@ let assignments: ActivityAssignment[] = [...INITIAL_ASSIGNMENTS];
 let attendances: AttendanceRecord[] = [...INITIAL_ATTENDANCES];
 let auditLogs: AuditLog[] = [...INITIAL_AUDIT_LOGS];
 let storageMetrics = { ...INITIAL_STORAGE_METRICS };
-let latestBroadcast: EventQrBroadcast | null = { ...INITIAL_EVENT_BROADCAST };
-let broadcastHistory: EventQrBroadcast[] = [{ ...INITIAL_EVENT_BROADCAST }];
+let latestBroadcast: EventQrBroadcast | null = null;
+let broadcastHistory: EventQrBroadcast[] = [];
 let anonymousMessages: AnonymousMessage[] = [...INITIAL_ANONYMOUS_MESSAGES];
 
 const HMAC_SECRET = 'LINIS-DINGALAN-LGU-AURORA-SEC-KEY-2025-V1';

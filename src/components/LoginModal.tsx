@@ -106,6 +106,7 @@ interface LoginModalProps {
   onOpenScanQrModal?: () => void;
   onRegisterSuccess?: (bene: Beneficiary) => void;
   eventBroadcast?: any;
+  onActiveBroadcastChange?: (broadcast: EventQrBroadcast | null) => void;
 }
 
 export const LoginModal: React.FC<LoginModalProps> = ({
@@ -123,6 +124,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   onRegisterSuccess,
   activities: propActivities = [],
   eventBroadcast: propEventBroadcast,
+  onActiveBroadcastChange,
 }) => {
   const clock = useDingalanClock();
   const phTime = clock.time;
@@ -683,6 +685,32 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
   const isBroadcastCleared = typeof window !== 'undefined' && localStorage.getItem('ld_broadcasts_cleared') === 'true';
   const eventBroadcast = isBroadcastCleared ? null : activeBroadcast;
+
+  // Strict Real-Time Synchronization with Homepage Banner (Picture content):
+  // Kung ano ang naka-upload o active na paalala sa Login page, iyon agad ang magre-reflect sa homepage banner
+  useEffect(() => {
+    onActiveBroadcastChange?.(eventBroadcast);
+    if (typeof window !== 'undefined') {
+      try {
+        if (eventBroadcast) {
+          localStorage.setItem('ld_latest_event_broadcast', JSON.stringify(eventBroadcast));
+          localStorage.removeItem('ld_broadcasts_cleared');
+          if ('BroadcastChannel' in window) {
+            const bc = new BroadcastChannel('ld_sync');
+            bc.postMessage({ type: 'LOGIN_ADVISORY_CHANGED', broadcast: eventBroadcast });
+            bc.close();
+          }
+        } else {
+          localStorage.removeItem('ld_latest_event_broadcast');
+          if ('BroadcastChannel' in window) {
+            const bc = new BroadcastChannel('ld_sync');
+            bc.postMessage({ type: 'LOGIN_ADVISORY_CHANGED', broadcast: null });
+            bc.close();
+          }
+        }
+      } catch {}
+    }
+  }, [eventBroadcast, onActiveBroadcastChange]);
 
   // Real-time synchronization: listen to broadcast changes across all tabs and windows
   useEffect(() => {

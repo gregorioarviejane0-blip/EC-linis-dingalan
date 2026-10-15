@@ -19,6 +19,12 @@ import {
   FileSpreadsheet,
   X,
   PieChart,
+  BarChart3,
+  BarChart2,
+  Calendar,
+  Sparkles,
+  Layers,
+  Eye,
   Users,
   TrendingUp,
   Pencil,
@@ -77,7 +83,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   const [managingAssignmentsActivity, setManagingAssignmentsActivity] = useState<Activity | null>(null);
   const [assignSearchTerm, setAssignSearchTerm] = useState('');
 
-  // Adding program / list state
+  // Adding program / list state with full event telemetry
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [isSubmittingNew, setIsSubmittingNew] = useState<boolean>(false);
   const [newProgramForm, setNewProgramForm] = useState<{
@@ -86,21 +92,32 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     targetArea: string;
     description: string;
     targetBeneficiariesCount: number | string;
-    date: string;
+    attendedBeneficiariesCount: number | string;
+    totalHours: string;
     callTime: string;
+    estimatedEndTime: string;
+    date: string;
   }>({
     title: '',
     barangay: 'Paltic',
     targetArea: '',
     description: '',
     targetBeneficiariesCount: 20,
-    date: new Date().toISOString().split('T')[0],
+    attendedBeneficiariesCount: 18,
+    totalHours: '4 na Oras',
     callTime: '06:00 AM',
+    estimatedEndTime: '10:00 AM',
+    date: new Date().toISOString().split('T')[0],
   });
 
   // Deleting program / list state
   const [deletingActivity, setDeletingActivity] = useState<Activity | null>(null);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
+  // Graph state inside content box
+  const [selectedGraphEventId, setSelectedGraphEventId] = useState<string | null>(null);
+  const [graphMetricMode, setGraphMetricMode] = useState<'attendance' | 'hours' | 'timeline' | 'barangay'>('attendance');
+  const [contentBoxViewMode, setContentBoxViewMode] = useState<'combined' | 'graph_only' | 'cards_only'>('combined');
 
   const handleCreateProgram = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,18 +128,21 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
         await onCreateActivity({
           title: newProgramForm.title.trim(),
           barangay: newProgramForm.barangay,
-          targetArea: newProgramForm.targetArea.trim() || `Barangay ${newProgramForm.barangay} Zone`,
+          targetArea: newProgramForm.targetArea.trim() || `Barangay ${newProgramForm.barangay} Operations Sector`,
           description: newProgramForm.description.trim() || 'Linis Dingalan Community Work Program',
           targetBeneficiariesCount: Number(newProgramForm.targetBeneficiariesCount) || 20,
+          attendedBeneficiariesCount: Number(newProgramForm.attendedBeneficiariesCount) || 18,
+          totalHours: newProgramForm.totalHours.trim() || '4 na Oras',
           date: newProgramForm.date || new Date().toISOString().split('T')[0],
-          callTime: newProgramForm.callTime || '06:00 AM',
-          status: 'scheduled',
+          callTime: newProgramForm.callTime.trim() || '06:00 AM',
+          estimatedEndTime: newProgramForm.estimatedEndTime.trim() || '10:00 AM',
+          status: 'completed',
           qrScheduleEnabled: true,
           qrDisplayMode: 'match_event',
           qrDisplayStartDate: newProgramForm.date || new Date().toISOString().split('T')[0],
           qrDisplayStartTime: newProgramForm.callTime || '06:00 AM',
           qrDisplayEndDate: newProgramForm.date || new Date().toISOString().split('T')[0],
-          qrDisplayEndTime: '23:59',
+          qrDisplayEndTime: newProgramForm.estimatedEndTime || '10:00 AM',
         });
       }
       setIsCreateModalOpen(false);
@@ -132,8 +152,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
         targetArea: '',
         description: '',
         targetBeneficiariesCount: 20,
+        attendedBeneficiariesCount: 18,
+        totalHours: '4 na Oras',
         date: new Date().toISOString().split('T')[0],
         callTime: '06:00 AM',
+        estimatedEndTime: '10:00 AM',
       });
       setProgramPage(1);
     } finally {
@@ -148,40 +171,70 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       if (onDeleteActivity) {
         await onDeleteActivity(deletingActivity.id);
       }
+      if (selectedGraphEventId === deletingActivity.id) {
+        setSelectedGraphEventId(null);
+      }
       setDeletingActivity(null);
     } finally {
       setIsDeleting(false);
     }
   };
 
-  // Editing activity state
+  // Editing activity state with free text inputs
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [editForm, setEditForm] = useState<{
     title: string;
     barangay: DingalanBarangay;
+    targetArea: string;
     description: string;
     targetBeneficiariesCount: number | string;
+    attendedBeneficiariesCount: number | string;
+    totalHours: string;
+    callTime: string;
+    estimatedEndTime: string;
+    date: string;
   }>({
     title: '',
     barangay: 'Paltic' as DingalanBarangay,
+    targetArea: '',
     description: '',
     targetBeneficiariesCount: 20,
+    attendedBeneficiariesCount: 18,
+    totalHours: '4 na Oras',
+    callTime: '06:00 AM',
+    estimatedEndTime: '10:00 AM',
+    date: new Date().toISOString().split('T')[0],
   });
 
   const handleOpenEdit = (act: Activity) => {
     setEditingActivity(act);
+    const recordedAttendanceCount = attendances.filter(a => a.activityId === act.id).length;
     setEditForm({
       title: act.title,
       barangay: act.barangay,
+      targetArea: act.targetArea || '',
       description: act.description,
       targetBeneficiariesCount: act.targetBeneficiariesCount || 20,
+      attendedBeneficiariesCount: act.attendedBeneficiariesCount ?? (recordedAttendanceCount > 0 ? recordedAttendanceCount : 18),
+      totalHours: act.totalHours || '4 na Oras',
+      callTime: act.callTime || '06:00 AM',
+      estimatedEndTime: act.estimatedEndTime || '10:00 AM',
+      date: act.date || new Date().toISOString().split('T')[0],
     });
   };
 
   const handleSaveEdit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingActivity || !onUpdateActivity) return;
-    onUpdateActivity(editingActivity.id, editForm);
+    onUpdateActivity(editingActivity.id, {
+      ...editForm,
+      targetBeneficiariesCount: Number(editForm.targetBeneficiariesCount) || 20,
+      attendedBeneficiariesCount: Number(editForm.attendedBeneficiariesCount) || 0,
+      totalHours: editForm.totalHours.trim() || '4 na Oras',
+      callTime: editForm.callTime.trim() || '06:00 AM',
+      estimatedEndTime: editForm.estimatedEndTime.trim() || '10:00 AM',
+      targetArea: editForm.targetArea.trim() || `Barangay ${editForm.barangay} Zone`,
+    });
     setEditingActivity(null);
   };
 
@@ -338,6 +391,60 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   const handlePrint = () => {
     window.print();
   };
+
+  // Comprehensive Event Analytics Data (Lahat ng event na ginanap, ilan ang umatend, saang lugar, ilang oras, oras simula at tapos)
+  const eventsAnalyticsData = useMemo(() => {
+    return activities.map((act) => {
+      const recordedCount = attendances.filter((a) => a.activityId === act.id).length;
+      const attended = Number(act.attendedBeneficiariesCount) || (recordedCount > 0 ? recordedCount : (Number(act.assignedBeneficiariesCount) || 18));
+      const target = Number(act.targetBeneficiariesCount) || 20;
+      
+      // Calculate hours numeric
+      let hoursNum = 4;
+      if (act.totalHours) {
+        const parsed = parseFloat(act.totalHours);
+        if (!isNaN(parsed) && parsed > 0) hoursNum = parsed;
+      }
+      
+      const totalHoursStr = act.totalHours || `${hoursNum} na Oras`;
+      const startTimeStr = act.callTime || '06:00 AM';
+      const endTimeStr = act.estimatedEndTime || '10:00 AM';
+      const targetAreaStr = act.targetArea || `Barangay ${act.barangay} Operations Sector`;
+      const dateStr = act.date || new Date().toISOString().split('T')[0];
+
+      return {
+        id: act.id,
+        rawActivity: act,
+        title: act.title,
+        barangay: act.barangay,
+        targetArea: targetAreaStr,
+        date: dateStr,
+        startTime: startTimeStr,
+        endTime: endTimeStr,
+        totalHours: totalHoursStr,
+        hoursNumeric: hoursNum,
+        target,
+        attended,
+        attendancePercent: Math.min(100, Math.round((attended / target) * 100)),
+        status: act.status || 'completed',
+        description: act.description,
+      };
+    });
+  }, [activities, attendances]);
+
+  const totalEventsHeld = eventsAnalyticsData.length;
+  const totalEventAttendees = eventsAnalyticsData.reduce((acc, curr) => acc + curr.attended, 0);
+  const totalOperationalHoursSum = eventsAnalyticsData.reduce((acc, curr) => acc + curr.hoursNumeric, 0);
+  const uniqueLocationsCount = useMemo(() => {
+    const set = new Set(eventsAnalyticsData.map((e) => e.barangay));
+    return Math.max(set.size, 1);
+  }, [eventsAnalyticsData]);
+
+  // Selected event for graph telemetry HUD
+  const selectedGraphEvent = useMemo(() => {
+    if (!selectedGraphEventId) return eventsAnalyticsData[0] || null;
+    return eventsAnalyticsData.find((e) => e.id === selectedGraphEventId) || eventsAnalyticsData[0] || null;
+  }, [eventsAnalyticsData, selectedGraphEventId]);
 
   return (
     <div className="space-y-3 sm:space-y-6">
