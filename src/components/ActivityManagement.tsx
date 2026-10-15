@@ -1539,6 +1539,31 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                 )}
               </div>
 
+              {/* Name List of Assigned Leaders / Beneficiaries */}
+              <div className="pt-3 border-t border-slate-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-emerald-400 font-mono flex items-center">
+                    <Users className="w-3.5 h-3.5 mr-1.5" />
+                    Listahan ng mga Naka-Asign na Lider ({beneficiaries.length})
+                  </span>
+                  <span className="text-[10px] text-slate-400">Mula sa Asign Leader Tab</span>
+                </div>
+                <div className="max-h-36 overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden space-y-1 p-2 rounded-xl bg-slate-950/80 border border-slate-800 text-xs">
+                  {beneficiaries.length > 0 ? (
+                    beneficiaries.map((b) => (
+                      <div key={b.id} className="flex items-center justify-between p-1.5 rounded bg-slate-900 border border-slate-800">
+                        <span className="font-bold text-white text-[11px]">{b.firstName} {b.lastName}</span>
+                        <span className="text-[10px] text-emerald-300 font-mono">Brgy. {b.barangay} (${b.beneCode})</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-2 text-center text-[11px] text-slate-500 italic">
+                      Walang pang lider na naka-register. Magdagdag sa Asign Leader tab.
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div className="pt-3 border-t border-slate-800 flex justify-end space-x-3">
                 <button
                   type="button"

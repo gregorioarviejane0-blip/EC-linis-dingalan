@@ -97,9 +97,7 @@ export class ApiService {
     if (!localStorage.getItem(LS_USERS)) {
       localStorage.setItem(LS_USERS, JSON.stringify(INITIAL_USERS));
     }
-    if (!localStorage.getItem(LS_BENEFICIARIES)) {
-      localStorage.setItem(LS_BENEFICIARIES, JSON.stringify(INITIAL_BENEFICIARIES));
-    }
+    localStorage.setItem(LS_BENEFICIARIES, JSON.stringify([]));
     if (!localStorage.getItem(LS_ACTIVITIES)) {
       localStorage.setItem(LS_ACTIVITIES, JSON.stringify(INITIAL_ACTIVITIES));
     }
@@ -461,7 +459,8 @@ export class ApiService {
       // offline fallback
     }
     const raw = localStorage.getItem(LS_BENEFICIARIES);
-    return raw ? JSON.parse(raw) : INITIAL_BENEFICIARIES;
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
   }
 
   async createBeneficiary(beneData: Partial<Beneficiary>): Promise<Beneficiary> {

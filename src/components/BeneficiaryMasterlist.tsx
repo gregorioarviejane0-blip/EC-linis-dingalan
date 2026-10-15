@@ -183,11 +183,11 @@ export const BeneficiaryMasterlist: React.FC<BeneficiaryMasterlistProps> = ({
                 <Users className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
               </div>
               <h2 className="text-base sm:text-xl font-bold text-white tracking-tight">
-                Beneficiary Masterlist & Digital IDs
+                Asign Leader & Community Masterlist
               </h2>
             </div>
             <p className="text-[11px] sm:text-xs text-slate-400 mt-1">
-              Active workforce roster across 11 Dingalan barangays. Encodes universal cryptographic QR tokens for on-site scanning.
+              Mag-add ng pangalan at i-asign sa bawat barangay program na magaganap sa buong Dingalan.
             </p>
           </div>
 
@@ -197,7 +197,7 @@ export const BeneficiaryMasterlist: React.FC<BeneficiaryMasterlistProps> = ({
               className="w-full sm:w-auto px-3 py-2 sm:px-4 sm:py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-950/40 flex items-center justify-center transition-all duration-150"
             >
               <Plus className="w-3.5 h-3.5 mr-1" />
-              Register Beneficiary
+              Asign New Leader
             </button>
           </div>
         </div>

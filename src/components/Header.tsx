@@ -185,7 +185,7 @@ export const Header: React.FC<HeaderProps> = ({
           {[
             { id: 'homepage', label: 'Overview', icon: Sparkles },
             { id: 'reports', label: 'Report', fullLabel: 'Program Report', icon: FileText },
-            { id: 'beneficiaries', label: 'Masterlist', icon: Users },
+            { id: 'beneficiaries', label: 'Asign Leader', icon: UserCheck },
             { id: 'activities', label: 'Programs', icon: Calendar },
           ].map((tab) => {
             const Icon = tab.icon;
@@ -365,7 +365,7 @@ export const Header: React.FC<HeaderProps> = ({
         {[
           { id: 'homepage', label: 'Overview', icon: Sparkles },
           { id: 'reports', label: 'Report', icon: FileText },
-          { id: 'beneficiaries', label: 'Masterlist', icon: Users },
+          { id: 'beneficiaries', label: 'Asign Leader', icon: UserCheck },
           { id: 'activities', label: 'Programs', icon: Calendar },
         ].map((tab) => {
           const Icon = tab.icon;
