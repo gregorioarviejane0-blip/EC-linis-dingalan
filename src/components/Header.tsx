@@ -343,6 +343,9 @@ export const Header: React.FC<HeaderProps> = ({
             </motion.button>
           )}
 
+          {/* PWA Install Button */}
+          <PWAInstallButton />
+
           {/* Log Out Button */}
           <motion.button
             whileHover={{ scale: 1.05, y: -1 }}

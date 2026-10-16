@@ -2461,6 +2461,21 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     </div>
                   </div>
 
+                  {/* Official Linis Dingalan Wave 14 Emblem Header */}
+                  <div className="flex flex-col sm:flex-row items-center gap-3 p-3 rounded-2xl bg-gradient-to-r from-slate-900 via-cyan-950/40 to-slate-900 border border-cyan-500/30 shadow-lg">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-slate-950 border-2 border-cyan-400/80 flex items-center justify-center shrink-0 shadow-[0_0_20px_rgba(6,182,212,0.4)] relative overflow-hidden">
+                      <img src="/linis_dingalan_logo.jpg" alt="Linis Dingalan Logo" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="text-center sm:text-left space-y-1">
+                      <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/35 text-cyan-300 text-[10px] font-mono font-bold uppercase tracking-wider">
+                        <span>LGU Dingalan • PESO & MENRO</span>
+                      </div>
+                      <h4 className="text-xs sm:text-sm font-extrabold text-white uppercase tracking-wider">
+                        Municipal-Wide Coastal Clean-Up Program
+                      </h4>
+                    </div>
+                  </div>
+
                   {/* Official Notice Header */}
                   <div className="space-y-0.5 sm:space-y-1.5 text-left">
                     <div className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full bg-slate-900 border border-slate-700 text-[9px] sm:text-xs font-mono font-bold text-slate-300">
