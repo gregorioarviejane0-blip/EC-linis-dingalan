@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="800" height="800">
+  <defs>
+    <!-- Path for PESO on top -->
+    <path id="peso-arc" d="M 120 400 A 285 285 0 0 1 680 400" fill="none" />
+    <!-- Path for access on bottom -->
+    <path id="access-arc" d="M 690 400 A 305 305 0 0 1 110 400" fill="none" />
+  </defs>
+
+  <style>
+    .peso-text {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Arial Black", Impact, sans-serif;
+      font-weight: 900;
+      font-size: 135px;
+      fill: #00bf5f;
+      stroke: #0d1e56;
+      stroke-width: 16px;
+      stroke-linejoin: round;
+      paint-order: stroke fill;
+      letter-spacing: 25px;
+    }
+    .access-text {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Arial Black", Impact, sans-serif;
+      font-weight: 900;
+      font-size: 130px;
+      fill: #00bf5f;
+      stroke: #0d1e56;
+      stroke-width: 15px;
+      stroke-linejoin: round;
+      paint-order: stroke fill;
+      letter-spacing: 12px;
+    }
+    .c-shape {
+      fill: #00bf5f;
+      stroke: #0d1e56;
+      stroke-width: 14px;
+      stroke-linejoin: round;
+    }
+    .center-disk {
+      fill: #0d1e56;
+    }
+    .center-e {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Arial Black", Impact, sans-serif;
+      font-weight: 900;
+      font-size: 145px;
+      fill: #ffffff;
+      text-anchor: middle;
+      dominant-baseline: central;
+    }
+  </style>
+
+  <!-- Big C shape with opening on the right -->
+  <!-- Outer radius ~ 220, Inner radius ~ 125 -->
+  <!-- Gap from ~ -28 deg to +28 deg: cos(28 deg)=0.8829, sin(28 deg)=0.4695 -->
+  <!-- Outer start: 400 + 220*0.8829 = 594.2, 400 - 220*0.4695 = 296.7 -->
+  <!-- Inner start: 400 + 125*0.8829 = 510.4, 400 - 125*0.4695 = 341.3 -->
+  <!-- Outer end: 400 + 220*0.8829 = 594.2, 400 + 220*0.4695 = 503.3 -->
+  <!-- Inner end: 400 + 125*0.8829 = 510.4, 400 + 125*0.4695 = 458.7 -->
+  <path class="c-shape" d="
+    M 596 295
+    A 222 222 0 1 0 596 505
+    L 512 460
+    A 125 125 0 1 1 512 340
+    Z
+  " />
+
+  <!-- Center navy circle -->
+  <circle class="center-disk" cx="400" cy="400" r="102" />
+
+  <!-- Center white lowercase e -->
+  <text class="center-e" x="396" y="394">e</text>
+
+  <!-- Arced PESO at Top -->
+  <text class="peso-text">
+    <textPath href="#peso-arc" startOffset="50%" text-anchor="middle">
+      PESO
+    </textPath>
+  </text>
+
+  <!-- Arced access at Bottom -->
+  <text class="access-text">
+    <textPath href="#access-arc" startOffset="50%" text-anchor="middle">
+      access
+    </textPath>
+  </text>
+</svg>

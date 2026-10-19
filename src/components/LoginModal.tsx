@@ -2461,21 +2461,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Official Linis Dingalan Wave 14 Emblem Header */}
-                  <div className="flex flex-col sm:flex-row items-center gap-3 p-3 rounded-2xl bg-gradient-to-r from-slate-900 via-cyan-950/40 to-slate-900 border border-cyan-500/30 shadow-lg">
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-slate-950 border-2 border-cyan-400/80 flex items-center justify-center shrink-0 shadow-[0_0_20px_rgba(6,182,212,0.4)] relative overflow-hidden">
-                      <img src="/linis_dingalan_logo.jpg" alt="Linis Dingalan Logo" className="w-full h-full object-cover" />
-                    </div>
-                    <div className="text-center sm:text-left space-y-1">
-                      <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/35 text-cyan-300 text-[10px] font-mono font-bold uppercase tracking-wider">
-                        <span>LGU Dingalan • PESO & MENRO</span>
-                      </div>
-                      <h4 className="text-xs sm:text-sm font-extrabold text-white uppercase tracking-wider">
-                        Municipal-Wide Coastal Clean-Up Program
-                      </h4>
-                    </div>
-                  </div>
-
                   {/* Official Notice Header */}
                   <div className="space-y-0.5 sm:space-y-1.5 text-left">
                     <div className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full bg-slate-900 border border-slate-700 text-[9px] sm:text-xs font-mono font-bold text-slate-300">
@@ -2574,7 +2559,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 </div>
               )}
             </div>
-          ) : (
+          ) : activeView === 'login' ? (
                 /* ULTRA-SMOOTH POP-UP GREEN DIAGONAL CARD (SEMI-TRANSPARENT FROSTED GLASS) */
                 <div
                   className="relative rounded-2xl lg:rounded-3xl border-2 border-emerald-400/80 shadow-[0_0_50px_rgba(16,185,129,0.4),inset_0_0_20px_rgba(16,185,129,0.15)] bg-slate-950/50 hover:bg-slate-950/55 backdrop-blur-md overflow-hidden grid grid-cols-1 md:grid-cols-12 transition-all duration-500 ease-out transform scale-100 opacity-100 translate-y-0 w-full max-w-md sm:max-w-xl md:max-w-none mx-auto my-auto"
@@ -2596,11 +2581,18 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
                   {/* LEFT SIDE FORM PANEL */}
                   <div className="md:col-span-7 p-5 sm:p-7 lg:p-8 xl:p-10 flex flex-col justify-between space-y-4 sm:space-y-5 lg:space-y-6 relative z-10 animate-fadeIn">
-                    {/* Top Badge */}
+                    {/* Top Badge & Mobile Seal */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2 px-3.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs sm:text-sm font-mono font-bold w-fit">
                         <ShieldCheck className="w-4 h-4 text-emerald-400" />
                         <span>ADMIN PORTAL</span>
+                      </div>
+                      <div className="md:hidden flex items-center space-x-1.5">
+                        <img
+                          src="/Linis_Dingalan_Coastal_Cleanup_Seal.png"
+                          alt="Linis Dingalan Coastal Cleanup Seal"
+                          className="w-9 h-9 object-contain rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)] border border-emerald-300/40 p-0.5 bg-white/95"
+                        />
                       </div>
                     </div>
 
@@ -2694,32 +2686,149 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     </form>
                   </div>
 
-                  {/* RIGHT SIDE DIAGONAL GREEN PANEL */}
-                  <div className="md:col-span-5 relative hidden md:flex flex-col justify-center items-center p-6 lg:p-8 xl:p-10 text-center text-white overflow-hidden min-h-[360px] lg:min-h-[440px] xl:min-h-[480px]">
-                    {/* Diagonal Green Panel Background */}
+                  {/* RIGHT SIDE DIAGONAL TECHNOLOGY & HOLOGRAPHIC CYBER-SCAN PANEL */}
+                  <div className="md:col-span-5 relative hidden md:flex flex-col justify-center items-center p-6 lg:p-8 xl:p-10 text-center text-white overflow-hidden min-h-[380px] lg:min-h-[460px] xl:min-h-[500px]">
+                    {/* Cyber Tech & Deep Ocean Matrix Gradient Background */}
                     <div
-                      className="absolute inset-0 bg-gradient-to-br from-emerald-500/75 via-emerald-600/60 to-teal-900/65 backdrop-blur-sm shadow-[inset_0_0_30px_rgba(0,0,0,0.2)]"
-                      style={{ clipPath: 'polygon(20% 0, 100% 0, 100% 100%, 0 100%)' }}
+                      className="absolute inset-0 bg-gradient-to-br from-slate-950 via-teal-950 to-emerald-950 backdrop-blur-md shadow-[inset_0_0_50px_rgba(6,182,212,0.25)]"
+                      style={{ clipPath: 'polygon(18% 0, 100% 0, 100% 100%, 0 100%)' }}
                     />
 
-                    {/* Right Side Overlay Content */}
-                    <div className="relative z-10 pl-4 space-y-3">
-                      <h2 className="text-2xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-black text-white tracking-tight uppercase drop-shadow-md leading-tight">
-                        WELCOME BACK!
-                      </h2>
-                      <p className="text-sm lg:text-base xl:text-lg text-emerald-100 font-semibold leading-relaxed max-w-xs drop-shadow">
-                        Already a Member? Please Login.
-                      </p>
+                    {/* Holographic Cyber Grid Overlay Pattern */}
+                    <div
+                      className="absolute inset-0 opacity-20 pointer-events-none"
+                      style={{
+                        backgroundImage: 'linear-gradient(to right, rgba(16, 185, 129, 0.2) 1px, transparent 1px), linear-gradient(to bottom, rgba(6, 182, 212, 0.2) 1px, transparent 1px)',
+                        backgroundSize: '24px 24px'
+                      }}
+                    />
 
-                      <div className="pt-3 border-t border-emerald-400/30 text-xs lg:text-sm font-mono text-emerald-200">
-                        Linis Dingalan EC Management <br />
-                        PESO & MENRO Operations
+                    {/* Animated Cyber Radar Pulse Glows */}
+                    <motion.div
+                      animate={{
+                        scale: [1, 1.3, 1],
+                        opacity: [0.2, 0.5, 0.2],
+                      }}
+                      transition={{
+                        duration: 5,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                      }}
+                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-cyan-500/20 rounded-full blur-3xl pointer-events-none"
+                    />
+                    <motion.div
+                      animate={{
+                        scale: [1.2, 1, 1.2],
+                        opacity: [0.3, 0.6, 0.3],
+                      }}
+                      transition={{
+                        duration: 6,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                      }}
+                      className="absolute -top-10 -right-10 w-64 h-64 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none"
+                    />
+
+                    {/* Right Side Overlay Content: High-Tech Cyber Security & Seal Core */}
+                    <div className="relative z-10 flex flex-col items-center justify-center space-y-4 pl-3 sm:pl-4 w-full">
+                      {/* Futuristic HUD Cyber Presentation */}
+                      <div className="relative group cursor-pointer">
+{/* Outer ring removed */}
+
+{/* Inner ring removed */}
+
+                        {/* Pulsing Energy Shield Halo */}
+                        <motion.div
+                          animate={{
+                            scale: [0.95, 1.08, 0.95],
+                            opacity: [0.3, 0.8, 0.3],
+                          }}
+                          transition={{
+                            duration: 3,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                          }}
+                          className="absolute -inset-2.5 rounded-full bg-gradient-to-tr from-cyan-500/30 via-emerald-500/30 to-teal-400/30 blur-lg pointer-events-none"
+                        />
+
+                        {/* Floating & Scanning Core */}
+                        <motion.div
+                          animate={{
+                            y: [-4, 4, -4],
+                          }}
+                          transition={{
+                            duration: 3.5,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                          }}
+                          whileHover={{ scale: 1.06, rotate: 1 }}
+                          className="relative flex items-center justify-center"
+                        >
+                          {/* Circular Container with Cyber Glass Border */}
+                          <div className="relative w-44 h-44 sm:w-48 sm:h-48 lg:w-56 lg:h-56 xl:w-60 xl:h-60 rounded-full p-2.5 bg-gradient-to-b from-slate-900/95 via-slate-950/95 to-slate-900/95 shadow-[0_0_40px_rgba(6,182,212,0.4),inset_0_0_20px_rgba(16,185,129,0.3)] border-2 border-cyan-400/80 overflow-hidden transition-all duration-500">
+                            {/* The Seal Image */}
+                            <img
+                              src="/Linis_Dingalan_Coastal_Cleanup_Seal.png"
+                              alt="Linis Dingalan Coastal Cleanup Official Seal"
+                              className="w-full h-full object-contain rounded-full drop-shadow-[0_0_15px_rgba(16,185,129,0.5)] select-none pointer-events-none filter brightness-110 contrast-110"
+                            />
+
+                            {/* Vertical Holographic Laser Scanner Sweep */}
+                            <motion.div
+                              animate={{
+                                y: [-100, 220],
+                              }}
+                              transition={{
+                                duration: 2.5,
+                                repeat: Infinity,
+                                ease: "easeInOut",
+                              }}
+                              className="absolute inset-x-0 h-8 bg-gradient-to-b from-transparent via-cyan-400/50 to-transparent pointer-events-none"
+                            />
+
+                            {/* Shimmer Light Reflection Sweep */}
+                            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-cyan-300/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out pointer-events-none" />
+                          </div>
+
+                          {/* Orbiting Tech Data Node Indicator */}
+                          <motion.div
+                            animate={{
+                              rotate: 360,
+                            }}
+                            transition={{
+                              duration: 8,
+                              repeat: Infinity,
+                              ease: "linear",
+                            }}
+                            className="absolute inset-0 w-full h-full pointer-events-none"
+                          >
+                            <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-cyan-400 rounded-full shadow-[0_0_15px_#22d3ee] flex items-center justify-center">
+                              <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping" />
+                            </span>
+                          </motion.div>
+                        </motion.div>
+                      </div>
+
+                      {/* Tech & Cryptographic Status Typography */}
+                      <div className="space-y-1.5 max-w-xs text-center select-none">
+                        <h3 className="text-base sm:text-lg lg:text-xl font-black text-white tracking-tight uppercase drop-shadow-[0_0_10px_rgba(16,185,129,0.5)] leading-tight">
+                          Linis Dingalan OS
+                        </h3>
+
+                        <p className="text-[11px] sm:text-xs text-cyan-200/90 font-mono leading-relaxed drop-shadow-sm">
+                          Geotag Watermark & Tokenized QR Verification Engine
+                        </p>
+
+                        <div className="pt-2 border-t border-cyan-500/30 text-[10px] sm:text-[11px] font-mono text-emerald-300 font-bold tracking-wider">
+                          PESO e-Access • MENRO Cloud Sync
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              )}
+              ) : null}
             </motion.div>
+
           </AnimatePresence>
       </div>
         </div>

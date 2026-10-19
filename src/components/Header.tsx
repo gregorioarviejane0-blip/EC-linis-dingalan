@@ -344,7 +344,7 @@ export const Header: React.FC<HeaderProps> = ({
           )}
 
           {/* PWA Install Button */}
-          <PWAInstallButton />
+          {/* PWAInstallButton omitted */}
 
           {/* Log Out Button */}
           <motion.button
