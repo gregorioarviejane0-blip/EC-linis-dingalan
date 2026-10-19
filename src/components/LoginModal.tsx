@@ -2733,9 +2733,27 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     <div className="relative z-10 flex flex-col items-center justify-center space-y-4 pl-3 sm:pl-4 w-full">
                       {/* Futuristic HUD Cyber Presentation */}
                       <div className="relative group cursor-pointer">
-{/* Outer ring removed */}
+                        {/* Outer Fast Rotating Radar Ring */}
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{
+                            duration: 15,
+                            repeat: Infinity,
+                            ease: "linear",
+                          }}
+                          className="absolute -inset-5 sm:-inset-6 rounded-full border border-cyan-400/50 border-dashed pointer-events-none shadow-[0_0_15px_rgba(6,182,212,0.3)]"
+                        />
 
-{/* Inner ring removed */}
+                        {/* Reverse Counter-Rotating Cryptographic Ring */}
+                        <motion.div
+                          animate={{ rotate: -360 }}
+                          transition={{
+                            duration: 25,
+                            repeat: Infinity,
+                            ease: "linear",
+                          }}
+                          className="absolute -inset-3 sm:-inset-4 rounded-full border-2 border-emerald-400/60 border-dotted pointer-events-none"
+                        />
 
                         {/* Pulsing Energy Shield Halo */}
                         <motion.div
@@ -2800,14 +2818,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                               repeat: Infinity,
                               ease: "linear",
                             }}
-                            className="absolute inset-0 w-full h-full pointer-events-none"
                           >
-                            <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-cyan-400 rounded-full shadow-[0_0_15px_#22d3ee] flex items-center justify-center">
-                              <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping" />
-                            </span>
                           </motion.div>
+                </div>
+              ) : null}
                         </motion.div>
-                      </div>
+                </div>
+              ) : null}
 
                       {/* Tech & Cryptographic Status Typography */}
                       <div className="space-y-1.5 max-w-xs text-center select-none">
@@ -2826,8 +2843,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     </div>
                   </div>
                 </div>
-              ) : null}
+    
             </motion.div>
+                </div>
+              ) : null}
 
           </AnimatePresence>
       </div>
