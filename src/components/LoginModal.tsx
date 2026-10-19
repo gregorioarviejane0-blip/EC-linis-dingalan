@@ -2818,13 +2818,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                               repeat: Infinity,
                               ease: "linear",
                             }}
+                            className="absolute inset-0 w-full h-full pointer-events-none"
                           >
+                            <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-cyan-400 rounded-full shadow-[0_0_15px_#22d3ee] flex items-center justify-center">
+                              <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping" />
+                            </span>
                           </motion.div>
-                </div>
-              ) : null}
                         </motion.div>
-                </div>
-              ) : null}
+                      </div>
 
                       {/* Tech & Cryptographic Status Typography */}
                       <div className="space-y-1.5 max-w-xs text-center select-none">
@@ -2843,10 +2844,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     </div>
                   </div>
                 </div>
-    
-            </motion.div>
-                </div>
               ) : null}
+            </motion.div>
 
           </AnimatePresence>
       </div>
