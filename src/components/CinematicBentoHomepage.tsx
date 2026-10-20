@@ -28,9 +28,138 @@ import {
   Calendar,
   Edit3,
   Save,
+  Maximize2,
+  Minimize2,
+  Globe,
+  Navigation,
+  X,
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { useDingalanClock } from '../utils/philippineClock';
+
+export interface MapSector {
+  id: string;
+  name: string;
+  subName: string;
+  lat: string;
+  lng: string;
+  coordsText: string;
+  elevation: string;
+  status: string;
+  type: 'hub' | 'port' | 'coastal' | 'beach' | 'delta' | 'boundary' | 'marine';
+  color: string;
+  topPct: number;
+  leftPct: number;
+  description: string;
+}
+
+export const DINGALAN_MAP_SECTORS: MapSector[] = [
+  {
+    id: 'paltic',
+    name: 'PALTIC',
+    subName: 'Feeder Port & Rock Sea Wall',
+    lat: '15.4225° N',
+    lng: '121.4250° E',
+    coordsText: '15.4225° N, 121.4250° E',
+    elevation: '12.0m MSL',
+    status: 'Scheduled / Ongoing Clean-up',
+    type: 'port',
+    color: '#10b981', // emerald
+    topPct: 7.5,
+    leftPct: 56,
+    description: 'Dingalan Feeder Port, Lighthouse, White Beach, and shoreline rock seawall inspection.',
+  },
+  {
+    id: 'dingalan',
+    name: 'Dingalan (Poblacion)',
+    subName: 'Municipal Center & MENRO HQ',
+    lat: '15.3942° N',
+    lng: '121.4011° E',
+    coordsText: '15.3942° N, 121.4011° E',
+    elevation: '8.5m MSL',
+    status: 'Operational HQ & MENRO Hub',
+    type: 'hub',
+    color: '#06b6d4', // cyan
+    topPct: 11.5,
+    leftPct: 40,
+    description: 'Municipal Center, MENRO Office, Central Public Market at Linis Dingalan command base.',
+  },
+  {
+    id: 'butas',
+    name: 'BUTAS NA BATO',
+    subName: 'Coastal Archway & Coral Reefs',
+    lat: '15.3850° N',
+    lng: '121.3980° E',
+    coordsText: '15.3850° N, 121.3980° E',
+    elevation: '4.2m MSL',
+    status: 'Protected Coastal Area',
+    type: 'coastal',
+    color: '#38bdf8', // sky
+    topPct: 15.5,
+    leftPct: 31,
+    description: 'Scenic natural rock sea cave at coastal trail buffer zone.',
+  },
+  {
+    id: 'bay',
+    name: 'Dingalan Bay',
+    subName: 'Pacific Ocean Marine Zone',
+    lat: '15.3400° N',
+    lng: '121.4300° E',
+    coordsText: '15.3400° N, 121.4300° E',
+    elevation: '0.0m MSL (Marine)',
+    status: 'Pacific Marine Sanctuary',
+    type: 'marine',
+    color: '#60a5fa', // blue
+    topPct: 37.5,
+    leftPct: 47,
+    description: 'Vast deep-blue Pacific bay, municipal fishing grounds, and coastal current surveillance.',
+  },
+  {
+    id: 'cabog',
+    name: 'CABOG (MATAWE)',
+    subName: 'Intertidal Beach & Rock Pools',
+    lat: '15.3350° N',
+    lng: '121.3850° E',
+    coordsText: '15.3350° N, 121.3850° E',
+    elevation: '5.0m MSL',
+    status: 'High Waste Monitoring Zone',
+    type: 'beach',
+    color: '#f59e0b', // amber
+    topPct: 36.5,
+    leftPct: 29.5,
+    description: 'Matawe tidal rock formations, popular tourist coastline, and mangrove conservation sector.',
+  },
+  {
+    id: 'ibona',
+    name: 'IBONA',
+    subName: 'River Delta & Mangrove Estuary',
+    lat: '15.2850° N',
+    lng: '121.3720° E',
+    coordsText: '15.2850° N, 121.3720° E',
+    elevation: '6.0m MSL',
+    status: 'Active River Cleanup',
+    type: 'delta',
+    color: '#ec4899', // pink
+    topPct: 53.5,
+    leftPct: 28.5,
+    description: 'Major river delta flowing into Dingalan Bay; key watershed and plastic interceptor trap.',
+  },
+  {
+    id: 'umiray',
+    name: 'UMIRAY (MALAMIG)',
+    subName: 'Aurora-Quezon Boundary',
+    lat: '15.2100° N',
+    lng: '121.3500° E',
+    coordsText: '15.2100° N, 121.3500° E',
+    elevation: '7.5m MSL',
+    status: 'Coastal Watch Sentinel',
+    type: 'boundary',
+    color: '#a855f7', // purple
+    topPct: 89.5,
+    leftPct: 28.5,
+    description: 'Southern tip of Dingalan municipality bordering General Nakar; coastal defense and beach monitoring.',
+  },
+];
 
 interface CinematicBentoHomepageProps {
   currentUser: User;
@@ -69,7 +198,14 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [radarAngle, setRadarAngle] = useState(0);
   const [watermarkSimulated, setWatermarkSimulated] = useState(false);
-  const [activeSector, setActiveSector] = useState<'paltic' | 'aplaya' | 'ibona' | 'poblacion'>('paltic');
+  const [selectedSectorId, setSelectedSectorId] = useState<string>('paltic');
+  const [mapMode, setMapMode] = useState<'satellite' | 'google-live'>('satellite');
+  const [radarSweepEnabled, setRadarSweepEnabled] = useState(true);
+  const [isFullMapModalOpen, setIsFullMapModalOpen] = useState(false);
+
+  const currentSector = useMemo(() => {
+    return DINGALAN_MAP_SECTORS.find((s) => s.id === selectedSectorId) || DINGALAN_MAP_SECTORS[0];
+  }, [selectedSectorId]);
 
   const ongoingAct = useMemo(() => {
     return activities.find((a) => a.status === 'scheduled' || a.status === 'ongoing') || activities[0];
@@ -390,172 +526,229 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
 
               <div>
                 {/* Header */}
-                <div className="flex items-center justify-between pb-4 border-b border-slate-700/60">
+                <div className="flex items-center justify-between pb-3.5 border-b border-slate-700/60">
                   <div className="flex items-center space-x-3">
                     <div className="p-2 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400">
                       <Compass className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="text-base font-extrabold text-white tracking-tight">
-                        Topographic GPS Radar
+                      <h3 className="text-base font-extrabold text-white tracking-tight flex items-center gap-1.5">
+                        <span>Topographic GPS Radar</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold">
+                          LIVE
+                        </span>
                       </h3>
                       <p className="text-[11px] font-mono text-slate-400">
-                        Dingalan Pacific Coastline • 11 Barangays
+                        Dingalan Pacific Coastline • Google Maps Connected
                       </p>
                     </div>
                   </div>
 
-                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
-                    14 SATS LOCKED
+                  <span className="flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping inline-block mr-1" />
+                    <span>SATELLITE SYNC</span>
                   </span>
+                </div>
+
+                {/* View Switcher & Controls Bar */}
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-1.5">
+                  <div className="inline-flex rounded-xl p-1 bg-slate-950/80 border border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => setMapMode('satellite')}
+                      className={`px-2.5 py-1 text-xs font-mono font-bold rounded-lg transition-all flex items-center space-x-1 ${
+                        mapMode === 'satellite'
+                          ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/30'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      title="Google Maps Satellite Photo View"
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      <span>Satellite (Larawan)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMapMode('google-live')}
+                      className={`px-2.5 py-1 text-xs font-mono font-bold rounded-lg transition-all flex items-center space-x-1 ${
+                        mapMode === 'google-live'
+                          ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/30'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      title="Live Interactive Google Maps"
+                    >
+                      <Navigation className="w-3.5 h-3.5" />
+                      <span>Live Google Map</span>
+                    </button>
+                  </div>
+
+                  <div className="flex items-center space-x-1.5">
+                    {mapMode === 'satellite' && (
+                      <button
+                        type="button"
+                        onClick={() => setRadarSweepEnabled((prev) => !prev)}
+                        className={`px-2 py-1 text-[11px] font-mono rounded-lg border transition-all ${
+                          radarSweepEnabled
+                            ? 'bg-cyan-950/80 text-cyan-300 border-cyan-500/40'
+                            : 'bg-slate-950/60 text-slate-400 border-slate-800 hover:text-slate-300'
+                        }`}
+                        title="I-on o i-off ang umiikot na radar sweep beam"
+                      >
+                        Sweep: {radarSweepEnabled ? 'ON' : 'OFF'}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setIsFullMapModalOpen(true)}
+                      className="p-1.5 rounded-lg bg-slate-950/80 text-cyan-400 hover:text-cyan-200 border border-slate-800 hover:border-cyan-500/40 transition-colors"
+                      title="Palakihin ang Mapa (Full View)"
+                    >
+                      <Maximize2 className="w-3.5 h-3.5" />
+                    </button>
+                    <a
+                      href="https://www.google.com/maps/search/?api=1&query=Dingalan+Aurora+Philippines"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1.5 rounded-lg bg-slate-950/80 text-slate-400 hover:text-emerald-400 border border-slate-800 hover:border-emerald-500/40 transition-colors"
+                      title="Buksan direkta sa Google Maps Website"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
                 </div>
 
                 {/* Ongoing / Scheduled Barangay & Cleaning Area Banner */}
                 <div
                   onClick={() => onNavigate('attendance')}
-                  className="mt-3 p-3 rounded-xl bg-cyan-950/70 border border-cyan-500/50 hover:border-cyan-400 cursor-pointer transition-all group flex items-center justify-between shadow-md"
+                  className="mt-2.5 p-2.5 rounded-xl bg-cyan-950/60 border border-cyan-500/40 hover:border-cyan-400 cursor-pointer transition-all group flex items-center justify-between shadow-md"
                   title="Pindutin para buksan ang Mapa ng Dingalan at makita ang sakop na areang lilinisan"
                 >
-                  <div className="flex items-center space-x-2.5">
+                  <div className="flex items-center space-x-2">
                     <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
-                    <div>
+                    <div className="min-w-0">
                       <span className="text-[10px] font-mono text-cyan-300 block font-bold uppercase tracking-wider">
                         Ongoing / Scheduled: Brgy. {ongoingBarangay}
                       </span>
-                      <span className="text-xs text-white font-bold truncate max-w-[220px] sm:max-w-[280px] block">
+                      <span className="text-xs text-white font-bold truncate max-w-[200px] sm:max-w-[260px] block">
                         {ongoingTitle} • {ongoingArea}
                       </span>
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <span className="text-[10px] font-mono font-bold text-cyan-400 bg-cyan-500/15 px-2 py-1 rounded-lg border border-cyan-500/30 group-hover:bg-cyan-500/25 transition-colors block">
-                      Buksan ang Mapa →
+                    <span className="text-[10px] font-mono font-bold text-cyan-400 bg-cyan-500/15 px-2 py-0.5 rounded-lg border border-cyan-500/30 group-hover:bg-cyan-500/25 transition-colors block">
+                      Attendance →
                     </span>
                   </div>
                 </div>
 
-                {/* Radar Mockup Container with Sweeping Beam */}
-                <div className="mt-4 relative aspect-square w-full rounded-2xl bg-slate-950/90 border border-slate-800 overflow-hidden flex items-center justify-center p-3">
-                  {/* Concentric Radar Range Rings */}
-                  <div className="absolute inset-4 rounded-full border border-cyan-500/20" />
-                  <div className="absolute inset-14 rounded-full border border-cyan-500/20" />
-                  <div className="absolute inset-24 rounded-full border border-cyan-500/25" />
-                  <div className="absolute inset-x-0 top-1/2 border-t border-cyan-500/20" />
-                  <div className="absolute inset-y-0 left-1/2 border-l border-cyan-500/20" />
+                {/* Map Display Container */}
+                <div className="mt-3 relative aspect-[4/3] sm:aspect-square w-full rounded-2xl bg-slate-950 border border-cyan-500/30 overflow-hidden flex items-center justify-center select-none shadow-[0_8px_30px_rgba(0,0,0,0.6)]">
+                  {mapMode === 'satellite' ? (
+                    <div className="relative w-full h-full">
+                      {/* Clean Google Maps Satellite Background Image matching reference photo */}
+                      <img
+                        src="/dingalan_google_maps_satellite.png"
+                        alt="Dingalan Aurora Google Maps Satellite"
+                        className="absolute inset-0 w-full h-full object-cover object-center filter saturate-[1.05]"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          if (!target.src.includes('assets/aistudio/image_479cd259.png')) {
+                            target.src = '/assets/aistudio/image_479cd259.png';
+                          }
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    /* Live Google Maps Satellite Embed */
+                    <div className="relative w-full h-full">
+                      <iframe
+                        title="Google Maps Dingalan Satellite View"
+                        src="https://maps.google.com/maps?q=Dingalan,+Aurora,+Philippines&t=k&z=12&ie=UTF8&iwloc=&output=embed"
+                        className="w-full h-full border-0 filter contrast-[1.05]"
+                        loading="lazy"
+                        allowFullScreen
+                      />
+                      <div className="absolute top-2 right-2 z-10 px-2 py-0.5 rounded-md bg-slate-950/80 backdrop-blur border border-cyan-500/30 text-[9px] font-mono text-cyan-300">
+                        Interactive Google Maps
+                      </div>
+                    </div>
+                  )}
+                </div>
 
-                  {/* Topographic Coastline SVG Overlay */}
-                  <svg className="absolute inset-0 w-full h-full opacity-35" viewBox="0 0 200 200">
-                    {/* Simulated Dingalan Coastline & Sierra Madre mountain contours */}
-                    <path
-                      d="M 50,20 Q 80,60 70,100 T 90,160 Q 120,180 150,190"
-                      fill="none"
-                      stroke="#06b6d4"
-                      strokeWidth="2"
-                    />
-                    <path
-                      d="M 40,25 Q 70,65 60,105 T 80,165 Q 110,185 140,195"
-                      fill="none"
-                      stroke="#10b981"
-                      strokeWidth="1"
-                      strokeDasharray="4 2"
-                    />
-                    <path
-                      d="M 30,35 Q 60,75 50,115 T 70,175"
-                      fill="none"
-                      stroke="#94a3b8"
-                      strokeWidth="1"
-                      strokeDasharray="2 2"
-                    />
-                  </svg>
-
-                  {/* Rotating Sweeping Radar Beam */}
-                  <div
-                    className="absolute w-full h-full pointer-events-none"
-                    style={{ transform: `rotate(${radarAngle}deg)` }}
-                  >
-                    <div
-                      className="w-1/2 h-1/2 origin-bottom-right"
+                {/* Selected Sector Telemetry & Details Card */}
+                <div className="mt-3 p-2.5 rounded-xl bg-slate-950/85 border border-cyan-500/25">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-1.5 min-w-0">
+                      <MapPin
+                        className="w-3.5 h-3.5 shrink-0"
+                        style={{ color: currentSector.color }}
+                      />
+                      <span className="text-xs font-bold text-white truncate">
+                        {currentSector.name}
+                      </span>
+                      <span className="text-[10px] font-mono text-slate-400 truncate hidden sm:inline">
+                        ({currentSector.subName})
+                      </span>
+                    </div>
+                    <span
+                      className="px-1.5 py-0.2 text-[9px] font-mono font-bold rounded border shrink-0"
                       style={{
-                        background: 'conic-gradient(from 0deg, rgba(6, 182, 212, 0.4) 0deg, transparent 60deg)',
+                        color: currentSector.color,
+                        borderColor: `${currentSector.color}55`,
+                        backgroundColor: `${currentSector.color}15`,
                       }}
-                    />
-                  </div>
-
-                  {/* Waypoint Blips (Dingalan Key Areas) */}
-                  <div
-                    className={`absolute top-[42%] left-[46%] flex items-center space-x-1 cursor-pointer transition-transform ${
-                      activeSector === 'paltic' ? 'scale-110' : 'opacity-80'
-                    }`}
-                    onClick={() => setActiveSector('paltic')}
-                  >
-                    <span className="relative flex h-3 w-3">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
-                    </span>
-                    <span className="text-[9px] font-mono font-bold text-emerald-300 bg-slate-900/90 px-1 py-0.5 rounded border border-emerald-500/30">
-                      Paltic Port
+                    >
+                      {currentSector.type.toUpperCase()}
                     </span>
                   </div>
 
-                  <div
-                    className={`absolute top-[62%] left-[54%] flex items-center space-x-1 cursor-pointer transition-transform ${
-                      activeSector === 'aplaya' ? 'scale-110' : 'opacity-80'
-                    }`}
-                    onClick={() => setActiveSector('aplaya')}
-                  >
-                    <span className="relative flex h-2.5 w-2.5">
-                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-400" />
-                    </span>
-                    <span className="text-[9px] font-mono text-cyan-300 bg-slate-900/90 px-1 py-0.5 rounded border border-cyan-500/30">
-                      Aplaya Coast
-                    </span>
-                  </div>
+                  <p className="mt-1 text-[11px] text-slate-300 leading-snug line-clamp-2">
+                    {currentSector.description}
+                  </p>
 
-                  <div
-                    className={`absolute bottom-[22%] left-[64%] flex items-center space-x-1 cursor-pointer transition-transform ${
-                      activeSector === 'ibona' ? 'scale-110' : 'opacity-80'
-                    }`}
-                    onClick={() => setActiveSector('ibona')}
-                  >
-                    <span className="relative flex h-2.5 w-2.5">
-                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-400" />
-                    </span>
-                    <span className="text-[9px] font-mono text-amber-300 bg-slate-900/90 px-1 py-0.5 rounded border border-amber-500/30">
-                      Ibona River
-                    </span>
-                  </div>
-                </div>
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-xs font-mono">
+                    <div className="p-1.5 rounded-lg bg-slate-900/90 border border-slate-800">
+                      <span className="text-[9px] text-slate-500 block">COORDINATES</span>
+                      <span className="text-cyan-400 font-bold block text-[10px] sm:text-[11px] truncate">
+                        {currentSector.coordsText}
+                      </span>
+                    </div>
 
-                {/* Radar Telemetry Metrics */}
-                <div className="mt-4 grid grid-cols-2 gap-2 text-xs font-mono">
-                  <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
-                    <span className="text-[10px] text-slate-500 block">COORDINATES</span>
-                    <span className="text-cyan-400 font-bold block text-[11px]">
-                      15.3942° N, 121.4011° E
-                    </span>
-                  </div>
-
-                  <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
-                    <span className="text-[10px] text-slate-500 block">ELEVATION</span>
-                    <span className="text-emerald-400 font-bold block text-[11px]">
-                      6.2m MSL (Coastal)
-                    </span>
+                    <div className="p-1.5 rounded-lg bg-slate-900/90 border border-slate-800">
+                      <span className="text-[9px] text-slate-500 block">ELEVATION / ZONE</span>
+                      <span className="text-emerald-400 font-bold block text-[10px] sm:text-[11px] truncate">
+                        {currentSector.elevation}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Bottom Card Footer */}
-              <div className="mt-4 pt-3 border-t border-slate-700/60 flex items-center justify-between">
-                <span className="text-xs text-slate-400 font-mono">
+              <div className="mt-3 pt-3 border-t border-slate-700/60 flex items-center justify-between">
+                <span className="text-[11px] text-slate-400 font-mono truncate max-w-[170px] sm:max-w-[220px]">
                   Geofence: Dingalan Coastal Zone
                 </span>
-                <button
-                  onClick={() => onNavigate('activities')}
-                  className="text-xs text-cyan-400 hover:text-cyan-300 font-bold flex items-center"
-                >
-                  <span>View All Sectors</span>
-                  <ChevronRight className="w-3.5 h-3.5 ml-1" />
-                </button>
+                <div className="flex items-center space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsFullMapModalOpen(true)}
+                    className="text-xs text-cyan-400 hover:text-cyan-300 font-bold flex items-center space-x-1"
+                  >
+                    <span>Palakihin</span>
+                    <Maximize2 className="w-3 h-3 ml-0.5" />
+                  </button>
+                  <a
+                    href={`https://maps.google.com/?q=${encodeURIComponent(
+                      `${currentSector.name}, Dingalan, Aurora, Philippines`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-emerald-400 hover:text-emerald-300 font-bold flex items-center"
+                  >
+                    <span>Google Maps</span>
+                    <ExternalLink className="w-3 h-3 ml-1" />
+                  </a>
+                </div>
               </div>
             </div>
 
@@ -770,6 +963,267 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
           </div>
         </section>
       </div>
+      {/* Fullscreen Google Maps Topographic Radar Modal */}
+      {isFullMapModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-5 bg-slate-950/85 backdrop-blur-md animate-fade-in">
+          <div className="relative w-full max-w-5xl max-h-[92vh] flex flex-col bg-slate-900 border border-cyan-500/40 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden">
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 border-b border-slate-800 bg-slate-950/70 flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="p-2.5 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400">
+                  <Compass className="w-6 h-6 animate-spin-slow" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <span>Google Maps Topographic GPS Radar</span>
+                    <span className="px-2 py-0.5 text-xs font-mono rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      Dingalan, Aurora
+                    </span>
+                  </h3>
+                  <p className="text-xs font-mono text-slate-400">
+                    Satelayt ng Dingalan Bay, Paltic, Butas na Bato, Cabog, Ibona, at Umiray
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <a
+                  href={`https://maps.google.com/?q=${encodeURIComponent(
+                    `${currentSector.name}, Dingalan, Aurora, Philippines`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-all shadow"
+                >
+                  <span>Buksan sa Google Maps</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setIsFullMapModalOpen(false)}
+                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body: Map + Sector List Grid */}
+            <div className="flex-1 overflow-y-auto grid grid-cols-1 lg:grid-cols-12 gap-0">
+              {/* Map Column (Span 8) */}
+              <div className="lg:col-span-8 p-3 sm:p-5 flex flex-col justify-between bg-slate-950/60">
+                {/* View Switcher Controls */}
+                <div className="flex items-center justify-between pb-3">
+                  <div className="inline-flex rounded-xl p-1 bg-slate-900 border border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => setMapMode('satellite')}
+                      className={`px-3 py-1 text-xs font-mono font-bold rounded-lg transition-all ${
+                        mapMode === 'satellite'
+                          ? 'bg-cyan-500 text-slate-950 shadow'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      🛰️ Satellite (Larawan)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMapMode('google-live')}
+                      className={`px-3 py-1 text-xs font-mono font-bold rounded-lg transition-all ${
+                        mapMode === 'google-live'
+                          ? 'bg-cyan-500 text-slate-950 shadow'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      🗺️ Interactive Google Maps
+                    </button>
+                  </div>
+
+                  {mapMode === 'satellite' && (
+                    <button
+                      type="button"
+                      onClick={() => setRadarSweepEnabled((prev) => !prev)}
+                      className={`px-2.5 py-1 text-xs font-mono rounded-lg border transition-all ${
+                        radarSweepEnabled
+                          ? 'bg-cyan-950 text-cyan-300 border-cyan-500/40'
+                          : 'bg-slate-900 text-slate-400 border-slate-800'
+                      }`}
+                    >
+                      Radar Sweep: {radarSweepEnabled ? 'ON' : 'OFF'}
+                    </button>
+                  )}
+                </div>
+
+                {/* Map Window */}
+                <div className="relative aspect-[4/3] sm:aspect-[16/10] w-full rounded-2xl bg-slate-950 border border-cyan-500/30 overflow-hidden flex items-center justify-center select-none shadow-2xl">
+                  {mapMode === 'satellite' ? (
+                    <>
+                      <img
+                        src="/dingalan_google_maps_satellite.png"
+                        alt="Dingalan Aurora Google Maps Satellite View"
+                        className="absolute inset-0 w-full h-full object-cover object-center filter saturate-[1.1] contrast-[1.08]"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          if (!target.src.includes('assets/aistudio/image_479cd259.png')) {
+                            target.src = '/assets/aistudio/image_479cd259.png';
+                          }
+                        }}
+                      />
+
+                      {/* Topographic Rings */}
+                      <div className="absolute inset-6 rounded-full border border-cyan-400/20 pointer-events-none" />
+                      <div className="absolute inset-20 rounded-full border border-cyan-400/15 pointer-events-none" />
+                      <div className="absolute inset-x-0 top-1/2 border-t border-cyan-400/20 pointer-events-none" />
+                      <div className="absolute inset-y-0 left-1/2 border-l border-cyan-400/20 pointer-events-none" />
+
+                      {/* Sweeping Beam */}
+                      {radarSweepEnabled && (
+                        <div
+                          className="absolute w-full h-full pointer-events-none"
+                          style={{ transform: `rotate(${radarAngle}deg)` }}
+                        >
+                          <div
+                            className="w-1/2 h-1/2 origin-bottom-right"
+                            style={{
+                              background: 'conic-gradient(from 0deg, rgba(6, 182, 212, 0.45) 0deg, transparent 65deg)',
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      {/* Pins */}
+                      {DINGALAN_MAP_SECTORS.map((sector) => {
+                        const isSelected = selectedSectorId === sector.id;
+                        return (
+                          <div
+                            key={`modal-${sector.id}`}
+                            style={{
+                              top: `${sector.topPct}%`,
+                              left: `${sector.leftPct}%`,
+                            }}
+                            onClick={() => setSelectedSectorId(sector.id)}
+                            className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer z-20 transition-all duration-300 ${
+                              isSelected ? 'scale-125 z-30' : 'hover:scale-110'
+                            }`}
+                          >
+                            <div className="flex flex-col items-center">
+                              <span className="relative flex h-4 w-4">
+                                <span
+                                  className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+                                  style={{ backgroundColor: sector.color }}
+                                />
+                                <span
+                                  className="relative inline-flex rounded-full h-4 w-4 border-2 border-white shadow-xl"
+                                  style={{ backgroundColor: sector.color }}
+                                />
+                              </span>
+                              <span
+                                className={`mt-0.5 px-2 py-0.5 rounded text-[10px] font-mono font-bold whitespace-nowrap shadow-lg backdrop-blur ${
+                                  isSelected
+                                    ? 'bg-cyan-500 text-slate-950 border border-white ring-2 ring-cyan-400/50 scale-105'
+                                    : 'bg-slate-950/90 text-white border border-slate-700/80'
+                                }`}
+                              >
+                                {sector.name}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </>
+                  ) : (
+                    <iframe
+                      title="Modal Google Maps Satellite"
+                      src="https://maps.google.com/maps?q=Dingalan,+Aurora,+Philippines&t=k&z=12&ie=UTF8&iwloc=&output=embed"
+                      className="w-full h-full border-0 filter contrast-[1.05]"
+                      loading="lazy"
+                      allowFullScreen
+                    />
+                  )}
+                </div>
+
+                {/* Telemetry Footer */}
+                <div className="mt-3 p-3 rounded-xl bg-slate-900/90 border border-slate-800 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center space-x-2">
+                    <MapPin className="w-4 h-4 text-cyan-400" />
+                    <span className="text-xs font-bold text-white">{currentSector.name}</span>
+                    <span className="text-[11px] font-mono text-cyan-300">({currentSector.coordsText})</span>
+                  </div>
+                  <span className="text-[11px] font-mono text-emerald-400">
+                    Elevation: {currentSector.elevation}
+                  </span>
+                </div>
+              </div>
+
+              {/* Sidebar Column: Dingalan Coastal Sectors (Span 4) */}
+              <div className="lg:col-span-4 p-4 border-t lg:border-t-0 lg:border-l border-slate-800 bg-slate-900/95 flex flex-col justify-between">
+                <div>
+                  <h4 className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                    Mga Sona ng Baybayin (Google Maps Points)
+                  </h4>
+                  <div className="space-y-2">
+                    {DINGALAN_MAP_SECTORS.map((sector) => {
+                      const isSelected = selectedSectorId === sector.id;
+                      return (
+                        <div
+                          key={`list-${sector.id}`}
+                          onClick={() => setSelectedSectorId(sector.id)}
+                          className={`p-2.5 rounded-xl border cursor-pointer transition-all ${
+                            isSelected
+                              ? 'bg-cyan-950/80 border-cyan-500 shadow-md ring-1 ring-cyan-500/30'
+                              : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700 text-slate-300'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2 min-w-0">
+                              <span
+                                className="w-2.5 h-2.5 rounded-full shrink-0"
+                                style={{ backgroundColor: sector.color }}
+                              />
+                              <span className="text-xs font-bold text-white truncate">
+                                {sector.name}
+                              </span>
+                            </div>
+                            <span
+                              className="text-[9px] font-mono px-1.5 py-0.2 rounded border shrink-0"
+                              style={{
+                                color: sector.color,
+                                borderColor: `${sector.color}55`,
+                                backgroundColor: `${sector.color}15`,
+                              }}
+                            >
+                              {sector.elevation}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-[11px] text-slate-400 line-clamp-1">
+                            {sector.subName}
+                          </p>
+                          <div className="mt-1.5 flex items-center justify-between text-[10px] font-mono text-slate-500">
+                            <span>{sector.coordsText}</span>
+                            <span className="text-cyan-400 hover:underline">I-focus →</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-slate-800">
+                  <a
+                    href="https://www.google.com/maps/place/Dingalan,+Aurora/@15.3857644,121.3653136,12z"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-xs flex items-center justify-center space-x-2 shadow transition-all"
+                  >
+                    <span>Buksan ang Dingalan sa Google Maps</span>
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

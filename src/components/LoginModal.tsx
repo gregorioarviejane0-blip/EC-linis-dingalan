@@ -10,6 +10,7 @@ import { generateStyledLguQrDataUrl } from '../utils/qrPassGenerator';
 import { SendAnonymousMessageModal } from './SendAnonymousMessageModal';
 import { FullScreenPhotoViewer } from './FullScreenPhotoViewer';
 import dingalanBgImg from '../assets/images/dingalan_wide_full_drone_1791526093260.jpg';
+import dingalanLighthouseImg from '../assets/images/dingalan_lighthouse_natural_drone_1791512687510.jpg';
 import {
   Lock,
   Mail,
@@ -931,8 +932,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const handleAdminPortalClick = () => {
     setErrorMessage(null);
     setPendingNotice(null);
-    if (!email) setEmail('admin');
-    if (!password) setPassword('admin123');
+    setEmail('');
+    setPassword('');
     setActiveView('login');
     setIsUnfolded(true);
     setTimeout(() => {
@@ -942,7 +943,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Submit Login Form
+  // Submit Login Form - Strictly requires valid username & password
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
@@ -951,6 +952,20 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     const cleanInput = (email || '').trim();
     const cleanPass = (password || '').trim();
 
+    // Hanggat walang inilalagay, HINDI makakapag-login
+    if (!cleanInput && !cleanPass) {
+      setErrorMessage('Mangyaring ilagay ang tamang username at password bago mag-login.');
+      return;
+    }
+    if (!cleanInput) {
+      setErrorMessage('Mangyaring ilagay ang iyong username o email.');
+      return;
+    }
+    if (!cleanPass) {
+      setErrorMessage('Mangyaring ilagay ang iyong password.');
+      return;
+    }
+
     setIsLoading(true);
 
     setTimeout(() => {
@@ -958,44 +973,46 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
       const lower = cleanInput.toLowerCase();
 
-      // 1. Direct role shortcuts - forgiving for Admin & Super Admin access
-      if (
-        !cleanInput ||
-        lower === 'admin' ||
-        lower === 'administrator' ||
-        lower === 'officer'
-      ) {
-        onLogin('admin');
-        return;
+      // 1. Admin Account: menro@gmail.com / menro123
+      if (lower === 'menro@gmail.com' || lower === 'menro') {
+        if (cleanPass === 'menro123') {
+          const allUsers = api.getUsers();
+          const adminUser = allUsers.find(u => u.role === 'admin' || u.id === 'usr-admin-01');
+          onLogin(adminUser || 'admin');
+          return;
+        } else {
+          setErrorMessage('Mali ang inilagay na password para sa admin account. Pakisuri at ilagay ang tamang password.');
+          return;
+        }
       }
 
+      // 2. Super Admin Account: superadmin / password123
       if (
         lower === 'superadmin' ||
         lower === 'pesodingalan2025' ||
         lower === 'johnmark' ||
         lower === 'orlasan'
       ) {
-        onLogin('superadmin');
-        return;
+        if (cleanPass === 'password123') {
+          onLogin('superadmin');
+          return;
+        } else {
+          setErrorMessage('Mali ang inilagay na password para sa super admin account.');
+          return;
+        }
       }
 
-      // 2. Check registered accounts via ApiService
+      // 3. Registered accounts via ApiService (Database users)
       const authRes = api.authenticate(cleanInput, cleanPass);
       if (authRes.success && authRes.user) {
         onLogin(authRes.user);
         return;
       }
 
-      // 3. Fallback for password containing admin
-      if (cleanPass.toLowerCase().includes('admin') || cleanPass === 'password123' || !cleanPass) {
-        onLogin('admin');
-        return;
-      }
-
       if (authRes.status === 'pending') {
         setPendingNotice(
           authRes.message ||
-          'Kasalukuyang nakabinbin (Pending Review) ang iyong account. Mangyaring maghintay kay ENGR. JOHN MARK N. ORLASAN para ma-approve at ma-activate ang iyong access.'
+          'Kasalukuyang nakabinbin (Pending Review) ang iyong account. Mangyaring maghintay kay ENGR. JOHN MARK N. ORLASAN para ma-approve at ma-activate ang iyong access bago makapag-login.'
         );
         return;
       }
@@ -1005,41 +1022,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         return;
       }
 
-      // Fallback for field officers
-      if (lower.includes('menro')) {
-        onLogin('menro_officer');
-        return;
-      }
-
-      // Forgiving fallback: Log in as admin officer directly
-      onLogin('admin');
-    }, 200);
+      // Strictly deny login if credentials do not match any authorized account
+      setErrorMessage(authRes.message || 'Maling username o password. Hanggat hindi tama ang credentials, hindi makakapag-login.');
+    }, 250);
   };
 
-  // Direct One-Tap Login Handler for Quick Admin Access buttons
-  const handleDirectLogin = (directEmail: string, directPass: string) => {
-    setErrorMessage(null);
-    setPendingNotice(null);
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      const lower = directEmail.toLowerCase();
-      if (lower === 'superadmin' || lower === 'johnmark') {
-        onLogin('superadmin');
-        return;
-      }
-      if (lower === 'admin' || lower === 'administrator') {
-        onLogin('admin');
-        return;
-      }
-      const authRes = api.authenticate(directEmail, directPass);
-      if (authRes.success && authRes.user) {
-        onLogin(authRes.user);
-      } else {
-        onLogin('admin');
-      }
-    }, 150);
-  };
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2560,290 +2547,344 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               )}
             </div>
           ) : activeView === 'login' ? (
-                /* ULTRA-SMOOTH POP-UP GREEN DIAGONAL CARD (SEMI-TRANSPARENT FROSTED GLASS) */
-                <div
-                  className="relative rounded-2xl lg:rounded-3xl border-2 border-emerald-400/80 shadow-[0_0_50px_rgba(16,185,129,0.4),inset_0_0_20px_rgba(16,185,129,0.15)] bg-slate-950/50 hover:bg-slate-950/55 backdrop-blur-md overflow-hidden grid grid-cols-1 md:grid-cols-12 transition-all duration-500 ease-out transform scale-100 opacity-100 translate-y-0 w-full max-w-md sm:max-w-xl md:max-w-none mx-auto my-auto"
+                /* NEON COASTAL LOGIN INTERFACE - ANIMATED LIVING BACKGROUND */
+                <motion.div
+                  animate={{
+                    y: [-4, 4, -4],
+                  }}
+                  transition={{
+                    duration: 5.5,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                  className="relative w-full max-w-[460px] sm:max-w-[500px] md:max-w-[530px] aspect-[1275/1234] mx-auto my-auto select-none rounded-[2rem] sm:rounded-[2.5rem] shadow-[0_0_60px_rgba(0,229,255,0.5)] overflow-hidden transition-all duration-500 ease-out transform scale-100 opacity-100"
                   style={{
                     perspective: '1200px',
                     transformStyle: 'preserve-3d',
-                    animation: 'smoothPopup 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards',
                   }}
                 >
-                  {/* Pop-Up Close Icon (X) on Top Right */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveView('event')}
-                    className="absolute top-3 right-3 z-30 p-1.5 rounded-full bg-slate-900/60 hover:bg-emerald-950/80 border border-emerald-500/50 text-slate-300 hover:text-white transition-all cursor-pointer shadow-md hover:scale-105 backdrop-blur-sm"
-                    title="Bumalik sa Event Advisory"
-                  >
-                    <X className="w-4 h-4 text-emerald-400" />
-                  </button>
+                  {/* The Authentic Pixel-Perfect Card Artwork */}
+                  <img
+                    src="/assets/neon_coastal_card_bg.png"
+                    alt="Neon Coastal Login Interface"
+                    className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none z-0"
+                  />
 
-                  {/* LEFT SIDE FORM PANEL */}
-                  <div className="md:col-span-7 p-5 sm:p-7 lg:p-8 xl:p-10 flex flex-col justify-between space-y-4 sm:space-y-5 lg:space-y-6 relative z-10 animate-fadeIn">
-                    {/* Top Badge & Mobile Seal */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2 px-3.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs sm:text-sm font-mono font-bold w-fit">
-                        <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                        <span>ADMIN PORTAL</span>
-                      </div>
-                      <div className="md:hidden flex items-center space-x-1.5">
-                        <img
-                          src="/Linis_Dingalan_Coastal_Cleanup_Seal.png"
-                          alt="Linis Dingalan Coastal Cleanup Seal"
-                          className="w-9 h-9 object-contain rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)] border border-emerald-300/40 p-0.5 bg-white/95"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Error Banner */}
-                    {errorMessage && (
-                      <div className="p-3 rounded-xl bg-rose-950/90 border border-rose-500/60 text-rose-200 text-xs sm:text-sm font-semibold flex items-start space-x-2.5 animate-fadeIn">
-                        <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                        <span>{errorMessage}</span>
-                      </div>
-                    )}
-
-                    {/* Pending Notice Banner */}
-                    {pendingNotice && (
-                      <div className="p-3 rounded-xl bg-amber-950/90 border border-amber-500/60 text-amber-200 text-xs sm:text-sm space-y-1 animate-fadeIn">
-                        <div className="flex items-center space-x-2 font-bold text-amber-300 font-mono text-xs sm:text-sm">
-                          <Clock className="w-4 h-4 text-amber-400 shrink-0" />
-                          <span>ACCOUNT PENDING</span>
-                        </div>
-                        <p className="leading-tight text-xs sm:text-sm">{pendingNotice}</p>
-                      </div>
-                    )}
-
-                    {/* Form Heading */}
-                    <div className="text-left space-y-1">
-                      <h2 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-black text-white tracking-tight">
-                        Login
-                      </h2>
-                    </div>
-
-                    {/* Form Fields */}
-                    <form onSubmit={handleLoginSubmit} className="space-y-4 sm:space-y-5 lg:space-y-6">
-                      {/* Underlined Username/Email Field */}
-                      <div className="space-y-1 text-left">
-                        <div className="flex items-center border-b-2 border-slate-400/60 hover:border-emerald-400 focus-within:border-emerald-300 transition-colors py-2 sm:py-2.5 lg:py-3">
-                          <UserIcon className="w-5 h-5 text-emerald-300 mr-3 shrink-0" />
-                          <input
-                            type="text"
-                            autoComplete="username"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder="Username (e.g. admin)"
-                            style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff', backgroundColor: 'transparent' }}
-                            className="w-full bg-transparent text-white placeholder-slate-300 text-base sm:text-lg lg:text-xl font-medium font-sans focus:outline-none"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Underlined Password Field */}
-                      <div className="space-y-1 text-left">
-                        <div className="flex items-center border-b-2 border-slate-400/60 hover:border-emerald-400 focus-within:border-emerald-300 transition-colors py-2 sm:py-2.5 lg:py-3">
-                          <Lock className="w-5 h-5 text-emerald-300 mr-3 shrink-0" />
-                          <input
-                            type={showPassword ? 'text' : 'password'}
-                            autoComplete="current-password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="Password (e.g. admin123)"
-                            style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff', backgroundColor: 'transparent' }}
-                            className="w-full bg-transparent text-white placeholder-slate-300 text-base sm:text-lg lg:text-xl font-medium font-sans focus:outline-none"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="text-slate-300 hover:text-emerald-300 transition-colors cursor-pointer ml-3"
-                          >
-                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Main Login Submit Button */}
-                      <div className="pt-2">
-                        {isLoading ? (
-                          <div className="w-full py-2.5 sm:py-3.5 lg:py-2.5 rounded-xl bg-slate-900 border border-emerald-500/50 text-emerald-300 font-mono text-xs sm:text-sm font-bold flex items-center justify-center space-x-2 shadow-inner">
-                            <span className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
-                            <span>Logging in to system...</span>
-                          </div>
-                        ) : (
-                          <button
-                            type="submit"
-                            className="w-full py-3 sm:py-3.5 lg:py-2.5 px-4 lg:px-3.5 rounded-xl fluid-btn-emerald text-xs sm:text-sm lg:text-sm font-mono text-slate-950 font-black flex items-center justify-center space-x-2 transition-all duration-300 active:scale-95 cursor-pointer shadow-[0_0_20px_rgba(16,185,129,0.4)] border-2 border-emerald-300 hover:shadow-[0_0_30px_rgba(16,185,129,0.8)] hover:scale-[1.02] relative overflow-hidden group"
-                          >
-                            <span className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 pointer-events-none" />
-                            <ShieldCheck className="w-4 h-4 lg:w-4 lg:h-4 text-slate-950 shrink-0 animate-pulse" />
-                            <span className="relative z-10 tracking-wider">LOG IN TO SYSTEM</span>
-                          </button>
-                        )}
-                      </div>
-
-
-                    </form>
-                  </div>
-
-                  {/* RIGHT SIDE DIAGONAL TECHNOLOGY & HOLOGRAPHIC CYBER-SCAN PANEL */}
-                  <div className="md:col-span-5 relative hidden md:flex flex-col justify-center items-center p-6 lg:p-8 xl:p-10 text-center text-white overflow-hidden min-h-[380px] lg:min-h-[460px] xl:min-h-[500px]">
-                    {/* Cyber Tech & Deep Ocean Matrix Gradient Background */}
+                  {/* ============================================================== */}
+                  {/* ANIMATED BACKGROUND LAYERS (LIVING DINGALAN ENVIRONMENT)      */}
+                  {/* ============================================================== */}
+                  <div className="absolute inset-0 z-[1] overflow-hidden pointer-events-none">
+                    {/* 1. Alive Holographic Lighthouse Radar Scanner & Sonar Rings */}
                     <div
-                      className="absolute inset-0 bg-gradient-to-br from-slate-950 via-teal-950 to-emerald-950 backdrop-blur-md shadow-[inset_0_0_50px_rgba(6,182,212,0.25)]"
-                      style={{ clipPath: 'polygon(18% 0, 100% 0, 100% 100%, 0 100%)' }}
-                    />
-
-                    {/* Holographic Cyber Grid Overlay Pattern */}
-                    <div
-                      className="absolute inset-0 opacity-20 pointer-events-none"
+                      className="absolute flex items-center justify-center pointer-events-none"
                       style={{
-                        backgroundImage: 'linear-gradient(to right, rgba(16, 185, 129, 0.2) 1px, transparent 1px), linear-gradient(to bottom, rgba(6, 182, 212, 0.2) 1px, transparent 1px)',
-                        backgroundSize: '24px 24px'
+                        left: '68.8%',
+                        top: '22.8%',
+                        width: '0px',
+                        height: '0px',
                       }}
+                    >
+                      {/* Concentric Expanding Sonar Ripples */}
+                      <motion.div
+                        animate={{
+                          scale: [0.6, 2.2],
+                          opacity: [0.8, 0],
+                        }}
+                        transition={{
+                          duration: 3,
+                          repeat: Infinity,
+                          ease: "easeOut",
+                        }}
+                        className="absolute w-20 h-20 rounded-full border border-cyan-300 shadow-[0_0_12px_#22d3ee]"
+                      />
+                      <motion.div
+                        animate={{
+                          scale: [0.6, 2.2],
+                          opacity: [0.8, 0],
+                        }}
+                        transition={{
+                          duration: 3,
+                          repeat: Infinity,
+                          ease: "easeOut",
+                          delay: 1.5,
+                        }}
+                        className="absolute w-20 h-20 rounded-full border border-cyan-400 shadow-[0_0_15px_#22d3ee]"
+                      />
+
+                      {/* Revolving Holographic Radar Sector Beam */}
+                      <motion.div
+                        animate={{
+                          rotate: 360,
+                        }}
+                        transition={{
+                          duration: 6,
+                          repeat: Infinity,
+                          ease: "linear",
+                        }}
+                        className="absolute w-32 h-32 rounded-full pointer-events-none"
+                        style={{
+                          background: 'conic-gradient(from 0deg, transparent 0deg, transparent 280deg, rgba(34,211,238,0.35) 360deg)',
+                        }}
+                      />
+
+                      {/* Rotating Counter Dash Ring */}
+                      <motion.div
+                        animate={{
+                          rotate: -360,
+                        }}
+                        transition={{
+                          duration: 12,
+                          repeat: Infinity,
+                          ease: "linear",
+                        }}
+                        className="absolute w-24 h-24 rounded-full border border-cyan-400/50 border-dashed"
+                      />
+
+                      {/* Blinking Red Parola Beacon Center */}
+                      <span className="absolute w-3 h-3 rounded-full bg-rose-500 shadow-[0_0_14px_#f43f5e] animate-ping" />
+                      <span className="absolute w-2 h-2 rounded-full bg-red-400 shadow-[0_0_8px_#ef4444]" />
+                    </div>
+
+                    {/* 2. Softened Subdued Seal Ring (Reduces the harsh blue glare/kinang) */}
+                    <div
+                      className="absolute top-[19%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[28%] aspect-square rounded-full border-[8px] sm:border-[10px] border-slate-900/35 blur-[3px] pointer-events-none"
                     />
 
-                    {/* Animated Cyber Radar Pulse Glows */}
+                    {/* 3. Bioluminescent Floating Cyber Particles */}
                     <motion.div
                       animate={{
-                        scale: [1, 1.3, 1],
-                        opacity: [0.2, 0.5, 0.2],
+                        y: [0, -35, 0],
+                        x: [0, 8, 0],
+                        opacity: [0.2, 0.8, 0.2],
                       }}
                       transition={{
-                        duration: 5,
+                        duration: 4.5,
                         repeat: Infinity,
                         ease: "easeInOut",
                       }}
-                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-cyan-500/20 rounded-full blur-3xl pointer-events-none"
+                      className="absolute top-[35%] left-[25%] w-1.5 h-1.5 rounded-full bg-cyan-300 shadow-[0_0_8px_#22d3ee]"
                     />
                     <motion.div
                       animate={{
-                        scale: [1.2, 1, 1.2],
-                        opacity: [0.3, 0.6, 0.3],
+                        y: [0, -40, 0],
+                        x: [0, -10, 0],
+                        opacity: [0.3, 0.9, 0.3],
                       }}
                       transition={{
                         duration: 6,
                         repeat: Infinity,
                         ease: "easeInOut",
+                        delay: 1,
                       }}
-                      className="absolute -top-10 -right-10 w-64 h-64 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none"
+                      className="absolute top-[42%] right-[22%] w-2 h-2 rounded-full bg-emerald-300 shadow-[0_0_10px_#34d399]"
+                    />
+                    <motion.div
+                      animate={{
+                        y: [0, -25, 0],
+                        x: [0, 6, 0],
+                        opacity: [0.2, 0.7, 0.2],
+                      }}
+                      transition={{
+                        duration: 5,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                        delay: 2,
+                      }}
+                      className="absolute top-[28%] right-[40%] w-1.5 h-1.5 rounded-full bg-teal-300 shadow-[0_0_8px_#2dd4bf]"
+                    />
+                    <motion.div
+                      animate={{
+                        y: [0, -30, 0],
+                        x: [0, -7, 0],
+                        opacity: [0.2, 0.8, 0.2],
+                      }}
+                      transition={{
+                        duration: 5.5,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                        delay: 0.5,
+                      }}
+                      className="absolute top-[48%] left-[45%] w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#38bdf8]"
                     />
 
-                    {/* Right Side Overlay Content: High-Tech Cyber Security & Seal Core */}
-                    <div className="relative z-10 flex flex-col items-center justify-center space-y-4 pl-3 sm:pl-4 w-full">
-                      {/* Futuristic HUD Cyber Presentation */}
-                      <div className="relative group cursor-pointer">
-                        {/* Outer Fast Rotating Radar Ring */}
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{
-                            duration: 15,
-                            repeat: Infinity,
-                            ease: "linear",
-                          }}
-                          className="absolute -inset-5 sm:-inset-6 rounded-full border border-cyan-400/50 border-dashed pointer-events-none shadow-[0_0_15px_rgba(6,182,212,0.3)]"
-                        />
-
-                        {/* Reverse Counter-Rotating Cryptographic Ring */}
-                        <motion.div
-                          animate={{ rotate: -360 }}
-                          transition={{
-                            duration: 25,
-                            repeat: Infinity,
-                            ease: "linear",
-                          }}
-                          className="absolute -inset-3 sm:-inset-4 rounded-full border-2 border-emerald-400/60 border-dotted pointer-events-none"
-                        />
-
-                        {/* Pulsing Energy Shield Halo */}
-                        <motion.div
-                          animate={{
-                            scale: [0.95, 1.08, 0.95],
-                            opacity: [0.3, 0.8, 0.3],
-                          }}
-                          transition={{
-                            duration: 3,
-                            repeat: Infinity,
-                            ease: "easeInOut",
-                          }}
-                          className="absolute -inset-2.5 rounded-full bg-gradient-to-tr from-cyan-500/30 via-emerald-500/30 to-teal-400/30 blur-lg pointer-events-none"
-                        />
-
-                        {/* Floating & Scanning Core */}
-                        <motion.div
-                          animate={{
-                            y: [-4, 4, -4],
-                          }}
-                          transition={{
-                            duration: 3.5,
-                            repeat: Infinity,
-                            ease: "easeInOut",
-                          }}
-                          whileHover={{ scale: 1.06, rotate: 1 }}
-                          className="relative flex items-center justify-center"
-                        >
-                          {/* Circular Container with Cyber Glass Border */}
-                          <div className="relative w-44 h-44 sm:w-48 sm:h-48 lg:w-56 lg:h-56 xl:w-60 xl:h-60 rounded-full p-2.5 bg-gradient-to-b from-slate-900/95 via-slate-950/95 to-slate-900/95 shadow-[0_0_40px_rgba(6,182,212,0.4),inset_0_0_20px_rgba(16,185,129,0.3)] border-2 border-cyan-400/80 overflow-hidden transition-all duration-500">
-                            {/* The Seal Image */}
-                            <img
-                              src="/Linis_Dingalan_Coastal_Cleanup_Seal.png"
-                              alt="Linis Dingalan Coastal Cleanup Official Seal"
-                              className="w-full h-full object-contain rounded-full drop-shadow-[0_0_15px_rgba(16,185,129,0.5)] select-none pointer-events-none filter brightness-110 contrast-110"
-                            />
-
-                            {/* Vertical Holographic Laser Scanner Sweep */}
-                            <motion.div
-                              animate={{
-                                y: [-100, 220],
-                              }}
-                              transition={{
-                                duration: 2.5,
-                                repeat: Infinity,
-                                ease: "easeInOut",
-                              }}
-                              className="absolute inset-x-0 h-8 bg-gradient-to-b from-transparent via-cyan-400/50 to-transparent pointer-events-none"
-                            />
-
-                            {/* Shimmer Light Reflection Sweep */}
-                            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-cyan-300/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out pointer-events-none" />
-                          </div>
-
-                          {/* Orbiting Tech Data Node Indicator */}
-                          <motion.div
-                            animate={{
-                              rotate: 360,
-                            }}
-                            transition={{
-                              duration: 8,
-                              repeat: Infinity,
-                              ease: "linear",
-                            }}
-                            className="absolute inset-0 w-full h-full pointer-events-none"
-                          >
-                            <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-cyan-400 rounded-full shadow-[0_0_15px_#22d3ee] flex items-center justify-center">
-                              <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping" />
-                            </span>
-                          </motion.div>
-                        </motion.div>
-                      </div>
-
-                      {/* Tech & Cryptographic Status Typography */}
-                      <div className="space-y-1.5 max-w-xs text-center select-none">
-                        <h3 className="text-base sm:text-lg lg:text-xl font-black text-white tracking-tight uppercase drop-shadow-[0_0_10px_rgba(16,185,129,0.5)] leading-tight">
-                          Linis Dingalan OS
-                        </h3>
-
-                        <p className="text-[11px] sm:text-xs text-cyan-200/90 font-mono leading-relaxed drop-shadow-sm">
-                          Geotag Watermark & Tokenized QR Verification Engine
-                        </p>
-
-                        <div className="pt-2 border-t border-cyan-500/30 text-[10px] sm:text-[11px] font-mono text-emerald-300 font-bold tracking-wider">
-                          PESO e-Access • MENRO Cloud Sync
-                        </div>
-                      </div>
-                    </div>
+                    {/* 6. Living Ambient Cyber Edge Aura */}
+                    <motion.div
+                      animate={{
+                        opacity: [0.4, 0.85, 0.4],
+                      }}
+                      transition={{
+                        duration: 3,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                      }}
+                      className="absolute inset-0 rounded-[2rem] sm:rounded-[2.5rem] border border-cyan-400/60 shadow-[inset_0_0_25px_rgba(34,211,238,0.25)] pointer-events-none"
+                    />
                   </div>
-                </div>
+
+                  {/* Pop-Up Close Icon (X) on Top Right */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveView('event')}
+                    className="absolute top-3 right-3 sm:top-4 sm:right-4 z-30 p-1.5 sm:p-2 rounded-full bg-slate-900/60 hover:bg-cyan-950/80 border border-cyan-400/50 text-cyan-300 hover:text-white transition-all cursor-pointer shadow-md hover:scale-105 backdrop-blur-sm"
+                    title="Bumalik sa Event Advisory"
+                  >
+                    <X className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-300" />
+                  </button>
+
+                  {/* Error & Pending Notices Floating Over Card */}
+                  {errorMessage && (
+                    <div className="absolute top-[43%] left-[9.8%] right-[9.8%] z-30 p-2 sm:p-2.5 rounded-xl bg-rose-950/95 border border-rose-500 text-rose-100 text-[11px] sm:text-xs font-semibold flex items-center justify-between shadow-2xl backdrop-blur-md animate-fadeIn">
+                      <div className="flex items-start space-x-2 flex-1 min-w-0 mr-2">
+                        <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                        <span className="text-left leading-tight break-words">{errorMessage}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setErrorMessage('')}
+                        className="text-rose-300 hover:text-white p-1 text-xs font-bold shrink-0 cursor-pointer"
+                        title="Isara"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
+
+                  {pendingNotice && (
+                    <div className="absolute top-[43%] left-[9.8%] right-[9.8%] z-30 p-2 sm:p-2.5 rounded-xl bg-amber-950/95 border border-amber-500 text-amber-100 text-[11px] sm:text-xs font-semibold flex items-center justify-between shadow-2xl backdrop-blur-md animate-fadeIn">
+                      <div className="flex items-start space-x-2 flex-1 min-w-0 mr-2">
+                        <Clock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                        <span className="text-left leading-tight break-words">{pendingNotice}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setPendingNotice('')}
+                        className="text-amber-300 hover:text-white p-1 text-xs font-bold shrink-0 cursor-pointer"
+                        title="Isara"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
+
+                  {/* INTERACTIVE FORM FIELDS OVER THE ARTWORK */}
+                  <form onSubmit={handleLoginSubmit} className="absolute inset-0 z-20">
+                    {/* Username Interactive Input Field (Exactly aligns with artwork pill) */}
+                    <div
+                      className="absolute flex items-center"
+                      style={{
+                        top: '52.8%',
+                        left: '18.4%',
+                        width: '70.2%',
+                        height: '8.4%',
+                      }}
+                    >
+                      <input
+                        type="text"
+                        autoComplete="off"
+                        placeholder=""
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        style={{
+                          color: '#ffffff',
+                          WebkitTextFillColor: '#ffffff',
+                          backgroundColor: 'transparent',
+                        }}
+                        className="w-full h-full bg-transparent text-white placeholder:text-transparent pl-3 sm:pl-4 text-sm sm:text-base md:text-xl font-bold font-sans focus:outline-none tracking-wide"
+                      />
+                    </div>
+
+                    {/* Password Interactive Input Field (Exactly aligns with artwork pill) */}
+                    <div
+                      className="absolute flex items-center"
+                      style={{
+                        top: '65.4%',
+                        left: '18.4%',
+                        width: '63.5%',
+                        height: '8.4%',
+                      }}
+                    >
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        autoComplete="off"
+                        placeholder=""
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        style={{
+                          color: '#ffffff',
+                          WebkitTextFillColor: '#ffffff',
+                          backgroundColor: 'transparent',
+                        }}
+                        className="w-full h-full bg-transparent text-white placeholder:text-transparent pl-3 sm:pl-4 text-sm sm:text-base md:text-xl font-bold font-sans focus:outline-none tracking-widest"
+                      />
+                    </div>
+
+                    {/* Password Eye Toggle Button (Exactly aligns with eye icon in artwork) */}
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute flex items-center justify-center cursor-pointer transition-transform hover:scale-110 active:scale-95"
+                      style={{
+                        top: '65.4%',
+                        left: '81.9%',
+                        width: '7.5%',
+                        height: '8.4%',
+                      }}
+                      title={showPassword ? 'Itago ang password' : 'Ipakita ang password'}
+                    >
+                      {showPassword ? (
+                        <div className="w-full h-full flex items-center justify-center bg-cyan-950/80 rounded-full border border-cyan-400">
+                          <EyeOff className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-200" />
+                        </div>
+                      ) : (
+                        <span className="sr-only">Toggle password</span>
+                      )}
+                    </button>
+
+                    {/* "LOG IN TO SYSTEM" Submit Button with Rich Hover Animation */}
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      className="group absolute rounded-full cursor-pointer transition-all duration-300 hover:scale-[1.02] active:scale-[0.985] flex items-center justify-center overflow-hidden"
+                      style={{
+                        top: '78.4%',
+                        left: '9.8%',
+                        width: '80.4%',
+                        height: '9.8%',
+                      }}
+                    >
+                      {/* 1. Radiant Glowing Cyber Aura on Hover */}
+                      <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 opacity-0 group-hover:opacity-100 blur-md transition-opacity duration-300 pointer-events-none" />
+
+                      {/* 2. Illuminated Glowing Neon Fill & Border on Hover */}
+                      <div className="absolute inset-0 rounded-full bg-gradient-to-r from-[#00e676] via-[#00d2b4] to-[#00b0ff] opacity-0 group-hover:opacity-100 transition-opacity duration-300 border-2 border-white/80 shadow-[0_0_25px_rgba(0,229,255,0.7),inset_0_0_15px_rgba(255,255,255,0.4)] pointer-events-none" />
+
+                      {/* 3. Fast Sleek Laser Shimmer Streak Sweep on Hover */}
+                      <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out bg-gradient-to-r from-transparent via-white/50 to-transparent skew-x-12 pointer-events-none" />
+
+                      {/* 4. Active Button Content Overlay on Hover (Shield Icon, Divider & Luminous Text) */}
+                      <div className="relative z-10 w-full h-full flex items-center justify-center px-4 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                        {/* Glowing Shield Icon */}
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-white/80 bg-white/20 flex items-center justify-center text-white shrink-0 shadow-[0_0_12px_rgba(255,255,255,0.8)] group-hover:scale-110 group-hover:rotate-6 transition-transform duration-300">
+                          <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-white drop-shadow" />
+                        </div>
+                        {/* Divider Line */}
+                        <div className="w-[1.5px] h-4 sm:h-5 bg-white/60 mx-3 sm:mx-3.5 shrink-0" />
+                        {/* Luminous Text with Expanded Tracking */}
+                        <span className="tracking-widest font-black uppercase text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] text-xs sm:text-sm md:text-base group-hover:tracking-[0.18em] transition-all duration-300">
+                          LOG IN TO SYSTEM
+                        </span>
+                      </div>
+
+                      {/* While loading, show animated overlay on top of button */}
+                      {isLoading && (
+                        <div className="absolute inset-0 rounded-full bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-500 flex items-center justify-center text-white font-black tracking-widest text-xs sm:text-sm shadow-lg z-20">
+                          <span className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                          <span>LOGGING IN TO SYSTEM...</span>
+                        </div>
+                      )}
+                    </button>
+                  </form>
+                </motion.div>
               ) : null}
             </motion.div>
 

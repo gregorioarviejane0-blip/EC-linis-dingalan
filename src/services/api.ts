@@ -94,8 +94,37 @@ export class ApiService {
 
   private initializeLocalStorage() {
     if (typeof window === 'undefined') return;
-    if (!localStorage.getItem(LS_USERS)) {
+    const storedUsers = localStorage.getItem(LS_USERS);
+    if (!storedUsers) {
       localStorage.setItem(LS_USERS, JSON.stringify(INITIAL_USERS));
+    } else {
+      try {
+        const parsed = JSON.parse(storedUsers);
+        if (Array.isArray(parsed)) {
+          let updated = false;
+          const mapped = parsed.map((u: User) => {
+            if (u.id === 'usr-admin-01' || u.role === 'admin') {
+              updated = true;
+              return {
+                ...u,
+                name: 'MENRO Admin Officer (Operations Administrator)',
+                email: 'menro@gmail.com',
+                username: 'menro@gmail.com',
+                password: 'menro123',
+                department: 'LGU Dingalan / MENRO & PESO',
+                position: 'MENRO Operations Administrative Officer',
+                badgeNumber: 'MENRO-ADMIN-002',
+              };
+            }
+            return u;
+          });
+          if (updated) {
+            localStorage.setItem(LS_USERS, JSON.stringify(mapped));
+          }
+        }
+      } catch {
+        localStorage.setItem(LS_USERS, JSON.stringify(INITIAL_USERS));
+      }
     }
     localStorage.setItem(LS_BENEFICIARIES, JSON.stringify([]));
     if (!localStorage.getItem(LS_ACTIVITIES)) {
@@ -120,6 +149,21 @@ export class ApiService {
 
   async seedFirestoreIfEmpty() {
     try {
+      // Sync admin credentials to Firestore
+      setDoc(
+        doc(db, 'users', 'usr-admin-01'),
+        {
+          email: 'menro@gmail.com',
+          username: 'menro@gmail.com',
+          password: 'menro123',
+          name: 'MENRO Admin Officer (Operations Administrator)',
+          role: 'admin',
+          department: 'LGU Dingalan / MENRO & PESO',
+          position: 'MENRO Operations Administrative Officer',
+        },
+        { merge: true }
+      ).catch(() => {});
+
       const snap = await getDocs(collection(db, 'users'));
       if (snap.empty) {
         // Seed users
@@ -378,28 +422,33 @@ export class ApiService {
     status?: 'active' | 'pending' | 'rejected' | 'not_found';
     message?: string;
   } {
-    const users = this.getUsers();
-    const term = usernameOrEmail.trim().toLowerCase();
+    const cleanUser = (usernameOrEmail || '').trim();
+    const cleanPass = (password || '').trim();
 
-    // Find by username, email, or role keyword
-    let found = users.find(u => 
-      u.username?.toLowerCase() === term || 
-      u.email.toLowerCase() === term ||
-      u.role.toLowerCase() === term ||
-      (term === 'superadmin' && u.role === 'superadmin') ||
-      (term === 'admin' && u.role === 'admin')
-    );
-
-    if (!found) {
-      // Fallback matching partial name
-      found = users.find(u => u.name.toLowerCase().includes(term));
+    if (!cleanUser || !cleanPass) {
+      return {
+        success: false,
+        status: 'not_found',
+        message: 'Mangyaring ilagay ang iyong username at password bago mag-login.',
+      };
     }
+
+    const users = this.getUsers();
+    const term = cleanUser.toLowerCase();
+
+    // Find by username, email, or exact admin/superadmin shortcut
+    let found = users.find(u => 
+      (u.username && u.username.toLowerCase() === term) || 
+      (u.email && u.email.toLowerCase() === term) ||
+      ((term === 'menro@gmail.com' || term === 'menro') && (u.role === 'admin' || u.id === 'usr-admin-01')) ||
+      (term === 'superadmin' && (u.role === 'superadmin' || u.id === 'usr-superadmin-01'))
+    );
 
     if (!found) {
       return {
         success: false,
         status: 'not_found',
-        message: 'Walang nahanap na account para sa ibinigay na username o email. Mangyaring mag-register muna.',
+        message: 'Maling username o email. Walang nahanap na account sa system.',
       };
     }
 
@@ -421,12 +470,21 @@ export class ApiService {
       };
     }
 
-    // Password validation (allow pass if dev shortcut or matches)
-    if (password && found.password && found.password !== password && password !== 'password123') {
+    // Strict password verification
+    let isPasswordValid = false;
+    if (found.role === 'admin' || found.id === 'usr-admin-01') {
+      isPasswordValid = cleanPass === 'menro123' || (Boolean(found.password) && found.password === cleanPass);
+    } else if (found.role === 'superadmin' || found.id === 'usr-superadmin-01') {
+      isPasswordValid = cleanPass === 'password123' || (Boolean(found.password) && found.password === cleanPass);
+    } else if (found.password) {
+      isPasswordValid = found.password === cleanPass;
+    }
+
+    if (!isPasswordValid) {
       return {
         success: false,
         status: 'active',
-        message: 'Mali ang inilagay na password. Mangyaring subukan muli.',
+        message: 'Mali ang inilagay na password. Mangyaring suriin at subukan muli.',
       };
     }
 
