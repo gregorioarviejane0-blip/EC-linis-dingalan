@@ -30,8 +30,6 @@ import {
   Save,
   Maximize2,
   Minimize2,
-  Globe,
-  Navigation,
   X,
 } from 'lucide-react';
 import QRCode from 'qrcode';
@@ -45,6 +43,7 @@ export interface MapSector {
   lng: string;
   coordsText: string;
   elevation: string;
+  areaSqKm: string;
   status: string;
   type: 'hub' | 'port' | 'coastal' | 'beach' | 'delta' | 'boundary' | 'marine';
   color: string;
@@ -62,6 +61,7 @@ export const DINGALAN_MAP_SECTORS: MapSector[] = [
     lng: '121.4250° E',
     coordsText: '15.4225° N, 121.4250° E',
     elevation: '12.0m MSL',
+    areaSqKm: '12.4 km²',
     status: 'Scheduled / Ongoing Clean-up',
     type: 'port',
     color: '#10b981', // emerald
@@ -77,6 +77,7 @@ export const DINGALAN_MAP_SECTORS: MapSector[] = [
     lng: '121.4011° E',
     coordsText: '15.3942° N, 121.4011° E',
     elevation: '8.5m MSL',
+    areaSqKm: '8.2 km²',
     status: 'Operational HQ & MENRO Hub',
     type: 'hub',
     color: '#06b6d4', // cyan
@@ -92,6 +93,7 @@ export const DINGALAN_MAP_SECTORS: MapSector[] = [
     lng: '121.3980° E',
     coordsText: '15.3850° N, 121.3980° E',
     elevation: '4.2m MSL',
+    areaSqKm: '6.5 km²',
     status: 'Protected Coastal Area',
     type: 'coastal',
     color: '#38bdf8', // sky
@@ -107,6 +109,7 @@ export const DINGALAN_MAP_SECTORS: MapSector[] = [
     lng: '121.4300° E',
     coordsText: '15.3400° N, 121.4300° E',
     elevation: '0.0m MSL (Marine)',
+    areaSqKm: '45.0 km² (Marine)',
     status: 'Pacific Marine Sanctuary',
     type: 'marine',
     color: '#60a5fa', // blue
@@ -122,6 +125,7 @@ export const DINGALAN_MAP_SECTORS: MapSector[] = [
     lng: '121.3850° E',
     coordsText: '15.3350° N, 121.3850° E',
     elevation: '5.0m MSL',
+    areaSqKm: '14.8 km²',
     status: 'High Waste Monitoring Zone',
     type: 'beach',
     color: '#f59e0b', // amber
@@ -137,6 +141,7 @@ export const DINGALAN_MAP_SECTORS: MapSector[] = [
     lng: '121.3720° E',
     coordsText: '15.2850° N, 121.3720° E',
     elevation: '6.0m MSL',
+    areaSqKm: '28.3 km²',
     status: 'Active River Cleanup',
     type: 'delta',
     color: '#ec4899', // pink
@@ -152,6 +157,7 @@ export const DINGALAN_MAP_SECTORS: MapSector[] = [
     lng: '121.3500° E',
     coordsText: '15.2100° N, 121.3500° E',
     elevation: '7.5m MSL',
+    areaSqKm: '52.1 km²',
     status: 'Coastal Watch Sentinel',
     type: 'boundary',
     color: '#a855f7', // purple
@@ -199,13 +205,60 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
   const [radarAngle, setRadarAngle] = useState(0);
   const [watermarkSimulated, setWatermarkSimulated] = useState(false);
   const [selectedSectorId, setSelectedSectorId] = useState<string>('paltic');
-  const [mapMode, setMapMode] = useState<'satellite' | 'google-live'>('satellite');
+  const [mapLayer, setMapLayer] = useState<'k' | 'h' | 'p'>('k');
+  const [showRadarHud, setShowRadarHud] = useState(true);
   const [radarSweepEnabled, setRadarSweepEnabled] = useState(true);
-  const [isFullMapModalOpen, setIsFullMapModalOpen] = useState(false);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
 
   const currentSector = useMemo(() => {
     return DINGALAN_MAP_SECTORS.find((s) => s.id === selectedSectorId) || DINGALAN_MAP_SECTORS[0];
   }, [selectedSectorId]);
+
+  const getSectorEmbedUrl = (sector: MapSector, layer: 'k' | 'h' | 'p' = 'k') => {
+    let query = '';
+    let zoom = 15;
+    switch (sector.id) {
+      case 'paltic':
+        query = 'Paltic, Dingalan, Aurora, Philippines';
+        zoom = 15;
+        break;
+      case 'dingalan':
+        query = 'Poblacion, Dingalan, Aurora, Philippines';
+        zoom = 16;
+        break;
+      case 'butas':
+        query = '15.3850,121.3980 (Butas na Bato, Dingalan)';
+        zoom = 16;
+        break;
+      case 'bay':
+        query = 'Dingalan Bay, Aurora, Philippines';
+        zoom = 14;
+        break;
+      case 'cabog':
+        query = 'Cabog, Matawe, Dingalan, Aurora, Philippines';
+        zoom = 15;
+        break;
+      case 'ibona':
+        query = 'Ibona, Dingalan, Aurora, Philippines';
+        zoom = 15;
+        break;
+      case 'umiray':
+        query = 'Umiray, Dingalan, Aurora, Philippines';
+        zoom = 15;
+        break;
+      default:
+        query = `${sector.name}, Dingalan, Aurora, Philippines`;
+        zoom = 15;
+    }
+    return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&t=${layer}&z=${zoom}&ie=UTF8&iwloc=&output=embed`;
+  };
+
+  const handleSelectSector = (sectorId: string) => {
+    setSelectedSectorId(sectorId);
+    if (window.innerWidth < 1024 && mapContainerRef.current) {
+      mapContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  };
 
   const ongoingAct = useMemo(() => {
     return activities.find((a) => a.status === 'scheduled' || a.status === 'ongoing') || activities[0];
@@ -518,224 +571,37 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
             </div>
             
             {/* --------------------------------------------------------------------- */}
-            {/* TILE 2: TALL TILE (Span 5) - Topographic GPS Radar Map */}
+            {/* TILE 2: GOOGLE MAPS TOPOGRAPHIC GPS RADAR (OVERVIEW DISPLAY)          */}
             {/* --------------------------------------------------------------------- */}
-            <div className="md:col-span-5 bg-slate-900/60 backdrop-blur-2xl border border-cyan-500/25 rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 shadow-[0_12px_40px_rgba(0,0,0,0.4)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.08)] flex flex-col justify-between relative overflow-hidden">
-              {/* Subtle cyan ambient glow */}
-              <div className="absolute top-0 right-0 w-48 h-48 bg-cyan-500/10 blur-2xl pointer-events-none" />
-
-              <div>
-                {/* Header */}
-                <div className="flex items-center justify-between pb-3.5 border-b border-slate-700/60">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400">
-                      <Compass className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-base font-extrabold text-white tracking-tight flex items-center gap-1.5">
-                        <span>Topographic GPS Radar</span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold">
-                          LIVE
-                        </span>
-                      </h3>
-                      <p className="text-[11px] font-mono text-slate-400">
-                        Dingalan Pacific Coastline • Google Maps Connected
-                      </p>
-                    </div>
+            <div className="col-span-12 max-w-6xl mx-auto w-full bg-slate-900/90 backdrop-blur-2xl border border-cyan-500/35 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden relative">
+              {/* Header matching image_e8730e0e.png */}
+              <div className="p-4 sm:p-5 border-b border-slate-800 bg-slate-950/70 flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2.5 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400">
+                    <Compass className="w-6 h-6 animate-spin-slow" />
                   </div>
-
-                  <span className="flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping inline-block mr-1" />
-                    <span>SATELLITE SYNC</span>
-                  </span>
-                </div>
-
-                {/* View Switcher & Controls Bar */}
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-1.5">
-                  <div className="inline-flex rounded-xl p-1 bg-slate-950/80 border border-slate-800">
-                    <button
-                      type="button"
-                      onClick={() => setMapMode('satellite')}
-                      className={`px-2.5 py-1 text-xs font-mono font-bold rounded-lg transition-all flex items-center space-x-1 ${
-                        mapMode === 'satellite'
-                          ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/30'
-                          : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                      title="Google Maps Satellite Photo View"
-                    >
-                      <Globe className="w-3.5 h-3.5" />
-                      <span>Satellite (Larawan)</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMapMode('google-live')}
-                      className={`px-2.5 py-1 text-xs font-mono font-bold rounded-lg transition-all flex items-center space-x-1 ${
-                        mapMode === 'google-live'
-                          ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/30'
-                          : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                      title="Live Interactive Google Maps"
-                    >
-                      <Navigation className="w-3.5 h-3.5" />
-                      <span>Live Google Map</span>
-                    </button>
-                  </div>
-
-                  <div className="flex items-center space-x-1.5">
-                    {mapMode === 'satellite' && (
-                      <button
-                        type="button"
-                        onClick={() => setRadarSweepEnabled((prev) => !prev)}
-                        className={`px-2 py-1 text-[11px] font-mono rounded-lg border transition-all ${
-                          radarSweepEnabled
-                            ? 'bg-cyan-950/80 text-cyan-300 border-cyan-500/40'
-                            : 'bg-slate-950/60 text-slate-400 border-slate-800 hover:text-slate-300'
-                        }`}
-                        title="I-on o i-off ang umiikot na radar sweep beam"
-                      >
-                        Sweep: {radarSweepEnabled ? 'ON' : 'OFF'}
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setIsFullMapModalOpen(true)}
-                      className="p-1.5 rounded-lg bg-slate-950/80 text-cyan-400 hover:text-cyan-200 border border-slate-800 hover:border-cyan-500/40 transition-colors"
-                      title="Palakihin ang Mapa (Full View)"
-                    >
-                      <Maximize2 className="w-3.5 h-3.5" />
-                    </button>
-                    <a
-                      href="https://www.google.com/maps/search/?api=1&query=Dingalan+Aurora+Philippines"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-1.5 rounded-lg bg-slate-950/80 text-slate-400 hover:text-emerald-400 border border-slate-800 hover:border-emerald-500/40 transition-colors"
-                      title="Buksan direkta sa Google Maps Website"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2 flex-wrap">
+                      <span>Google Maps Topographic GPS Radar</span>
+                      <span className="px-2 py-0.5 text-xs font-mono rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        Dingalan, Aurora
+                      </span>
+                    </h3>
+                    <p className="text-xs font-mono text-slate-400">
+                      Satelayt ng Dingalan Bay, Paltic, Butas na Bato, Cabog, Ibona, at Umiray
+                    </p>
                   </div>
                 </div>
 
-                {/* Ongoing / Scheduled Barangay & Cleaning Area Banner */}
-                <div
-                  onClick={() => onNavigate('attendance')}
-                  className="mt-2.5 p-2.5 rounded-xl bg-cyan-950/60 border border-cyan-500/40 hover:border-cyan-400 cursor-pointer transition-all group flex items-center justify-between shadow-md"
-                  title="Pindutin para buksan ang Mapa ng Dingalan at makita ang sakop na areang lilinisan"
-                >
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
-                    <div className="min-w-0">
-                      <span className="text-[10px] font-mono text-cyan-300 block font-bold uppercase tracking-wider">
-                        Ongoing / Scheduled: Brgy. {ongoingBarangay}
-                      </span>
-                      <span className="text-xs text-white font-bold truncate max-w-[200px] sm:max-w-[260px] block">
-                        {ongoingTitle} • {ongoingArea}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span className="text-[10px] font-mono font-bold text-cyan-400 bg-cyan-500/15 px-2 py-0.5 rounded-lg border border-cyan-500/30 group-hover:bg-cyan-500/25 transition-colors block">
-                      Attendance →
-                    </span>
-                  </div>
-                </div>
-
-                {/* Map Display Container */}
-                <div className="mt-3 relative aspect-[4/3] sm:aspect-square w-full rounded-2xl bg-slate-950 border border-cyan-500/30 overflow-hidden flex items-center justify-center select-none shadow-[0_8px_30px_rgba(0,0,0,0.6)]">
-                  {mapMode === 'satellite' ? (
-                    <div className="relative w-full h-full">
-                      {/* Clean Google Maps Satellite Background Image matching reference photo */}
-                      <img
-                        src="/dingalan_google_maps_satellite.png"
-                        alt="Dingalan Aurora Google Maps Satellite"
-                        className="absolute inset-0 w-full h-full object-cover object-center filter saturate-[1.05]"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          if (!target.src.includes('assets/aistudio/image_479cd259.png')) {
-                            target.src = '/assets/aistudio/image_479cd259.png';
-                          }
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    /* Live Google Maps Satellite Embed */
-                    <div className="relative w-full h-full">
-                      <iframe
-                        title="Google Maps Dingalan Satellite View"
-                        src="https://maps.google.com/maps?q=Dingalan,+Aurora,+Philippines&t=k&z=12&ie=UTF8&iwloc=&output=embed"
-                        className="w-full h-full border-0 filter contrast-[1.05]"
-                        loading="lazy"
-                        allowFullScreen
-                      />
-                      <div className="absolute top-2 right-2 z-10 px-2 py-0.5 rounded-md bg-slate-950/80 backdrop-blur border border-cyan-500/30 text-[9px] font-mono text-cyan-300">
-                        Interactive Google Maps
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Selected Sector Telemetry & Details Card */}
-                <div className="mt-3 p-2.5 rounded-xl bg-slate-950/85 border border-cyan-500/25">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-1.5 min-w-0">
-                      <MapPin
-                        className="w-3.5 h-3.5 shrink-0"
-                        style={{ color: currentSector.color }}
-                      />
-                      <span className="text-xs font-bold text-white truncate">
-                        {currentSector.name}
-                      </span>
-                      <span className="text-[10px] font-mono text-slate-400 truncate hidden sm:inline">
-                        ({currentSector.subName})
-                      </span>
-                    </div>
-                    <span
-                      className="px-1.5 py-0.2 text-[9px] font-mono font-bold rounded border shrink-0"
-                      style={{
-                        color: currentSector.color,
-                        borderColor: `${currentSector.color}55`,
-                        backgroundColor: `${currentSector.color}15`,
-                      }}
-                    >
-                      {currentSector.type.toUpperCase()}
-                    </span>
-                  </div>
-
-                  <p className="mt-1 text-[11px] text-slate-300 leading-snug line-clamp-2">
-                    {currentSector.description}
-                  </p>
-
-                  <div className="mt-2 grid grid-cols-2 gap-2 text-xs font-mono">
-                    <div className="p-1.5 rounded-lg bg-slate-900/90 border border-slate-800">
-                      <span className="text-[9px] text-slate-500 block">COORDINATES</span>
-                      <span className="text-cyan-400 font-bold block text-[10px] sm:text-[11px] truncate">
-                        {currentSector.coordsText}
-                      </span>
-                    </div>
-
-                    <div className="p-1.5 rounded-lg bg-slate-900/90 border border-slate-800">
-                      <span className="text-[9px] text-slate-500 block">ELEVATION / ZONE</span>
-                      <span className="text-emerald-400 font-bold block text-[10px] sm:text-[11px] truncate">
-                        {currentSector.elevation}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Bottom Card Footer */}
-              <div className="mt-3 pt-3 border-t border-slate-700/60 flex items-center justify-between">
-                <span className="text-[11px] text-slate-400 font-mono truncate max-w-[170px] sm:max-w-[220px]">
-                  Geofence: Dingalan Coastal Zone
-                </span>
                 <div className="flex items-center space-x-2">
                   <button
                     type="button"
-                    onClick={() => setIsFullMapModalOpen(true)}
-                    className="text-xs text-cyan-400 hover:text-cyan-300 font-bold flex items-center space-x-1"
+                    onClick={() => onNavigate('map')}
+                    className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 text-xs font-bold font-mono transition-all shadow cursor-pointer"
+                    title="Pumunta sa full screen page ng Google Maps Topographic GPS Radar"
                   >
-                    <span>Palakihin</span>
-                    <Maximize2 className="w-3 h-3 ml-0.5" />
+                    <Maximize2 className="w-3.5 h-3.5" />
+                    <span>Full Screen Page</span>
                   </button>
                   <a
                     href={`https://maps.google.com/?q=${encodeURIComponent(
@@ -743,11 +609,233 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
                     )}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-emerald-400 hover:text-emerald-300 font-bold flex items-center"
+                    className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-all shadow"
                   >
                     <span>Google Maps</span>
-                    <ExternalLink className="w-3 h-3 ml-1" />
+                    <ExternalLink className="w-3.5 h-3.5" />
                   </a>
+                </div>
+              </div>
+
+              {/* Body: 2-Column Layout (Map on Left + Sectors on Right) */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
+                {/* Map Column (Span 8) */}
+                <div className="lg:col-span-8 p-3 sm:p-5 flex flex-col justify-between bg-slate-950/60">
+                  {/* View Switcher Controls */}
+                  <div className="flex flex-wrap items-center justify-between pb-3 gap-2">
+                    <div className="flex items-center p-0.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono">
+                      <button
+                        type="button"
+                        onClick={() => setMapLayer('k')}
+                        className={`px-2.5 py-1 text-xs font-mono font-bold rounded-lg transition-all ${
+                          mapLayer === 'k'
+                            ? 'bg-cyan-500 text-slate-950 shadow'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                        title="Purong Satelayt Layer ng Google Maps"
+                      >
+                        🛰️ Satellite
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMapLayer('h')}
+                        className={`px-2.5 py-1 text-xs font-mono font-bold rounded-lg transition-all ${
+                          mapLayer === 'h'
+                            ? 'bg-cyan-500 text-slate-950 shadow'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                        title="Satelayt na may kalsada at mga label"
+                      >
+                        🛰️ Hybrid
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMapLayer('p')}
+                        className={`px-2.5 py-1 text-xs font-mono font-bold rounded-lg transition-all ${
+                          mapLayer === 'p'
+                            ? 'bg-cyan-500 text-slate-950 shadow'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                        title="Topographic Terrain"
+                      >
+                        🏔️ Terrain
+                      </button>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowRadarHud((prev) => !prev)}
+                        className={`px-2.5 py-1 text-xs font-mono rounded-lg border transition-all cursor-pointer ${
+                          showRadarHud
+                            ? 'bg-cyan-950 text-cyan-300 border-cyan-500/40 shadow-[0_0_10px_rgba(6,182,212,0.25)]'
+                            : 'bg-slate-900 text-slate-400 border-slate-800'
+                        }`}
+                        title="I-on o i-off ang Radar HUD Overlay"
+                      >
+                        Radar HUD: {showRadarHud ? 'ON' : 'OFF'}
+                      </button>
+
+                      {showRadarHud && (
+                        <button
+                          type="button"
+                          onClick={() => setRadarSweepEnabled((prev) => !prev)}
+                          className={`hidden sm:flex items-center space-x-1 px-2.5 py-1 text-xs font-mono rounded-lg border transition-all cursor-pointer ${
+                            radarSweepEnabled
+                              ? 'bg-emerald-950 text-emerald-300 border-emerald-500/40'
+                              : 'bg-slate-900 text-slate-400 border-slate-800'
+                          }`}
+                          title="I-on o i-off ang umiikot na radar beam"
+                        >
+                          <RotateCw className={`w-3 h-3 ${radarSweepEnabled ? 'animate-spin' : ''}`} />
+                          <span>Sweep: {radarSweepEnabled ? 'ON' : 'OFF'}</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Map Window */}
+                  <div ref={mapContainerRef} className="relative aspect-[4/3] sm:aspect-[16/10] w-full rounded-2xl bg-slate-950 border border-cyan-500/30 overflow-hidden flex items-center justify-center select-none shadow-2xl">
+                    {/* Live Satellite Google Map layer as the base */}
+                    <iframe
+                      key={`satellite-radar-bento-${currentSector.id}-${mapLayer}`}
+                      title={`Google Maps Satellite Radar - ${currentSector.name}`}
+                      src={getSectorEmbedUrl(currentSector, mapLayer)}
+                      className="w-full h-full border-0 filter contrast-[1.08] saturate-[1.1]"
+                      loading="lazy"
+                      allowFullScreen
+                    />
+
+                    {/* Topographic Radar HUD Overlay (pointer-events-none so users can pan/zoom satellite map) */}
+                    {showRadarHud && (
+                      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none">
+                        {/* Topographic Rings */}
+                        <div className="absolute inset-6 rounded-full border border-cyan-400/25 shadow-[0_0_15px_rgba(6,182,212,0.15)]" />
+                        <div className="absolute inset-20 rounded-full border border-cyan-400/20" />
+                        <div className="absolute inset-36 rounded-full border border-cyan-400/15 hidden sm:block" />
+                        <div className="absolute inset-x-0 top-1/2 border-t border-cyan-400/20" />
+                        <div className="absolute inset-y-0 left-1/2 border-l border-cyan-400/20" />
+
+                        {/* Sweeping Beam */}
+                        {radarSweepEnabled && (
+                          <div
+                            className="absolute w-full h-full pointer-events-none"
+                            style={{ transform: `rotate(${radarAngle}deg)` }}
+                          >
+                            <div
+                              className="w-1/2 h-1/2 origin-bottom-right"
+                              style={{
+                                background: 'conic-gradient(from 0deg, rgba(6, 182, 212, 0.40) 0deg, transparent 65deg)',
+                              }}
+                            />
+                          </div>
+                        )}
+
+                        <div className="absolute top-1/2 left-1/2 -translate-y-4 translate-x-16 sm:translate-x-20 text-[9px] font-mono text-cyan-400/60 font-bold">
+                          2.5 KM
+                        </div>
+                        <div className="absolute top-1/2 left-1/2 -translate-y-4 translate-x-36 sm:translate-x-44 text-[9px] font-mono text-cyan-400/60 font-bold hidden sm:block">
+                          5.0 KM
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Live Floating Sector Badge */}
+                    <div className="absolute top-3 left-3 z-10 pointer-events-none flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-950/85 backdrop-blur border border-cyan-500/40 shadow-xl">
+                      <span
+                        className="w-2.5 h-2.5 rounded-full animate-ping"
+                        style={{ backgroundColor: currentSector.color }}
+                      />
+                      <div className="flex flex-col">
+                        <span className="text-xs font-mono font-bold text-cyan-300">
+                          📍 {currentSector.name} ({currentSector.coordsText})
+                        </span>
+                        <span className="text-[10px] font-mono text-emerald-400">
+                          Google Satellite Layer • Elev: {currentSector.elevation}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Telemetry Footer */}
+                  <div className="mt-3 p-3 rounded-xl bg-slate-900/90 border border-slate-800 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center space-x-2">
+                      <MapPin className="w-4 h-4 text-cyan-400" />
+                      <span className="text-xs font-bold text-white">{currentSector.name}</span>
+                      <span className="text-[11px] font-mono text-cyan-300">({currentSector.coordsText})</span>
+                    </div>
+                    <span className="text-[11px] font-mono text-emerald-400">
+                      Elevation: {currentSector.elevation}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Sidebar Column: Dingalan Coastal Sectors (Span 4) */}
+                <div className="lg:col-span-4 p-4 border-t lg:border-t-0 lg:border-l border-slate-800 bg-slate-900/95 flex flex-col justify-between">
+                  <div>
+                    <h4 className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                      MGA SONA NG BAYBAYIN (GOOGLE MAPS POINTS)
+                    </h4>
+                    <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
+                      {DINGALAN_MAP_SECTORS.map((sector) => {
+                        const isSelected = selectedSectorId === sector.id;
+                        return (
+                          <div
+                            key={`overview-list-${sector.id}`}
+                            onClick={() => handleSelectSector(sector.id)}
+                            className={`p-2.5 rounded-xl border cursor-pointer transition-all ${
+                              isSelected
+                                ? 'bg-cyan-950/80 border-cyan-500 shadow-md ring-1 ring-cyan-500/30'
+                                : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700 text-slate-300'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2 min-w-0">
+                                <span
+                                  className="w-2.5 h-2.5 rounded-full shrink-0"
+                                  style={{ backgroundColor: sector.color }}
+                                />
+                                <span className="text-xs font-bold text-white truncate">
+                                  {sector.name}
+                                </span>
+                              </div>
+                              <span
+                                className="text-[9px] font-mono px-1.5 py-0.2 rounded border shrink-0"
+                                style={{
+                                  color: sector.color,
+                                  borderColor: `${sector.color}55`,
+                                  backgroundColor: `${sector.color}15`,
+                                }}
+                              >
+                                {sector.elevation}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-[11px] text-slate-400 line-clamp-1">
+                              {sector.subName}
+                            </p>
+                            <div className="mt-1.5 flex items-center justify-between text-[10px] font-mono text-slate-500">
+                              <span>{sector.coordsText}</span>
+                              <span className="text-cyan-400 font-bold hover:underline">
+                                I-zoom sa Map →
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-slate-800">
+                    <a
+                      href="https://www.google.com/maps/place/Dingalan,+Aurora/@15.3857644,121.3653136,12z"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-xs flex items-center justify-center space-x-2 shadow transition-all cursor-pointer"
+                    >
+                      <span>Buksan ang Dingalan sa Google Maps</span>
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </div>
                 </div>
               </div>
             </div>
@@ -848,382 +936,10 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
               </div>
             </div>
 
-            {/* --------------------------------------------------------------------- */}
-            {/* TILE 4: MEDIUM TILE (Span 6) - Circular Compliance Gauge */}
-            {/* --------------------------------------------------------------------- */}
-            <div className="md:col-span-6 bg-slate-900/60 backdrop-blur-2xl border border-cyan-500/25 rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 shadow-[0_12px_40px_rgba(0,0,0,0.4)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.08)] flex flex-col justify-between relative overflow-hidden">
-              <div>
-                {/* Header */}
-                <div className="flex items-center justify-between pb-4 border-b border-slate-700/60">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400">
-                      <CheckCircle2 className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-base font-extrabold text-white tracking-tight">
-                        Compliance Gauge & Verification
-                      </h3>
-                      <p className="text-[11px] font-mono text-slate-400">
-                        Real-time Quota Completion Ratio
-                      </p>
-                    </div>
-                  </div>
 
-                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
-                    PESO & MENRO AUDITED
-                  </span>
-                </div>
-
-                {/* Circular Gauge Graphic & Breakdown */}
-                <div className="mt-4 grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
-                  {/* Circular Ring Gauge */}
-                  <div className="sm:col-span-5 flex flex-col items-center justify-center relative">
-                    <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 100 100">
-                      {/* Background track */}
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r="40"
-                        stroke="rgba(30, 41, 59, 0.8)"
-                        strokeWidth="10"
-                        fill="transparent"
-                      />
-                      {/* Animated Glowing Progress Ring (94%) */}
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r="40"
-                        stroke="url(#compliance-gradient)"
-                        strokeWidth="10"
-                        strokeDasharray={251.2}
-                        strokeDashoffset={251.2 * (1 - 0.948)}
-                        strokeLinecap="round"
-                        fill="transparent"
-                        className="transition-all duration-1000 ease-out"
-                      />
-                      <defs>
-                        <linearGradient id="compliance-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#10b981" />
-                          <stop offset="50%" stopColor="#06b6d4" />
-                          <stop offset="100%" stopColor="#38bdf8" />
-                        </linearGradient>
-                      </defs>
-                    </svg>
-
-                    {/* Center Text */}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                      <span className="text-2xl font-black font-mono text-white tracking-tight">
-                        94.8%
-                      </span>
-                      <span className="text-[9px] font-mono text-emerald-400 font-bold uppercase">
-                        COMPLIANT
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Sub-Metrics Breakdown */}
-                  <div className="sm:col-span-7 space-y-2 text-xs">
-                    <div className="p-2 rounded-xl bg-slate-950/80 border border-slate-800 flex justify-between items-center">
-                      <span className="text-slate-400">Total Workforce Complied:</span>
-                      <span className="font-mono font-bold text-emerald-400">142 Workers</span>
-                    </div>
-
-                    <div className="p-2 rounded-xl bg-slate-950/80 border border-slate-800 flex justify-between items-center">
-                      <span className="text-slate-400">Pending Verification:</span>
-                      <span className="font-mono font-bold text-amber-400">8 Workers</span>
-                    </div>
-
-                    <div className="p-2 rounded-xl bg-slate-950/80 border border-slate-800 flex justify-between items-center">
-                      <span className="text-slate-400">Tampered / Forged Tokens:</span>
-                      <span className="font-mono font-bold text-slate-300">0 Attempts</span>
-                    </div>
-
-                    <div className="p-2 rounded-xl bg-slate-950/80 border border-slate-800 flex justify-between items-center">
-                      <span className="text-slate-400">Photo Storage Optimization:</span>
-                      <span className="font-mono font-bold text-cyan-400">82% Saved</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Bottom Card Footer */}
-              <div className="mt-4 pt-3 border-t border-slate-700/60 flex items-center justify-between">
-                <span className="text-xs text-slate-400 font-mono">
-                  Sign-Off: MENRO Inspector + PESO Head
-                </span>
-                <button
-                  onClick={() => onNavigate('reports')}
-                  className="px-3.5 py-1.5 rounded-xl bg-cyan-600/90 hover:bg-cyan-600 text-white font-bold text-xs flex items-center space-x-1 shadow transition-all"
-                >
-                  <span>Export Report (CSV/PDF)</span>
-                  <ChevronRight className="w-3.5 h-3.5 ml-1" />
-                </button>
-              </div>
-            </div>
           </div>
         </section>
       </div>
-      {/* Fullscreen Google Maps Topographic Radar Modal */}
-      {isFullMapModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-5 bg-slate-950/85 backdrop-blur-md animate-fade-in">
-          <div className="relative w-full max-w-5xl max-h-[92vh] flex flex-col bg-slate-900 border border-cyan-500/40 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden">
-            {/* Modal Header */}
-            <div className="p-4 sm:p-5 border-b border-slate-800 bg-slate-950/70 flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="p-2.5 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400">
-                  <Compass className="w-6 h-6 animate-spin-slow" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                    <span>Google Maps Topographic GPS Radar</span>
-                    <span className="px-2 py-0.5 text-xs font-mono rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                      Dingalan, Aurora
-                    </span>
-                  </h3>
-                  <p className="text-xs font-mono text-slate-400">
-                    Satelayt ng Dingalan Bay, Paltic, Butas na Bato, Cabog, Ibona, at Umiray
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <a
-                  href={`https://maps.google.com/?q=${encodeURIComponent(
-                    `${currentSector.name}, Dingalan, Aurora, Philippines`
-                  )}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-all shadow"
-                >
-                  <span>Buksan sa Google Maps</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-                <button
-                  type="button"
-                  onClick={() => setIsFullMapModalOpen(false)}
-                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Modal Body: Map + Sector List Grid */}
-            <div className="flex-1 overflow-y-auto grid grid-cols-1 lg:grid-cols-12 gap-0">
-              {/* Map Column (Span 8) */}
-              <div className="lg:col-span-8 p-3 sm:p-5 flex flex-col justify-between bg-slate-950/60">
-                {/* View Switcher Controls */}
-                <div className="flex items-center justify-between pb-3">
-                  <div className="inline-flex rounded-xl p-1 bg-slate-900 border border-slate-800">
-                    <button
-                      type="button"
-                      onClick={() => setMapMode('satellite')}
-                      className={`px-3 py-1 text-xs font-mono font-bold rounded-lg transition-all ${
-                        mapMode === 'satellite'
-                          ? 'bg-cyan-500 text-slate-950 shadow'
-                          : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      🛰️ Satellite (Larawan)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMapMode('google-live')}
-                      className={`px-3 py-1 text-xs font-mono font-bold rounded-lg transition-all ${
-                        mapMode === 'google-live'
-                          ? 'bg-cyan-500 text-slate-950 shadow'
-                          : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      🗺️ Interactive Google Maps
-                    </button>
-                  </div>
-
-                  {mapMode === 'satellite' && (
-                    <button
-                      type="button"
-                      onClick={() => setRadarSweepEnabled((prev) => !prev)}
-                      className={`px-2.5 py-1 text-xs font-mono rounded-lg border transition-all ${
-                        radarSweepEnabled
-                          ? 'bg-cyan-950 text-cyan-300 border-cyan-500/40'
-                          : 'bg-slate-900 text-slate-400 border-slate-800'
-                      }`}
-                    >
-                      Radar Sweep: {radarSweepEnabled ? 'ON' : 'OFF'}
-                    </button>
-                  )}
-                </div>
-
-                {/* Map Window */}
-                <div className="relative aspect-[4/3] sm:aspect-[16/10] w-full rounded-2xl bg-slate-950 border border-cyan-500/30 overflow-hidden flex items-center justify-center select-none shadow-2xl">
-                  {mapMode === 'satellite' ? (
-                    <>
-                      <img
-                        src="/dingalan_google_maps_satellite.png"
-                        alt="Dingalan Aurora Google Maps Satellite View"
-                        className="absolute inset-0 w-full h-full object-cover object-center filter saturate-[1.1] contrast-[1.08]"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          if (!target.src.includes('assets/aistudio/image_479cd259.png')) {
-                            target.src = '/assets/aistudio/image_479cd259.png';
-                          }
-                        }}
-                      />
-
-                      {/* Topographic Rings */}
-                      <div className="absolute inset-6 rounded-full border border-cyan-400/20 pointer-events-none" />
-                      <div className="absolute inset-20 rounded-full border border-cyan-400/15 pointer-events-none" />
-                      <div className="absolute inset-x-0 top-1/2 border-t border-cyan-400/20 pointer-events-none" />
-                      <div className="absolute inset-y-0 left-1/2 border-l border-cyan-400/20 pointer-events-none" />
-
-                      {/* Sweeping Beam */}
-                      {radarSweepEnabled && (
-                        <div
-                          className="absolute w-full h-full pointer-events-none"
-                          style={{ transform: `rotate(${radarAngle}deg)` }}
-                        >
-                          <div
-                            className="w-1/2 h-1/2 origin-bottom-right"
-                            style={{
-                              background: 'conic-gradient(from 0deg, rgba(6, 182, 212, 0.45) 0deg, transparent 65deg)',
-                            }}
-                          />
-                        </div>
-                      )}
-
-                      {/* Pins */}
-                      {DINGALAN_MAP_SECTORS.map((sector) => {
-                        const isSelected = selectedSectorId === sector.id;
-                        return (
-                          <div
-                            key={`modal-${sector.id}`}
-                            style={{
-                              top: `${sector.topPct}%`,
-                              left: `${sector.leftPct}%`,
-                            }}
-                            onClick={() => setSelectedSectorId(sector.id)}
-                            className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer z-20 transition-all duration-300 ${
-                              isSelected ? 'scale-125 z-30' : 'hover:scale-110'
-                            }`}
-                          >
-                            <div className="flex flex-col items-center">
-                              <span className="relative flex h-4 w-4">
-                                <span
-                                  className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
-                                  style={{ backgroundColor: sector.color }}
-                                />
-                                <span
-                                  className="relative inline-flex rounded-full h-4 w-4 border-2 border-white shadow-xl"
-                                  style={{ backgroundColor: sector.color }}
-                                />
-                              </span>
-                              <span
-                                className={`mt-0.5 px-2 py-0.5 rounded text-[10px] font-mono font-bold whitespace-nowrap shadow-lg backdrop-blur ${
-                                  isSelected
-                                    ? 'bg-cyan-500 text-slate-950 border border-white ring-2 ring-cyan-400/50 scale-105'
-                                    : 'bg-slate-950/90 text-white border border-slate-700/80'
-                                }`}
-                              >
-                                {sector.name}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </>
-                  ) : (
-                    <iframe
-                      title="Modal Google Maps Satellite"
-                      src="https://maps.google.com/maps?q=Dingalan,+Aurora,+Philippines&t=k&z=12&ie=UTF8&iwloc=&output=embed"
-                      className="w-full h-full border-0 filter contrast-[1.05]"
-                      loading="lazy"
-                      allowFullScreen
-                    />
-                  )}
-                </div>
-
-                {/* Telemetry Footer */}
-                <div className="mt-3 p-3 rounded-xl bg-slate-900/90 border border-slate-800 flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center space-x-2">
-                    <MapPin className="w-4 h-4 text-cyan-400" />
-                    <span className="text-xs font-bold text-white">{currentSector.name}</span>
-                    <span className="text-[11px] font-mono text-cyan-300">({currentSector.coordsText})</span>
-                  </div>
-                  <span className="text-[11px] font-mono text-emerald-400">
-                    Elevation: {currentSector.elevation}
-                  </span>
-                </div>
-              </div>
-
-              {/* Sidebar Column: Dingalan Coastal Sectors (Span 4) */}
-              <div className="lg:col-span-4 p-4 border-t lg:border-t-0 lg:border-l border-slate-800 bg-slate-900/95 flex flex-col justify-between">
-                <div>
-                  <h4 className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider mb-2.5">
-                    Mga Sona ng Baybayin (Google Maps Points)
-                  </h4>
-                  <div className="space-y-2">
-                    {DINGALAN_MAP_SECTORS.map((sector) => {
-                      const isSelected = selectedSectorId === sector.id;
-                      return (
-                        <div
-                          key={`list-${sector.id}`}
-                          onClick={() => setSelectedSectorId(sector.id)}
-                          className={`p-2.5 rounded-xl border cursor-pointer transition-all ${
-                            isSelected
-                              ? 'bg-cyan-950/80 border-cyan-500 shadow-md ring-1 ring-cyan-500/30'
-                              : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700 text-slate-300'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2 min-w-0">
-                              <span
-                                className="w-2.5 h-2.5 rounded-full shrink-0"
-                                style={{ backgroundColor: sector.color }}
-                              />
-                              <span className="text-xs font-bold text-white truncate">
-                                {sector.name}
-                              </span>
-                            </div>
-                            <span
-                              className="text-[9px] font-mono px-1.5 py-0.2 rounded border shrink-0"
-                              style={{
-                                color: sector.color,
-                                borderColor: `${sector.color}55`,
-                                backgroundColor: `${sector.color}15`,
-                              }}
-                            >
-                              {sector.elevation}
-                            </span>
-                          </div>
-                          <p className="mt-1 text-[11px] text-slate-400 line-clamp-1">
-                            {sector.subName}
-                          </p>
-                          <div className="mt-1.5 flex items-center justify-between text-[10px] font-mono text-slate-500">
-                            <span>{sector.coordsText}</span>
-                            <span className="text-cyan-400 hover:underline">I-focus →</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="mt-4 pt-3 border-t border-slate-800">
-                  <a
-                    href="https://www.google.com/maps/place/Dingalan,+Aurora/@15.3857644,121.3653136,12z"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-xs flex items-center justify-center space-x-2 shadow transition-all"
-                  >
-                    <span>Buksan ang Dingalan sa Google Maps</span>
-                    <ExternalLink className="w-4 h-4" />
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

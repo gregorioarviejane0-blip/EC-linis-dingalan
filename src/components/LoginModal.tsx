@@ -1846,27 +1846,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
                             {/* BOTTOM SUBMISSION BUTTON: FITTED 100% INSIDE */}
                             <div className="pt-0.5 sm:pt-1 w-full">
-                              {uploadCutoffInfo.isExpired ? (
-                                <button
-                                  type="button"
-                                  onClick={handleUploadSubmit}
-                                  disabled={uploadIsProcessing}
-                                  className="w-full py-2 sm:py-3 px-3 sm:px-4 rounded-lg sm:rounded-xl bg-rose-950/90 hover:bg-rose-900/90 border-2 border-rose-500/70 text-rose-200 font-mono font-black text-[11px] sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer shadow-lg active:scale-95 uppercase tracking-wide"
-                                >
-                                  <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-400 shrink-0" />
-                                  <span>ISARA NA ANG SUBMISSION (CUT-OFF)</span>
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={handleUploadSubmit}
-                                  disabled={uploadIsProcessing}
-                                  className="w-full py-2 sm:py-3 px-3 sm:px-4 rounded-lg sm:rounded-xl fluid-btn-emerald text-slate-950 font-mono font-black text-[11px] sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer shadow-lg active:scale-95 uppercase tracking-wide"
-                                >
-                                  <Upload className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-950 shrink-0" />
-                                  <span>{uploadIsProcessing ? 'PINA-PROSESO...' : 'I-SUMITE ANG PATUNAY SA PAGDALO (SUBMIT)'}</span>
-                                </button>
-                              )}
+                              <button
+                                type="button"
+                                onClick={handleUploadSubmit}
+                                disabled={uploadIsProcessing}
+                                className="w-full py-2 sm:py-3 px-3 sm:px-4 rounded-lg sm:rounded-xl fluid-btn-emerald text-slate-950 font-mono font-black text-[11px] sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer shadow-lg active:scale-95 uppercase tracking-wide"
+                              >
+                                <Upload className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-950 shrink-0" />
+                                <span>{uploadIsProcessing ? 'PINA-PROSESO...' : 'I-SUMITE ANG PATUNAY SA PAGDALO (SUBMIT)'}</span>
+                              </button>
                             </div>
                           </>
                         )}
@@ -2645,7 +2633,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       <span className="absolute w-2 h-2 rounded-full bg-red-400 shadow-[0_0_8px_#ef4444]" />
                     </div>
 
-                    {/* 2. Softened Subdued Seal Ring (Reduces the harsh blue glare/kinang) */}
+                    {/* 2. Softened Subdued Seal Ring */}
                     <div
                       className="absolute top-[19%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[28%] aspect-square rounded-full border-[8px] sm:border-[10px] border-slate-900/35 blur-[3px] pointer-events-none"
                     />
@@ -2707,7 +2695,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       className="absolute top-[48%] left-[45%] w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#38bdf8]"
                     />
 
-                    {/* 6. Living Ambient Cyber Edge Aura */}
+                    {/* 4. Living Ambient Cyber Edge Aura */}
                     <motion.div
                       animate={{
                         opacity: [0.4, 0.85, 0.4],
@@ -2768,9 +2756,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
                   {/* INTERACTIVE FORM FIELDS OVER THE ARTWORK */}
                   <form onSubmit={handleLoginSubmit} className="absolute inset-0 z-20">
-                    {/* Username Interactive Input Field (Exactly aligns with artwork pill) */}
+                    {/* Username Interactive Input Field (Transparent over artwork pill) */}
                     <div
-                      className="absolute flex items-center"
+                      className="absolute flex items-center bg-transparent"
                       style={{
                         top: '52.8%',
                         left: '18.4%',
@@ -2793,9 +2781,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       />
                     </div>
 
-                    {/* Password Interactive Input Field (Exactly aligns with artwork pill) */}
+                    {/* Password Interactive Input Field (Transparent over artwork pill) */}
                     <div
-                      className="absolute flex items-center"
+                      className="absolute flex items-center bg-transparent"
                       style={{
                         top: '65.4%',
                         left: '18.4%',
@@ -2818,11 +2806,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       />
                     </div>
 
-                    {/* Password Eye Toggle Button (Exactly aligns with eye icon in artwork) */}
+                    {/* Password Eye Toggle Button (Aligns with eye icon in artwork) */}
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute flex items-center justify-center cursor-pointer transition-transform hover:scale-110 active:scale-95"
+                      className="absolute flex items-center justify-center cursor-pointer transition-transform hover:scale-110 active:scale-95 bg-transparent"
                       style={{
                         top: '65.4%',
                         left: '81.9%',
@@ -2840,11 +2828,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       )}
                     </button>
 
-                    {/* "LOG IN TO SYSTEM" Submit Button with Rich Hover Animation */}
+                    {/* "LOG IN TO SYSTEM" Submit Button (Dark Green Color) */}
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className="group absolute rounded-full cursor-pointer transition-all duration-300 hover:scale-[1.02] active:scale-[0.985] flex items-center justify-center overflow-hidden"
+                      className="group absolute rounded-full cursor-pointer transition-all duration-300 hover:scale-[1.02] active:scale-[0.985] flex items-center justify-center overflow-hidden border-2 border-emerald-500/80 bg-gradient-to-r from-[#022c22] via-[#064e3b] to-[#022c22] shadow-[0_6px_25px_rgba(6,78,59,0.8),inset_0_1px_3px_rgba(255,255,255,0.3)] hover:from-[#064e3b] hover:via-[#047857] hover:to-[#064e3b] hover:border-emerald-400 hover:shadow-[0_0_30px_rgba(16,185,129,0.7)]"
                       style={{
                         top: '78.4%',
                         left: '9.8%',
@@ -2852,32 +2840,29 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                         height: '9.8%',
                       }}
                     >
-                      {/* 1. Radiant Glowing Cyber Aura on Hover */}
-                      <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 opacity-0 group-hover:opacity-100 blur-md transition-opacity duration-300 pointer-events-none" />
+                      {/* Subtle Emerald Sheen */}
+                      <div className="absolute inset-0 bg-gradient-to-b from-white/15 to-transparent pointer-events-none" />
 
-                      {/* 2. Illuminated Glowing Neon Fill & Border on Hover */}
-                      <div className="absolute inset-0 rounded-full bg-gradient-to-r from-[#00e676] via-[#00d2b4] to-[#00b0ff] opacity-0 group-hover:opacity-100 transition-opacity duration-300 border-2 border-white/80 shadow-[0_0_25px_rgba(0,229,255,0.7),inset_0_0_15px_rgba(255,255,255,0.4)] pointer-events-none" />
+                      {/* Fast Laser Shimmer Sweep on Hover */}
+                      <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12 pointer-events-none" />
 
-                      {/* 3. Fast Sleek Laser Shimmer Streak Sweep on Hover */}
-                      <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out bg-gradient-to-r from-transparent via-white/50 to-transparent skew-x-12 pointer-events-none" />
-
-                      {/* 4. Active Button Content Overlay on Hover (Shield Icon, Divider & Luminous Text) */}
-                      <div className="relative z-10 w-full h-full flex items-center justify-center px-4 opacity-0 group-hover:opacity-100 transition-all duration-300">
-                        {/* Glowing Shield Icon */}
-                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-white/80 bg-white/20 flex items-center justify-center text-white shrink-0 shadow-[0_0_12px_rgba(255,255,255,0.8)] group-hover:scale-110 group-hover:rotate-6 transition-transform duration-300">
-                          <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-white drop-shadow" />
+                      {/* Button Content: Glowing Shield Icon, Divider & Luminous Text */}
+                      <div className="relative z-10 w-full h-full flex items-center justify-center px-4">
+                        {/* Dark Green Glowing Shield Icon Badge */}
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-emerald-300/80 bg-emerald-500/30 flex items-center justify-center text-white shrink-0 shadow-[0_0_12px_rgba(16,185,129,0.8)] group-hover:scale-110 group-hover:rotate-6 transition-transform duration-300">
+                          <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-100 drop-shadow" />
                         </div>
                         {/* Divider Line */}
-                        <div className="w-[1.5px] h-4 sm:h-5 bg-white/60 mx-3 sm:mx-3.5 shrink-0" />
-                        {/* Luminous Text with Expanded Tracking */}
-                        <span className="tracking-widest font-black uppercase text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] text-xs sm:text-sm md:text-base group-hover:tracking-[0.18em] transition-all duration-300">
+                        <div className="w-[1.5px] h-4 sm:h-5 bg-emerald-400/60 mx-3 sm:mx-3.5 shrink-0" />
+                        {/* Luminous Text */}
+                        <span className="tracking-widest font-black uppercase text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)] text-xs sm:text-sm md:text-base group-hover:tracking-[0.18em] transition-all duration-300">
                           LOG IN TO SYSTEM
                         </span>
                       </div>
 
                       {/* While loading, show animated overlay on top of button */}
                       {isLoading && (
-                        <div className="absolute inset-0 rounded-full bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-500 flex items-center justify-center text-white font-black tracking-widest text-xs sm:text-sm shadow-lg z-20">
+                        <div className="absolute inset-0 rounded-full bg-gradient-to-r from-emerald-950 via-emerald-900 to-emerald-950 flex items-center justify-center text-white font-black tracking-widest text-xs sm:text-sm shadow-lg z-20">
                           <span className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
                           <span>LOGGING IN TO SYSTEM...</span>
                         </div>

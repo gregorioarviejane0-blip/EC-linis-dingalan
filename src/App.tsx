@@ -29,6 +29,7 @@ import { GenerateQrEventModal } from './components/GenerateQrEventModal';
 import { EventQrNoticeModal } from './components/EventQrNoticeModal';
 import { GeneratePersonalQrModal } from './components/GeneratePersonalQrModal';
 import { AdminAnonymousInboxModal } from './components/AdminAnonymousInboxModal';
+import { FullScreenMapRadarView } from './components/FullScreenMapRadarView';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { EventQrBroadcast, AnonymousMessage } from './types';
 import { checkEventCutoff } from './utils/watermarkEngine';
@@ -1114,6 +1115,14 @@ export default function App() {
               onOpenEventNoticeModal={() => setIsEventQrNoticeModalOpen(true)}
               onOpenPersonalQrModal={() => setIsPersonalQrModalOpen(true)}
               eventBroadcast={latestEventBroadcast}
+            />
+          )}
+
+          {/* TAB: GOOGLE MAPS TOPOGRAPHIC GPS RADAR (FULL SCREEN) */}
+          {activeTab === 'map' && (
+            <FullScreenMapRadarView
+              currentUser={currentUser}
+              onBackToOverview={() => setActiveTab('homepage')}
             />
           )}
 

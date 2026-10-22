@@ -22,6 +22,7 @@ import {
   Images,
   Upload,
   EyeOff,
+  Map as MapIcon,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -184,6 +185,7 @@ export const Header: React.FC<HeaderProps> = ({
         <nav className="hidden xl:flex items-center space-x-0.5 xl:space-x-1 font-bold font-mono relative">
           {[
             { id: 'homepage', label: 'Overview', icon: Sparkles },
+            { id: 'map', label: 'Map', fullLabel: 'GPS Radar Map', icon: MapIcon },
             { id: 'reports', label: 'Report', fullLabel: 'Program Report', icon: FileText },
             { id: 'beneficiaries', label: 'Asign Leader', icon: UserCheck },
             { id: 'activities', label: 'Programs', icon: Calendar },
@@ -364,11 +366,12 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Mobile Sub-Navigation Bar - Compact Responsive Grid with Kinetic Tap Feedback */}
-      <div className="grid grid-cols-4 sm:flex sm:items-center sm:justify-start lg:hidden gap-1 py-1 px-0.5 mt-1 text-[9.5px] xs:text-[10.5px] font-mono font-bold select-none w-full">
+      <div className="grid grid-cols-5 sm:flex sm:items-center sm:justify-start lg:hidden gap-1 py-1 px-0.5 mt-1 text-[8.5px] xs:text-[9.5px] font-mono font-bold select-none w-full">
         {[
           { id: 'homepage', label: 'Overview', icon: Sparkles },
+          { id: 'map', label: 'Map', icon: MapIcon },
           { id: 'reports', label: 'Report', icon: FileText },
-          { id: 'beneficiaries', label: 'Asign Leader', icon: UserCheck },
+          { id: 'beneficiaries', label: 'Leader', icon: UserCheck },
           { id: 'activities', label: 'Programs', icon: Calendar },
         ].map((tab) => {
           const Icon = tab.icon;
