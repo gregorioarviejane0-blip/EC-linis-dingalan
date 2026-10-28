@@ -286,6 +286,8 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           )}
 
+
+
           {/* Generate Event QR Button */}
           {onOpenGenerateQrModal && (
             <motion.button

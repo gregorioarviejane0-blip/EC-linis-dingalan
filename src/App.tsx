@@ -1122,6 +1122,7 @@ export default function App() {
           {activeTab === 'map' && (
             <FullScreenMapRadarView
               currentUser={currentUser}
+              activities={activities}
               onBackToOverview={() => setActiveTab('homepage')}
             />
           )}
@@ -1459,8 +1460,8 @@ export default function App() {
           />
         )}
 
-        {/* Footer */}
-        <footer className="border-t border-slate-800/80 bg-slate-950/80 backdrop-blur-xl py-4 mt-auto">
+        {/* Footer (Hidden on mobile devices & map view to maximize screen and map view) */}
+        <footer className={`border-t border-slate-800/80 bg-slate-950/80 backdrop-blur-xl py-4 mt-auto ${activeTab === 'map' ? 'hidden' : 'hidden md:block'}`}>
           <div className="max-w-[1850px] mx-auto px-3 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 font-mono gap-3">
             <div>
               Linis Dingalan EC Management • PESO & MENRO Operations • Municipality of Dingalan, Aurora

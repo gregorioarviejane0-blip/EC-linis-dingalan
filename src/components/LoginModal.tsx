@@ -1610,7 +1610,36 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
                       {/* Body Content (Fits on mobile without scrolling) */}
                       <div className="p-2 xs:p-2.5 sm:p-5 overflow-hidden sm:overflow-y-auto space-y-1.5 xs:space-y-2 sm:space-y-4 flex-1 min-h-0 text-left scrollbar-none">
-                        {uploadIsSuccess ? (
+                        {!eventBroadcast ? (
+                          <div className="text-center py-6 sm:py-12 space-y-4 sm:space-y-5 my-auto animate-scaleIn">
+                            <div className="relative w-16 h-16 sm:w-24 sm:h-24 mx-auto">
+                              <div className="absolute inset-0 rounded-full bg-rose-500/30 animate-ping opacity-75" />
+                              <div className="relative w-16 h-16 sm:w-24 sm:h-24 rounded-full bg-gradient-to-tr from-rose-600/30 to-rose-500/20 border-2 border-rose-500 flex items-center justify-center text-rose-400 shadow-[0_0_40px_rgba(244,63,94,0.6)] animate-bounce duration-1000">
+                                <AlertCircle className="w-8 h-8 sm:w-12 sm:h-12" />
+                              </div>
+                            </div>
+                            <div className="space-y-2 sm:space-y-3 max-w-lg mx-auto px-4 py-4 sm:py-5 rounded-2xl bg-rose-950/40 border border-rose-500/50 shadow-inner">
+                              <span className="px-3.5 py-1.5 rounded-full text-[10px] sm:text-xs font-mono font-black bg-rose-500/25 text-rose-300 border border-rose-500/50 uppercase tracking-widest shadow-[0_0_20px_rgba(244,63,94,0.4)] animate-pulse inline-block">
+                                RESTRICTED ACCESS • NO ACTIVE WORK PROGRAM
+                              </span>
+                              <h4 className="text-base sm:text-2xl font-black text-white uppercase tracking-tight leading-snug drop-shadow-md">
+                                Sorry, you cannot upload pictures when there is no scheduled work program.
+                              </h4>
+                              <p className="text-[11px] sm:text-xs text-slate-300 uppercase font-semibold leading-relaxed">
+                                Apologies, but uploading accomplishment pictures is strictly prohibited until an official work program or schedule is scheduled and broadcasted for today.
+                              </p>
+                            </div>
+                            <div className="pt-2">
+                              <button
+                                type="button"
+                                onClick={() => setActiveView('event')}
+                                className="px-8 py-3 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-mono text-xs sm:text-sm font-black uppercase cursor-pointer border border-rose-400 shadow-[0_0_25px_rgba(244,63,94,0.5)] transition-all transform hover:-translate-y-0.5 active:scale-95"
+                              >
+                                Back to Advisory
+                              </button>
+                            </div>
+                          </div>
+                        ) : uploadIsSuccess ? (
                           <div className="text-center py-2 sm:py-6 space-y-2 sm:space-y-3.5 animate-scaleIn">
                             <div className="w-10 h-10 sm:w-20 sm:h-20 mx-auto rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.4)]">
                               <CheckCircle2 className="w-5 h-5 sm:w-10 sm:h-10 text-emerald-400" />
@@ -2153,63 +2182,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 /* EVENT ADVISORY / SCHEDULE VIEW: COMPACT ON MOBILE SCREEN                  */
                 /* ========================================================================= */
                 <div className="w-full max-w-xl sm:max-w-2xl mx-auto space-y-2">
-                  {/* Program Selector Bar (Picture 4): All buttons fit in one box, scaling down as count grows */}
-                  {allActivities && allActivities.length > 0 && (() => {
-                    const displayActs = (allActivities || []).filter(
-                      (a) => a.status === 'ongoing' || a.status === 'scheduled'
-                    );
-                    if (displayActs.length === 0) return null;
-                    const count = displayActs.length;
-
-                    // Habang dumadami yung button mas lumiliit para laging magkasya sa isang box nang walang overflow
-                    let btnClasses = 'text-[9.5px] sm:text-xs py-1 px-2';
-                    if (count === 3) {
-                      btnClasses = 'text-[8.5px] sm:text-[10px] py-0.5 sm:py-1 px-1 sm:px-1.5';
-                    } else if (count === 4) {
-                      btnClasses = 'text-[7.5px] sm:text-[9px] py-0.5 px-0.5 sm:px-1';
-                    } else if (count >= 5) {
-                      btnClasses = 'text-[6.5px] sm:text-[8px] py-0.5 px-0.5 tracking-tight';
-                    }
-
-                    return (
-                      <div className="w-full flex items-center gap-1 sm:gap-1.5 p-1 sm:p-1.5 rounded-xl bg-slate-900/95 border border-emerald-500/30 shadow-md overflow-hidden select-none">
-                        <span className="text-[8.5px] sm:text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider shrink-0 px-1 flex items-center gap-1">
-                          <Radio className="w-3 h-3 text-emerald-400 shrink-0" />
-                          <span>PROGRAM:</span>
-                        </span>
-                        <div className="flex-1 min-w-0 flex items-center gap-1 overflow-hidden">
-                          {displayActs.map((act) => {
-                            const isSelected = eventBroadcast?.activityId === act.id || eventBroadcast?.activityTitle === act.title;
-                            const sch = parseActivitySchedule(act);
-                            const isNowActive = sch.isCurrentlyActive;
-
-                            return (
-                              <button
-                                key={act.id}
-                                type="button"
-                                onClick={() => {
-                                  setSelectedScheduledActivityId(act.id);
-                                  setActiveBroadcast(convertActivityToBroadcast(act));
-                                }}
-                                className={`flex-1 min-w-0 ${btnClasses} rounded-lg font-mono font-bold transition-all cursor-pointer flex items-center justify-center text-center relative ${
-                                  isSelected
-                                    ? 'bg-emerald-500 text-slate-950 shadow-md font-black ring-1 ring-emerald-300'
-                                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-700'
-                                }`}
-                                title={`Tingnan ang nilalaman ng "${act.title}" mula sa Programs button`}
-                              >
-                                <span className="truncate w-full block text-center leading-tight">{act.title}</span>
-                                {isNowActive && !isSelected && (
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 ml-0.5 animate-ping" />
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })()}
-
                   {eventBroadcast ? (
 
                   <div className="relative rounded-xl sm:rounded-3xl border-2 border-emerald-400/80 shadow-[0_0_40px_rgba(16,185,129,0.35),inset_0_0_20px_rgba(16,185,129,0.15)] bg-slate-950/95 hover:bg-slate-950/98 backdrop-blur-md p-2.5 xs:p-3 sm:p-6 lg:p-7 space-y-1.5 xs:space-y-2 sm:space-y-4 transition-all duration-300 hover:border-emerald-300 animate-scaleIn w-full text-left flex flex-col max-h-[calc(100dvh-65px)] sm:max-h-none overflow-y-auto sm:overflow-visible scrollbar-none [&::-webkit-scrollbar]:hidden">
@@ -2633,10 +2605,87 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       <span className="absolute w-2 h-2 rounded-full bg-red-400 shadow-[0_0_8px_#ef4444]" />
                     </div>
 
-                    {/* 2. Softened Subdued Seal Ring */}
+                    {/* 2. Official Linis Dingalan Logo - No Outer Blue Circle + EC Access Shimmer & Shine Animation */}
                     <div
-                      className="absolute top-[19%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[28%] aspect-square rounded-full border-[8px] sm:border-[10px] border-slate-900/35 blur-[3px] pointer-events-none"
-                    />
+                      className="absolute top-[19.45%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[21%] aspect-square rounded-full pointer-events-none select-none z-10 flex items-center justify-center animate-logo-glow"
+                    >
+                      {/* Crisp Clean Logo Image without Blue Outer Circle */}
+                      <img
+                        src="/assets/linis_dingalan_card_logo_clean.png"
+                        alt="Linis Dingalan Logo"
+                        className="w-full h-full object-contain rounded-full select-none"
+                      />
+
+                      {/* Moving Shimmer Sheen Layer (Exact EC Access LinearGradient Animation) */}
+                      <svg
+                        className="absolute inset-0 w-full h-full rounded-full pointer-events-none mix-blend-screen overflow-hidden"
+                        viewBox="0 0 100 100"
+                      >
+                        <defs>
+                          <linearGradient id="card-seal-shimmer-sweep" x1="-120%" y1="-40%" x2="40%" y2="140%">
+                            <stop offset="0%" stopColor="#00c875" stopOpacity="0" />
+                            <stop offset="35%" stopColor="#00c875" stopOpacity="0" />
+                            <stop offset="45%" stopColor="#a7f3d0" stopOpacity="0.45" />
+                            <stop offset="50%" stopColor="#ffffff" stopOpacity="0.95" />
+                            <stop offset="55%" stopColor="#38bdf8" stopOpacity="0.5" />
+                            <stop offset="65%" stopColor="#00c875" stopOpacity="0" />
+                            <stop offset="100%" stopColor="#00c875" stopOpacity="0" />
+                            <animate attributeName="x1" from="-140%" to="180%" dur="2.8s" repeatCount="indefinite" />
+                            <animate attributeName="x2" from="20%" to="340%" dur="2.8s" repeatCount="indefinite" />
+                          </linearGradient>
+                          <clipPath id="card-seal-circle-clip">
+                            <circle cx="50" cy="50" r="49" />
+                          </clipPath>
+                        </defs>
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="49"
+                          fill="url(#card-seal-shimmer-sweep)"
+                          clipPath="url(#card-seal-circle-clip)"
+                        />
+                      </svg>
+
+                      {/* Dynamic Diagonal Light Sweep Glint (Matching EC Access Light Sweep) */}
+                      <div className="absolute inset-0 rounded-full overflow-hidden pointer-events-none">
+                        <div className="w-full h-full animate-light-sweep bg-gradient-to-r from-transparent via-white/50 to-transparent skew-x-[-25deg]" />
+                      </div>
+
+                      {/* Twinkling Sparkle Stars (Kumikinang na Bituin katulad ng EC Access) */}
+                      <motion.div
+                        animate={{
+                          scale: [0, 1.25, 0],
+                          rotate: [0, 90, 180],
+                          opacity: [0, 1, 0],
+                        }}
+                        transition={{
+                          duration: 2.2,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                          delay: 0.2,
+                        }}
+                        className="absolute -top-1 -right-1 text-emerald-300 drop-shadow-[0_0_8px_#34d399] pointer-events-none"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-300 fill-emerald-300" />
+                      </motion.div>
+
+                      <motion.div
+                        animate={{
+                          scale: [0, 1.15, 0],
+                          rotate: [0, -90, -180],
+                          opacity: [0, 0.95, 0],
+                        }}
+                        transition={{
+                          duration: 2.6,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                          delay: 1.3,
+                        }}
+                        className="absolute -bottom-1 -left-1 text-cyan-300 drop-shadow-[0_0_8px_#22d3ee] pointer-events-none"
+                      >
+                        <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-cyan-300 fill-cyan-300" />
+                      </motion.div>
+                    </div>
 
                     {/* 3. Bioluminescent Floating Cyber Particles */}
                     <motion.div
@@ -2764,6 +2813,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                         left: '18.4%',
                         width: '70.2%',
                         height: '8.4%',
+                        backgroundColor: 'transparent',
                       }}
                     >
                       <input
@@ -2777,7 +2827,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                           WebkitTextFillColor: '#ffffff',
                           backgroundColor: 'transparent',
                         }}
-                        className="w-full h-full bg-transparent text-white placeholder:text-transparent pl-3 sm:pl-4 text-sm sm:text-base md:text-xl font-bold font-sans focus:outline-none tracking-wide"
+                        className="w-full h-full bg-transparent text-white placeholder:text-transparent pl-3 sm:pl-4 text-sm sm:text-base md:text-xl font-bold font-sans focus:outline-none tracking-wide border-0 shadow-none"
                       />
                     </div>
 
@@ -2789,6 +2839,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                         left: '18.4%',
                         width: '63.5%',
                         height: '8.4%',
+                        backgroundColor: 'transparent',
                       }}
                     >
                       <input
@@ -2802,7 +2853,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                           WebkitTextFillColor: '#ffffff',
                           backgroundColor: 'transparent',
                         }}
-                        className="w-full h-full bg-transparent text-white placeholder:text-transparent pl-3 sm:pl-4 text-sm sm:text-base md:text-xl font-bold font-sans focus:outline-none tracking-widest"
+                        className="w-full h-full bg-transparent text-white placeholder:text-transparent pl-3 sm:pl-4 text-sm sm:text-base md:text-xl font-bold font-sans focus:outline-none tracking-widest border-0 shadow-none"
                       />
                     </div>
 

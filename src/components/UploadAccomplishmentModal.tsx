@@ -306,7 +306,36 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
         {/* Modal Body */}
         <div className="p-2.5 sm:p-6 overflow-y-auto space-y-2.5 sm:space-y-5 flex-1 min-h-0 text-left">
           {/* SUCCESS SCREEN */}
-          {isSuccess ? (
+          {!eventBroadcast && !activity ? (
+            <div className="text-center py-6 sm:py-12 space-y-4 sm:space-y-5 my-auto animate-scaleIn">
+              <div className="relative w-16 h-16 sm:w-24 sm:h-24 mx-auto">
+                <div className="absolute inset-0 rounded-full bg-rose-500/30 animate-ping opacity-75" />
+                <div className="relative w-16 h-16 sm:w-24 sm:h-24 rounded-full bg-gradient-to-tr from-rose-600/30 to-rose-500/20 border-2 border-rose-500 flex items-center justify-center text-rose-400 shadow-[0_0_40px_rgba(244,63,94,0.6)] animate-bounce duration-1000">
+                  <AlertCircle className="w-8 h-8 sm:w-12 sm:h-12" />
+                </div>
+              </div>
+              <div className="space-y-2 sm:space-y-3 max-w-lg mx-auto px-4 py-4 sm:py-5 rounded-2xl bg-rose-950/40 border border-rose-500/50 shadow-inner">
+                <span className="px-3.5 py-1.5 rounded-full text-[10px] sm:text-xs font-mono font-black bg-rose-500/25 text-rose-300 border border-rose-500/50 uppercase tracking-widest shadow-[0_0_20px_rgba(244,63,94,0.4)] animate-pulse inline-block">
+                  RESTRICTED ACCESS • NO ACTIVE WORK PROGRAM
+                </span>
+                <h4 className="text-base sm:text-2xl font-black text-white uppercase tracking-tight leading-snug drop-shadow-md">
+                  Sorry, you cannot upload pictures when there is no scheduled work program.
+                </h4>
+                <p className="text-[11px] sm:text-xs text-slate-300 uppercase font-semibold leading-relaxed">
+                  Apologies, but uploading accomplishment pictures is strictly prohibited until an official work program or schedule is scheduled and broadcasted for today.
+                </p>
+              </div>
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-8 py-3 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-mono text-xs sm:text-sm font-black uppercase cursor-pointer border border-rose-400 shadow-[0_0_25px_rgba(244,63,94,0.5)] transition-all transform hover:-translate-y-0.5 active:scale-95"
+                >
+                  Back to Advisory
+                </button>
+              </div>
+            </div>
+          ) : isSuccess ? (
             <div className="text-center py-4 sm:py-8 space-y-2.5 sm:space-y-4 animate-scaleIn">
               <div className="w-12 h-12 sm:w-20 sm:h-20 mx-auto rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.4)]">
                 <CheckCircle2 className="w-6 h-6 sm:w-10 sm:h-10 text-emerald-400" />

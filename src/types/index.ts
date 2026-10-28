@@ -99,6 +99,9 @@ export interface Activity {
   waterReminder?: string;
   recommendedAttire?: string;
   assignedPersonnel?: string[];
+  cleanUpScopeArea?: string; // e.g. "2.5 km² (Paltic Shoreline Zone)"
+  cleanUpStartLocation?: string; // Panimulang Lugar ng Paglilinis / Start Point
+  cleanUpEndLocation?: string; // Hangganang Lugar ng Paglilinis / End Point
 }
 
 export interface ActivityAssignment {
@@ -198,6 +201,9 @@ export interface EventQrBroadcast {
   qrDisplayStartTime?: string;
   qrDisplayEndDate?: string;
   qrDisplayEndTime?: string;
+  cleanUpScopeArea?: string;
+  cleanUpStartLocation?: string;
+  cleanUpEndLocation?: string;
 }
 
 export interface AnonymousMessage {

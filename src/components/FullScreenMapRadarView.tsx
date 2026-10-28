@@ -27,8 +27,9 @@ import {
   Check,
   X,
   Ruler,
+  Trash2,
 } from 'lucide-react';
-import { User } from '../types';
+import { User, Activity } from '../types';
 import { useDingalanClock } from '../utils/philippineClock';
 import { DINGALAN_MAP_SECTORS, MapSector } from './CinematicBentoHomepage';
 
@@ -36,12 +37,14 @@ interface FullScreenMapRadarViewProps {
   currentUser: User;
   onBackToOverview: () => void;
   initialSectorId?: string;
+  activities?: Activity[];
 }
 
 export const FullScreenMapRadarView: React.FC<FullScreenMapRadarViewProps> = ({
   currentUser,
   onBackToOverview,
   initialSectorId = 'paltic',
+  activities = [],
 }) => {
   const { time: phTime, timeWithSeconds } = useDingalanClock();
   const [selectedSectorId, setSelectedSectorId] = useState<string>(initialSectorId);
@@ -72,8 +75,96 @@ export const FullScreenMapRadarView: React.FC<FullScreenMapRadarViewProps> = ({
   const [showJurisdictionLines, setShowJurisdictionLines] = useState<boolean>(true);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Interactive Map Waypoint & Event Route Drawing State
+  const [isDrawingPoints, setIsDrawingPoints] = useState<boolean>(false);
+  const [startPoint, setStartPoint] = useState<{ xPct: number; yPct: number; label: string } | null>(null);
+  const [endPoint, setEndPoint] = useState<{ xPct: number; yPct: number; label: string } | null>(null);
+  const [savedRoute, setSavedRoute] = useState<{
+    start: { xPct: number; yPct: number; label: string };
+    end: { xPct: number; yPct: number; label: string };
+    sectorId: string;
+    savedAt: string;
+  } | null>(null);
+  const [routeStatusMessage, setRouteStatusMessage] = useState<string>('');
+
+  // Load saved waypoints for this sector
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(`ld_map_route_${selectedSectorId}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        setSavedRoute(parsed);
+        setStartPoint(parsed.start);
+        setEndPoint(parsed.end);
+      } else {
+        setSavedRoute(null);
+        setStartPoint(null);
+        setEndPoint(null);
+      }
+    } catch {
+      setSavedRoute(null);
+      setStartPoint(null);
+      setEndPoint(null);
+    }
+  }, [selectedSectorId]);
+
+  const handleSaveWaypoints = () => {
+    if (!startPoint || !endPoint) {
+      setRouteStatusMessage('⚠️ Maglagay muna ng Simula (Point A) at Katapusan (Point B) bago i-save.');
+      setTimeout(() => setRouteStatusMessage(''), 3500);
+      return;
+    }
+    const route = {
+      start: startPoint,
+      end: endPoint,
+      sectorId: selectedSectorId,
+      savedAt: new Date().toISOString(),
+    };
+    setSavedRoute(route);
+    setIsDrawingPoints(false);
+    localStorage.setItem(`ld_map_route_${selectedSectorId}`, JSON.stringify(route));
+    setRouteStatusMessage('✅ Naka-fix na ang Waypoint Route sa mapa!');
+    setTimeout(() => setRouteStatusMessage(''), 3500);
+  };
+
+  const handleDeleteWaypoints = () => {
+    setStartPoint(null);
+    setEndPoint(null);
+    setSavedRoute(null);
+    setIsDrawingPoints(false);
+    localStorage.removeItem(`ld_map_route_${selectedSectorId}`);
+    setRouteStatusMessage('🗑️ Nabura na ang lahat ng waypoints sa mapa.');
+    setTimeout(() => setRouteStatusMessage(''), 3500);
+  };
+
+  const handleMapDrawingClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDrawingPoints) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const xPct = Math.max(5, Math.min(95, Math.round(((e.clientX - rect.left) / rect.width) * 1000) / 10));
+    const yPct = Math.max(5, Math.min(95, Math.round(((e.clientY - rect.top) / rect.height) * 1000) / 10));
+
+    if (!startPoint) {
+      setStartPoint({ xPct, yPct, label: 'Sisimulang Punto (Point A)' });
+      setRouteStatusMessage('🟢 Naitakda ang Simula (Point A)! I-click sa mapa ang Katapusan (Point B).');
+    } else if (!endPoint) {
+      setEndPoint({ xPct, yPct, label: 'Katapusang Punto (Point B)' });
+      setRouteStatusMessage('🎯 Naitakda ang Guhit at Route! Pindutin ang "Save Waypoint" upang ma-fix ito sa mapa.');
+    } else {
+      setStartPoint({ xPct, yPct, label: 'Sisimulang Punto (Point A)' });
+      setEndPoint(null);
+      setRouteStatusMessage('🟢 Bagong Simula (Point A). I-click naman sa mapa ang Katapusan (Point B).');
+    }
+  };
+
   const currentSector: MapSector =
     DINGALAN_MAP_SECTORS.find((s) => s.id === selectedSectorId) || DINGALAN_MAP_SECTORS[0];
+
+  const sectorActivity = activities.find(
+    (a) =>
+      a.barangay?.toLowerCase() === currentSector.name.toLowerCase() ||
+      currentSector.name.toLowerCase().includes(a.barangay?.toLowerCase() || '') ||
+      a.barangay?.toLowerCase().includes(currentSector.id.toLowerCase())
+  ) || activities[0];
 
   // Radar sweep animation
   useEffect(() => {
@@ -171,145 +262,75 @@ export const FullScreenMapRadarView: React.FC<FullScreenMapRadarViewProps> = ({
       className={`relative w-full bg-slate-950 text-slate-100 flex flex-col overflow-hidden select-none transition-all ${
         isFullscreen
           ? 'fixed inset-0 z-50 h-screen w-screen'
-          : 'min-h-[calc(100vh-4.5rem)] h-[calc(100vh-4.5rem)] px-1.5 sm:px-3 pb-2 pt-1'
+          : 'min-h-[calc(100vh-3.5rem)] h-[calc(100vh-3.5rem)] sm:min-h-[calc(100vh-4.5rem)] sm:h-[calc(100vh-4.5rem)] px-1 sm:px-3 pb-1 sm:pb-2 pt-0.5 sm:pt-1'
       }`}
     >
-      {/* Top HUD Control Bar */}
-      <div className="shrink-0 z-30 mb-1.5 px-3 py-2 rounded-2xl bg-slate-900/90 backdrop-blur-xl border border-slate-800 shadow-[0_8px_30px_rgba(0,0,0,0.7)] flex flex-wrap items-center justify-between gap-2">
+      {/* Top HUD Control Bar (Ultra-Compact Single-Row on Mobile to Maximize Map Area) */}
+      <div className="shrink-0 z-30 mb-0.5 sm:mb-1 px-1.5 sm:px-3 py-1 sm:py-2 rounded-lg sm:rounded-2xl bg-slate-900/95 backdrop-blur-xl border border-slate-800 shadow-[0_4px_20px_rgba(0,0,0,0.7)] flex items-center justify-between gap-1 sm:gap-2">
         {/* Left: Back button & Title */}
-        <div className="flex items-center space-x-2 sm:space-x-3">
+        <div className="flex items-center space-x-1 sm:space-x-2.5 min-w-0 shrink-0">
           <button
             type="button"
             onClick={onBackToOverview}
-            className="px-2.5 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-cyan-300 hover:text-white border border-slate-700 flex items-center space-x-1.5 text-xs font-mono font-bold transition-all cursor-pointer shadow"
+            className="p-1 sm:px-2.5 sm:py-1.5 rounded-md sm:rounded-xl bg-slate-800/90 hover:bg-slate-700 text-cyan-300 hover:text-white border border-slate-700 flex items-center space-x-1 text-[10px] sm:text-xs font-mono font-bold transition-all cursor-pointer shadow shrink-0"
             title="Bumalik sa Overview"
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span className="hidden xs:inline">Overview</span>
+            <ArrowLeft className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+            <span className="hidden sm:inline">Overview</span>
           </button>
 
-          <div className="flex items-center space-x-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping shrink-0" />
-            <div>
-              <div className="flex items-center space-x-1.5">
-                <h1 className="text-xs sm:text-sm font-extrabold font-mono text-white tracking-tight uppercase flex items-center gap-1.5">
-                  <Satellite className="w-4 h-4 text-cyan-400" />
-                  <span>Google Maps GPS Radar & Layers</span>
-                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-mono font-bold">
-                    ALL LAYERS ACTIVE
-                  </span>
-                </h1>
-              </div>
-              <p className="text-[10px] text-slate-400 font-mono hidden md:block">
-                Dingalan Bay & 7 Coastal Sectors • Full Google Maps Layers & Tools
-              </p>
+          <div className="flex items-center space-x-1 min-w-0">
+            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-cyan-400 animate-ping shrink-0" />
+            <div className="min-w-0">
+              <h1 className="text-[10px] sm:text-sm font-extrabold font-mono text-white tracking-tight uppercase flex items-center gap-1 truncate">
+                <Satellite className="w-2.5 h-2.5 sm:w-4 sm:h-4 text-cyan-400 shrink-0" />
+                <span className="hidden sm:inline">Google Maps GPS Radar & Layers</span>
+                <span className="sm:hidden text-cyan-300 font-bold">Radar</span>
+                <span className="hidden sm:inline-block text-[9px] px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-mono font-bold">
+                  ACTIVE
+                </span>
+              </h1>
             </div>
           </div>
         </div>
 
-        {/* Center: Layers & Tools Button & Quick Toggles */}
-        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-          {/* Layers & Tools Modal Toggle Button */}
-          <button
-            type="button"
-            onClick={() => setShowLayersModal(true)}
-            className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/50 flex items-center space-x-1.5 text-xs font-mono font-bold transition-all cursor-pointer shadow-[0_0_15px_rgba(6,182,212,0.25)]"
-            title="Buksan ang Map Details, Tools at Map Types (Google Maps)"
-          >
-            <Layers className="w-4 h-4 text-cyan-400 animate-pulse" />
-            <span>Map Layers & Tools</span>
-            <span className="px-1.5 py-0.2 rounded-full bg-cyan-500 text-slate-950 text-[10px] font-extrabold">
-              {[
-                mapType,
-                transitLayer,
-                trafficLayer,
-                bikingLayer,
-                streetViewLayer,
-                wildfiresLayer,
-                airQualityLayer,
-                travelTimeTool,
-                measureTool,
-              ].filter(Boolean).length}
-            </span>
-          </button>
-
-          {/* Quick Map Type Switcher */}
-          <div className="hidden xl:flex items-center p-0.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs font-mono">
-            <button
-              type="button"
-              onClick={() => setMapType('m')}
-              className={`px-2 py-1 rounded-lg text-xs font-bold transition-all ${
-                mapType === 'm' ? 'bg-cyan-500 text-slate-950 shadow' : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Default
-            </button>
-            <button
-              type="button"
-              onClick={() => setMapType('k')}
-              className={`px-2 py-1 rounded-lg text-xs font-bold transition-all ${
-                mapType === 'k' ? 'bg-cyan-500 text-slate-950 shadow' : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Satellite
-            </button>
-            <button
-              type="button"
-              onClick={() => setMapType('h')}
-              className={`px-2 py-1 rounded-lg text-xs font-bold transition-all ${
-                mapType === 'h' ? 'bg-cyan-500 text-slate-950 shadow' : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Hybrid
-            </button>
-            <button
-              type="button"
-              onClick={() => setMapType('p')}
-              className={`px-2 py-1 rounded-lg text-xs font-bold transition-all ${
-                mapType === 'p' ? 'bg-cyan-500 text-slate-950 shadow' : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Terrain
-            </button>
-          </div>
+        {/* Right: Horizontally Scrollable Compact Action Buttons in a single row */}
+        <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar py-0.5 shrink min-w-0">
 
           {/* Jurisdiction Lines Toggle Button */}
           <button
             type="button"
             onClick={() => setShowJurisdictionLines((prev) => !prev)}
-            className={`flex items-center space-x-1 px-2.5 py-1 text-xs font-mono rounded-lg border transition-all cursor-pointer ${
+            className={`flex items-center space-x-1 px-1.5 py-0.5 sm:px-2.5 sm:py-1 text-[9px] sm:text-xs font-mono rounded-md sm:rounded-lg border transition-all cursor-pointer shrink-0 ${
               showJurisdictionLines
-                ? 'bg-cyan-950 text-cyan-300 border-cyan-500/50 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
+                ? 'bg-cyan-950 text-cyan-300 border-cyan-500/50 shadow-[0_0_8px_rgba(6,182,212,0.3)]'
                 : 'bg-slate-950 text-slate-400 border-slate-800'
             }`}
             title="I-on o i-off ang mga linya ng sakop ng barangay"
           >
-            <MapPin className="w-3 h-3 text-cyan-400" />
-            <span>Jurisdiction Lines: {showJurisdictionLines ? 'ON' : 'OFF'}</span>
+            <MapPin className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-cyan-400" />
+            <span className="hidden sm:inline">Jurisdiction Lines: </span>
+            <span className="sm:hidden">Lines: </span>
+            <span>{showJurisdictionLines ? 'ON' : 'OFF'}</span>
           </button>
-        </div>
 
-        {/* Right: Telemetry & Fullscreen Trigger */}
-        <div className="flex items-center space-x-2">
-          <div className="hidden lg:flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-slate-950/80 border border-slate-800 text-[11px] font-mono text-emerald-400">
-            <Clock className="w-3.5 h-3.5" />
-            <span>{timeWithSeconds}</span>
-          </div>
 
+
+          {/* Fullscreen Button */}
           <button
             type="button"
             onClick={toggleNativeFullscreen}
-            className="px-2.5 py-1.5 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/40 flex items-center space-x-1 text-xs font-mono font-bold transition-all cursor-pointer shadow"
+            className="p-1 sm:px-2.5 sm:py-1.5 rounded-md sm:rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/40 flex items-center space-x-1 text-[9px] sm:text-xs font-mono font-bold transition-all cursor-pointer shadow shrink-0"
             title={isFullscreen ? 'I-minimize ang screen' : 'I-maximize ang screen (Full Screen)'}
           >
             {isFullscreen ? (
               <>
-                <Minimize2 className="w-3.5 h-3.5" />
+                <Minimize2 className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />
                 <span className="hidden sm:inline">Exit Full</span>
               </>
             ) : (
               <>
-                <Maximize2 className="w-3.5 h-3.5" />
+                <Maximize2 className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />
                 <span className="hidden sm:inline">Full Screen</span>
               </>
             )}
@@ -425,9 +446,9 @@ export const FullScreenMapRadarView: React.FC<FullScreenMapRadarViewProps> = ({
             </div>
           )}
 
-          {/* Floating Live Sector Telemetry Badge */}
+          {/* Floating Live Sector Telemetry Badge (Hidden on mobile to maximize map view) */}
           {showCoordinatesHud && (
-            <div className="absolute top-4 left-4 z-20 pointer-events-none flex items-center space-x-2.5 px-3 py-2 rounded-xl bg-slate-950/85 backdrop-blur-md border border-cyan-500/40 text-xs font-mono font-bold text-cyan-300 shadow-2xl">
+            <div className="hidden md:flex absolute top-4 left-4 z-20 pointer-events-none items-center space-x-2.5 px-3 py-2 rounded-xl bg-slate-950/85 backdrop-blur-md border border-cyan-500/40 text-xs font-mono font-bold text-cyan-300 shadow-2xl">
               <span
                 className="w-3 h-3 rounded-full animate-ping shrink-0"
                 style={{ backgroundColor: currentSector.color }}
@@ -447,11 +468,12 @@ export const FullScreenMapRadarView: React.FC<FullScreenMapRadarViewProps> = ({
             </div>
           )}
 
+
           {/* Dingalan Municipal Territorial Jurisdiction Boundary & Sector Overlay */}
           {showJurisdictionLines && (
             <div className="absolute inset-0 pointer-events-none z-15 p-6 flex flex-col justify-between">
-              {/* Top Right Jurisdictional Legend Card */}
-              <div className="self-end pointer-events-auto bg-slate-950/90 backdrop-blur-md border border-cyan-500/50 rounded-2xl p-3.5 shadow-2xl max-w-xs">
+              {/* Top Right Jurisdictional Legend Card (Hidden on mobile to maximize map) */}
+              <div className="hidden md:block self-end pointer-events-auto bg-slate-950/90 backdrop-blur-md border border-cyan-500/50 rounded-2xl p-3.5 shadow-2xl max-w-xs">
                 <div className="flex items-center space-x-2 pb-2 mb-2 border-b border-slate-800">
                   <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping" />
                   <span className="text-xs font-mono font-extrabold text-white uppercase tracking-wider">
@@ -480,8 +502,8 @@ export const FullScreenMapRadarView: React.FC<FullScreenMapRadarViewProps> = ({
                 </div>
               </div>
 
-              {/* Bottom Center Active Jurisdiction Indicator */}
-              <div className="self-center pointer-events-none px-4 py-2 rounded-xl bg-slate-950/90 backdrop-blur-md border border-cyan-500/40 text-cyan-300 text-xs font-mono font-bold shadow-2xl flex items-center space-x-2">
+              {/* Bottom Center Active Jurisdiction Indicator (Hidden on mobile to maximize map) */}
+              <div className="hidden md:flex self-center pointer-events-none px-4 py-2 rounded-xl bg-slate-950/90 backdrop-blur-md border border-cyan-500/40 text-cyan-300 text-xs font-mono font-bold shadow-2xl items-center space-x-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 <span>ACTIVE TERRITORIAL JURISDICTION SCOPE: {currentSector.name} ({currentSector.subName})</span>
               </div>

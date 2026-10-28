@@ -114,6 +114,9 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
     qrDisplayStartTime: string;
     qrDisplayEndDate: string;
     qrDisplayEndTime: string;
+    cleanUpScopeArea: string;
+    cleanUpStartLocation: string;
+    cleanUpEndLocation: string;
   }>({
     title: '',
     programType: 'COASTAL_CLEANUP',
@@ -136,6 +139,9 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
     qrDisplayStartTime: '06:00',
     qrDisplayEndDate: '',
     qrDisplayEndTime: '23:59',
+    cleanUpScopeArea: '',
+    cleanUpStartLocation: '',
+    cleanUpEndLocation: '',
   });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
@@ -172,6 +178,9 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
     requiredTools: string;
     waterReminder: string;
     recommendedAttire: string;
+    cleanUpScopeArea: string;
+    cleanUpStartLocation: string;
+    cleanUpEndLocation: string;
   }>({
     title: '',
     programType: 'COASTAL_CLEANUP',
@@ -192,6 +201,9 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
     requiredTools: '',
     waterReminder: '',
     recommendedAttire: '',
+    cleanUpScopeArea: '',
+    cleanUpStartLocation: '',
+    cleanUpEndLocation: '',
   });
 
   const filteredActivities = activities.filter((a) => {
@@ -243,6 +255,9 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
       qrDisplayEndTime: act.qrDisplayEndTime || '23:59',
       estimatedEndTime: act.estimatedEndTime || act.qrDisplayEndTime || '11:59 PM',
       totalHours: act.totalHours || '4 na Oras',
+      cleanUpScopeArea: act.cleanUpScopeArea || '',
+      cleanUpStartLocation: act.cleanUpStartLocation || '',
+      cleanUpEndLocation: act.cleanUpEndLocation || '',
     });
   };
 
@@ -1304,6 +1319,54 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                 </div>
               </div>
 
+              {/* Clean-up Scope Area & Route (Start & End Points for Map Visualization) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-xl bg-slate-950/70 border border-emerald-500/40">
+                <div>
+                  <label className="block text-[11px] font-semibold text-emerald-300 mb-1 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>Sisimulang Lugar / Starting Point *</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newActivity.cleanUpStartLocation}
+                    onChange={(e) => setNewActivity({ ...newActivity, cleanUpStartLocation: e.target.value })}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
+                    placeholder="e.g. Feeder Port Wharf / Purok 1"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-rose-300 mb-1 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-rose-400"></span>
+                    <span>Tatapusang Lugar / Ending Point *</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newActivity.cleanUpEndLocation}
+                    onChange={(e) => setNewActivity({ ...newActivity, cleanUpEndLocation: e.target.value })}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
+                    placeholder="e.g. Rock Sea Wall / Lighthouse Trail"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] font-semibold text-cyan-300 mb-1 flex items-center justify-between">
+                    <span>Clean-up Scope Area (Sakop na Lawak / km² o Hangganan) *</span>
+                    <span className="text-[10px] text-cyan-400 font-mono">Igu-guhit sa Mapa</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newActivity.cleanUpScopeArea}
+                    onChange={(e) => setNewActivity({ ...newActivity, cleanUpScopeArea: e.target.value })}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none font-mono"
+                    placeholder="e.g. 2.5 km² shoreline / 500m coastal zone"
+                  />
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-300 mb-1">
@@ -1550,6 +1613,54 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                     onChange={(e) => setEditForm({ ...editForm, targetArea: e.target.value })}
                     placeholder="Hal. Dingalan Feeder Port & Paltic Rock Sea Wall"
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:border-amber-400 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Clean-up Scope Area & Route (Start & End Points for Map Visualization) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-xl bg-slate-950/70 border border-amber-500/40">
+                <div>
+                  <label className="block text-xs font-mono font-bold text-emerald-300 mb-1 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>Sisimulang Lugar / Starting Point <span className="text-rose-400">*</span></span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.cleanUpStartLocation}
+                    onChange={(e) => setEditForm({ ...editForm, cleanUpStartLocation: e.target.value })}
+                    placeholder="Hal. Feeder Port Wharf / Purok 1"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:border-amber-400 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-mono font-bold text-rose-300 mb-1 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-rose-400"></span>
+                    <span>Tatapusang Lugar / Ending Point <span className="text-rose-400">*</span></span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.cleanUpEndLocation}
+                    onChange={(e) => setEditForm({ ...editForm, cleanUpEndLocation: e.target.value })}
+                    placeholder="Hal. Rock Sea Wall / Lighthouse Trail"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:border-amber-400 focus:outline-none"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-mono font-bold text-amber-300 mb-1 flex items-center justify-between">
+                    <span>Clean-up Scope Area (Sakop na Lawak / km² o Hangganan) <span className="text-rose-400">*</span></span>
+                    <span className="text-[10px] text-amber-400 font-mono">Igu-guhit sa Mapa</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.cleanUpScopeArea}
+                    onChange={(e) => setEditForm({ ...editForm, cleanUpScopeArea: e.target.value })}
+                    placeholder="Hal. 2.5 km² shoreline / 500m coastal zone"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:border-amber-400 focus:outline-none font-mono"
                   />
                 </div>
               </div>
