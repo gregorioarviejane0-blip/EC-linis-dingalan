@@ -79,7 +79,7 @@ function buildTable(headers: string[], rows: string[][], colWidths?: number[]): 
   });
 }
 
-function p(text: string, options: { bold?: boolean; italic?: boolean; size?: number; align?: any; color?: string; spaceBefore?: number; spaceAfter?: number } = {}): Paragraph {
+function p(text: string, options: { bold?: boolean; italic?: boolean; size?: number; align?: (typeof AlignmentType)[keyof typeof AlignmentType]; color?: string; spaceBefore?: number; spaceAfter?: number } = {}): Paragraph {
   return new Paragraph({
     alignment: options.align || AlignmentType.JUSTIFIED,
     spacing: {
