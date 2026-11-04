@@ -102,6 +102,7 @@ export interface Activity {
   cleanUpScopeArea?: string; // e.g. "2.5 km² (Paltic Shoreline Zone)"
   cleanUpStartLocation?: string; // Panimulang Lugar ng Paglilinis / Start Point
   cleanUpEndLocation?: string; // Hangganang Lugar ng Paglilinis / End Point
+  updatedAt?: string;
 }
 
 export interface ActivityAssignment {

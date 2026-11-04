@@ -380,6 +380,35 @@ export default function App() {
     };
   }, []);
 
+  // Real-time synchronization #5: Firestore onSnapshot for Activities
+  useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+    try {
+      unsubscribe = onSnapshot(
+        collection(db, 'activities'),
+        (snapshot) => {
+          if (!snapshot.empty) {
+            const list: Activity[] = [];
+            snapshot.forEach((docSnap) => {
+              list.push({ ...docSnap.data(), id: docSnap.id } as Activity);
+            });
+            list.sort((a, b) => new Date(b.createdAt || b.date || 0).getTime() - new Date(a.createdAt || a.date || 0).getTime());
+            setActivities(list);
+            localStorage.setItem('ld_activities_v1', JSON.stringify(list));
+          }
+        },
+        (error) => {
+          console.warn('Firestore onSnapshot activities warning:', error);
+        }
+      );
+    } catch (err) {
+      console.warn('Firestore activities subscription exception:', err);
+    }
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
+
   const handleBroadcastSuccess = async (broadcast: EventQrBroadcast | null) => {
     if (!broadcast || !broadcast.id) {
       // Clear or reload from DB
@@ -587,7 +616,7 @@ export default function App() {
       targetArea: newAct.targetArea || 'Dingalan Feeder Port & Rock Wall',
       eventDate: newAct.date || new Date().toISOString().split('T')[0],
       startTime: newAct.callTime || '06:00 AM',
-      estimatedEndTime: newAct.estimatedEndTime || newAct.qrDisplayEndTime || '11:59 PM',
+      estimatedEndTime: newAct.estimatedEndTime || '11:59 PM',
       totalHours: newAct.totalHours || '4 na Oras',
       requiredTools: newAct.requiredTools || 'Guwantes, sako ng basura, walis tingting, tongs',
       waterTumblerReminder: newAct.waterReminder || 'Magdala ng sariling reusable tumbler na may inuming tubig.',
@@ -599,9 +628,9 @@ export default function App() {
       qrPayload: payload,
       qrScheduleEnabled: newAct.qrScheduleEnabled !== false,
       qrDisplayStartDate: newAct.qrDisplayStartDate || newAct.date,
-      qrDisplayStartTime: newAct.qrDisplayStartTime || newAct.callTime,
+      qrDisplayStartTime: newAct.qrDisplayStartTime || '06:00',
       qrDisplayEndDate: newAct.qrDisplayEndDate || newAct.date,
-      qrDisplayEndTime: newAct.qrDisplayEndTime || newAct.estimatedEndTime || '23:59',
+      qrDisplayEndTime: newAct.qrDisplayEndTime || '23:59',
     };
     setLatestEventBroadcast(newBc);
     try {
@@ -638,7 +667,7 @@ export default function App() {
         targetArea: act.targetArea,
         eventDate: act.date,
         startTime: act.callTime || '06:00 AM',
-        estimatedEndTime: act.estimatedEndTime || act.qrDisplayEndTime || '11:59 PM',
+        estimatedEndTime: act.estimatedEndTime || '11:59 PM',
         totalHours: act.totalHours || '4 na Oras',
         requiredTools: act.requiredTools || 'Guwantes, sako ng basura, walis tingting, tongs',
         waterTumblerReminder: act.waterReminder || 'Magdala ng sariling reusable tumbler na may inuming tubig.',
@@ -650,9 +679,9 @@ export default function App() {
         qrPayload: payload,
         qrScheduleEnabled: act.qrScheduleEnabled !== false,
         qrDisplayStartDate: act.qrDisplayStartDate || act.date,
-        qrDisplayStartTime: act.qrDisplayStartTime || act.callTime,
+        qrDisplayStartTime: act.qrDisplayStartTime || '06:00',
         qrDisplayEndDate: act.qrDisplayEndDate || act.date,
-        qrDisplayEndTime: act.qrDisplayEndTime || act.estimatedEndTime || '23:59',
+        qrDisplayEndTime: act.qrDisplayEndTime || '23:59',
       };
 
       setLatestEventBroadcast(broadcast);
@@ -676,52 +705,38 @@ export default function App() {
       const updated = await api.updateActivity(id, data);
       setActivities((prev) => prev.map((a) => (a.id === id ? updated : a)));
 
-      // Synchronize strictly with latestEventBroadcast:
-      // Kung ano ang nilalaman sa Program button, iyon agad ang magre-reflect sa Login Screen (Pangalawang Picture)
-      setLatestEventBroadcast((prevBc) => {
-        if (!prevBc || prevBc.activityId === id || prevBc.activityTitle === updated.title || activities.length <= 1) {
-          const origin = typeof window !== 'undefined' ? window.location.origin : 'https://linis-dingalan.aurora.gov.ph';
-          const payload = `${origin}/?action=upload&act_id=${updated.id}&brgy=${encodeURIComponent(updated.barangay || 'Paltic')}&date=${encodeURIComponent(updated.date || '')}`;
-          const newBc: EventQrBroadcast = {
-            id: prevBc?.id || `broadcast-${updated.id}`,
-            activityId: updated.id,
-            activityTitle: updated.title,
-            barangay: updated.barangay,
-            targetArea: updated.targetArea,
-            qrDataUrl: prevBc?.qrDataUrl,
-            qrPayload: payload,
-            eventDate: updated.date,
-            startTime: updated.callTime,
-            estimatedEndTime: updated.estimatedEndTime || updated.qrDisplayEndTime || '11:59 PM',
-            totalHours: updated.totalHours || '4 na Oras',
-            requiredTools: updated.requiredTools || 'Guwantes, sako ng basura, walis tingting, tongs',
-            waterTumblerReminder: updated.waterReminder || 'Magdala ng sariling reusable tumbler na may inuming tubig.',
-            recommendedAttire: updated.recommendedAttire || 'Linis Dingalan t-shirt o komportableng damit, bota/shoes, sumbrero',
-            additionalNotes: updated.description || updated.notes || '',
-            assignedPersonnel: prevBc?.assignedPersonnel || [],
-            sentByAdminName: updated.supervisorName || currentUser?.name || 'Admin Officer',
-            sentAt: new Date().toISOString(),
-            qrScheduleEnabled: updated.qrScheduleEnabled !== false,
-            qrDisplayStartDate: updated.qrDisplayStartDate || updated.date,
-            qrDisplayStartTime: updated.qrDisplayStartTime || updated.callTime,
-            qrDisplayEndDate: updated.qrDisplayEndDate || updated.date,
-            qrDisplayEndTime: updated.qrDisplayEndTime || updated.estimatedEndTime || '23:59',
-          };
-          try {
-            localStorage.setItem('ld_latest_event_broadcast', JSON.stringify(newBc));
-            localStorage.removeItem('ld_broadcasts_cleared');
-            if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-              const bc = new BroadcastChannel('ld_sync');
-              bc.postMessage({ type: 'NEW_BROADCAST', broadcast: newBc });
-              bc.close();
-            }
-          } catch {}
-          return newBc;
-        }
-        return prevBc;
-      });
+      // Synchronize strictly with latestEventBroadcast and permanently save to Firestore & LocalStorage
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://linis-dingalan.aurora.gov.ph';
+      const payload = `${origin}/?action=upload&act_id=${updated.id}&brgy=${encodeURIComponent(updated.barangay || 'Paltic')}&date=${encodeURIComponent(updated.date || '')}`;
+      const newBc: EventQrBroadcast = {
+        id: `broadcast-${updated.id}`,
+        activityId: updated.id,
+        activityTitle: updated.title,
+        barangay: updated.barangay,
+        targetArea: updated.targetArea,
+        qrPayload: payload,
+        eventDate: updated.date,
+        startTime: updated.callTime,
+        estimatedEndTime: updated.estimatedEndTime || updated.qrDisplayEndTime || '11:59 PM',
+        totalHours: updated.totalHours || '4 na Oras',
+        requiredTools: updated.requiredTools || 'Guwantes, sako ng basura, walis tingting, tongs',
+        waterTumblerReminder: updated.waterReminder || 'Magdala ng sariling reusable tumbler na may inuming tubig.',
+        recommendedAttire: updated.recommendedAttire || 'Linis Dingalan t-shirt o komportableng damit, bota/shoes, sumbrero',
+        additionalNotes: updated.description || updated.notes || '',
+        assignedPersonnel: updated.assignedPersonnel || [],
+        sentByAdminName: updated.supervisorName || currentUser?.name || 'Admin Officer',
+        sentAt: new Date().toISOString(),
+        qrScheduleEnabled: updated.qrScheduleEnabled !== false,
+        qrDisplayStartDate: updated.qrDisplayStartDate || updated.date,
+        qrDisplayStartTime: updated.qrDisplayStartTime || updated.callTime,
+        qrDisplayEndDate: updated.qrDisplayEndDate || updated.date,
+        qrDisplayEndTime: updated.qrDisplayEndTime || updated.estimatedEndTime || '23:59',
+      };
 
-      showToast(`Na-update ang work program "${updated.title}". Naka-sync sa Login Advisory.`, 'success');
+      setLatestEventBroadcast(newBc);
+      await api.broadcastEventQr(newBc);
+
+      showToast(`Permanenteng na-save ang work program "${updated.title}" sa Database at Login Advisory.`, 'success');
     } catch (err: any) {
       showToast(err.message || 'Nabigo ang pag-update sa program', 'error');
     }

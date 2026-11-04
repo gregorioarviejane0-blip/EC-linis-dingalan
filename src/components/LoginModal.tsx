@@ -5,7 +5,7 @@ import { api } from '../services/api';
 import { INITIAL_EVENT_BROADCAST } from '../data/seedData';
 import QRCode from 'qrcode';
 import { checkEventCutoff, burnGeotagWatermark, getGpsCoordinates, detectDingalanAreaByCoordinates } from '../utils/watermarkEngine';
-import { useDingalanClock, getDingalanNow, checkIsBroadcastActive, formatPhilippineDateTime, isDingalanTimeOverridden, parsePstDateTime } from '../utils/philippineClock';
+import { useDingalanClock, getDingalanNow, checkIsBroadcastActive, checkIsQrReleased, formatPhilippineDateTime, isDingalanTimeOverridden, parsePstDateTime } from '../utils/philippineClock';
 import { generateStyledLguQrDataUrl } from '../utils/qrPassGenerator';
 import { SendAnonymousMessageModal } from './SendAnonymousMessageModal';
 import { FullScreenPhotoViewer } from './FullScreenPhotoViewer';
@@ -399,6 +399,18 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   };
 
   const handleUploadSubmit = async () => {
+    if (activeBroadcast) {
+      const qrStatus = checkIsQrReleased(activeBroadcast);
+      if (qrStatus.isUpcoming) {
+        setUploadErrorMessage(`Hindi pa lumalabas ang Official Event QR Code sa advisory content. Lalabas ito sa ganap na ${qrStatus.startTimeFormatted}. Saka pa lamang maaaring magsumite ng attendance.`);
+        return;
+      }
+      if (qrStatus.isExpired) {
+        setUploadErrorMessage(`Naglaho na ang Official Event QR Code dahil lumagpas na sa ${qrStatus.endTimeFormatted}. Sarado na ang pag-upload.`);
+        return;
+      }
+    }
+
     if (uploadCutoffInfo.isExpired) {
       setUploadErrorMessage(`Hindi na maaaring magpasa ng accomplishment attendance dahil tapos na ang nakatakdang oras ng event (${uploadCutoffInfo.endTimeFormatted}).`);
       return;
@@ -545,7 +557,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
   // Convert an Activity to a full EventQrBroadcast object with complete reminders and schedule
   const convertActivityToBroadcast = (act: any): EventQrBroadcast => {
-    const rawCallTime = act.callTime || act.qrDisplayStartTime || '06:00 AM';
+    const rawCallTime = act.callTime || '06:00 AM';
     const formattedCallTime = rawCallTime.includes('AM') || rawCallTime.includes('PM')
       ? rawCallTime
       : `${rawCallTime}`;
@@ -560,9 +572,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       targetArea: act.targetArea || 'Dingalan Feeder Port & Rock Wall',
       barangay: act.barangay || 'Paltic',
       qrPayload: payload,
-      eventDate: act.date || act.qrDisplayStartDate || new Date().toISOString().split('T')[0],
+      eventDate: act.date || new Date().toISOString().split('T')[0],
       startTime: formattedCallTime,
-      estimatedEndTime: act.estimatedEndTime || act.qrDisplayEndTime || (formattedCallTime.includes('PM') ? '05:00 PM' : '11:00 AM'),
+      estimatedEndTime: act.estimatedEndTime || '11:59 PM',
       totalHours: act.totalHours || '4 na Oras',
       requiredTools: act.requiredTools || 'Guwantes, sako ng basura, walis tingting, tongs',
       waterTumblerReminder: act.waterReminder || act.waterTumblerReminder || 'Magdala ng sariling reusable tumbler na may inuming tubig.',
@@ -572,9 +584,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       sentByAdminName: act.supervisorName || 'Admin Officer (Operations Administrator)',
       qrScheduleEnabled: act.qrScheduleEnabled !== false,
       qrDisplayStartDate: act.qrDisplayStartDate || act.date,
-      qrDisplayStartTime: act.qrDisplayStartTime || act.callTime,
+      qrDisplayStartTime: act.qrDisplayStartTime || '06:00',
       qrDisplayEndDate: act.qrDisplayEndDate || act.date,
-      qrDisplayEndTime: act.qrDisplayEndTime || act.estimatedEndTime,
+      qrDisplayEndTime: act.qrDisplayEndTime || '23:59',
       assignedPersonnel: act.assignedPersonnel || [],
     };
   };
@@ -600,19 +612,18 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     return null;
   });
 
-  // Check whether an activity is currently active based on its real-time schedule
-  const isActActiveNow = (act: any): boolean => {
+  // Check whether an activity schedule is valid (has not past its final end time)
+  const isActValidForAdvisory = (act: any): boolean => {
     if (!act) return false;
     if (act.qrScheduleEnabled === false) return false;
     if (act.status === 'completed' || act.status === 'cancelled') return false;
 
     const sch = parseActivitySchedule(act);
-    return sch.isCurrentlyActive;
+    return !sch.isPastEnd;
   };
 
   // Automatic Schedule & Program Button Mirroring Engine:
-  // Kung ano ang nilalaman sa Program button, iyon ang lalabas sa Login Screen
-  // Kapag binago ang oras sa Edit modal at hindi pa oras o lumagpas na, HINDI magpapakita sa login page ang paalala program
+  // Shows the program advisory with live countdown to QR release & expiry
   useEffect(() => {
     if (typeof window !== 'undefined' && localStorage.getItem('ld_broadcasts_cleared') === 'true') {
       setActiveBroadcast(null);
@@ -631,7 +642,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             prev.startTime === candidate.startTime &&
             prev.estimatedEndTime === candidate.estimatedEndTime &&
             prev.eventDate === candidate.eventDate &&
-            prev.barangay === candidate.barangay
+            prev.barangay === candidate.barangay &&
+            prev.qrDisplayStartTime === candidate.qrDisplayStartTime &&
+            prev.qrDisplayEndTime === candidate.qrDisplayEndTime
           ) {
             return prev;
           }
@@ -641,11 +654,30 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       }
     }
 
-    // 2. Match programs that are strictly ACTIVE right now based on start/end date and call time
+    // 2. Prioritize explicitly broadcasted event if active
+    if (propEventBroadcast && propEventBroadcast.id && checkIsBroadcastActive(propEventBroadcast)) {
+      setActiveBroadcast((prev) => {
+        if (
+          prev &&
+          prev.id === propEventBroadcast.id &&
+          prev.startTime === propEventBroadcast.startTime &&
+          prev.qrDisplayStartTime === propEventBroadcast.qrDisplayStartTime &&
+          prev.qrDisplayEndTime === propEventBroadcast.qrDisplayEndTime
+        ) {
+          return prev;
+        }
+        return propEventBroadcast;
+      });
+      return;
+    }
+
+    // 3. Match scheduled/ongoing activities from programs list
     if (allActivities && allActivities.length > 0) {
-      const activeActs = scheduledActivities.filter(isActActiveNow);
-      if (activeActs.length > 0) {
-        const candidate = convertActivityToBroadcast(activeActs[0]);
+      const todayStr = new Date().toISOString().split('T')[0];
+      const validActs = scheduledActivities.filter(isActValidForAdvisory);
+      if (validActs.length > 0) {
+        const candidateAct = validActs.find((a) => a.date === todayStr) || validActs[0];
+        const candidate = convertActivityToBroadcast(candidateAct);
         setActiveBroadcast((prev) => {
           if (
             prev &&
@@ -653,7 +685,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             prev.startTime === candidate.startTime &&
             prev.estimatedEndTime === candidate.estimatedEndTime &&
             prev.eventDate === candidate.eventDate &&
-            prev.barangay === candidate.barangay
+            prev.barangay === candidate.barangay &&
+            prev.qrDisplayStartTime === candidate.qrDisplayStartTime &&
+            prev.qrDisplayEndTime === candidate.qrDisplayEndTime
           ) {
             return prev;
           }
@@ -661,24 +695,20 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         });
         return;
       }
-      // If there are activities but NONE are currently active for this time, do NOT show broadcast
-      setActiveBroadcast(null);
-      return;
     }
 
-    // 3. Fallback: Check if propEventBroadcast is active
-    if (propEventBroadcast && propEventBroadcast.id) {
-      if (checkIsBroadcastActive(propEventBroadcast)) {
-        setActiveBroadcast((prev) => {
-          if (prev && prev.id === propEventBroadcast.id && prev.startTime === propEventBroadcast.startTime) {
-            return prev;
+    // 4. Fallback: check stored broadcast in localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('ld_latest_event_broadcast');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (checkIsBroadcastActive(parsed)) {
+            setActiveBroadcast(parsed);
+            return;
           }
-          return propEventBroadcast;
-        });
-      } else {
-        setActiveBroadcast(null);
-      }
-      return;
+        }
+      } catch {}
     }
 
     setActiveBroadcast(null);
@@ -686,6 +716,47 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
   const isBroadcastCleared = typeof window !== 'undefined' && localStorage.getItem('ld_broadcasts_cleared') === 'true';
   const eventBroadcast = isBroadcastCleared ? null : activeBroadcast;
+
+  // Real-time QR Timing & Release State (Recalculates every second with device clock)
+  const qrTiming = useMemo(() => {
+    if (!eventBroadcast) {
+      return {
+        isUpcoming: false,
+        isActive: false,
+        isExpired: false,
+        startMs: 0,
+        endMs: 0,
+        startTimeFormatted: '',
+        endTimeFormatted: '',
+        countdownFormatted: '00h : 00m : 00s',
+      };
+    }
+
+    const rel = checkIsQrReleased(eventBroadcast);
+    const nowMs = getDingalanNow().getTime();
+
+    let targetMs = 0;
+    if (rel.isUpcoming) {
+      targetMs = rel.startMs;
+    } else if (rel.isActive && rel.endMs > 0) {
+      targetMs = rel.endMs;
+    }
+
+    let diffSecs = 0;
+    if (targetMs > nowMs) {
+      diffSecs = Math.max(0, Math.floor((targetMs - nowMs) / 1000));
+    }
+
+    const hours = Math.floor(diffSecs / 3600);
+    const minutes = Math.floor((diffSecs % 3600) / 60);
+    const seconds = diffSecs % 60;
+    const countdownFormatted = `${String(hours).padStart(2, '0')}h : ${String(minutes).padStart(2, '0')}m : ${String(seconds).padStart(2, '0')}s`;
+
+    return {
+      ...rel,
+      countdownFormatted,
+    };
+  }, [eventBroadcast, clock]);
 
   // Strict Real-Time Synchronization with Homepage Banner (Picture content):
   // Kung ano ang naka-upload o active na paalala sa Login page, iyon agad ang magre-reflect sa homepage banner
@@ -1315,6 +1386,17 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 <Radio className={`w-3.5 h-3.5 lg:w-3 lg:h-3 shrink-0 ${activeView === 'event' ? 'text-slate-950 animate-pulse' : 'text-emerald-400'}`} />
                 <span className="truncate hidden xs:inline">PROGRAM ADVISORY</span>
                 <span className="truncate xs:hidden">ADVISORY</span>
+                {eventBroadcast && qrTiming.startTimeFormatted && (
+                  <span className={`ml-1 text-[8px] sm:text-[9px] px-1.5 py-0.5 rounded-full font-mono font-bold tracking-tight shrink-0 border ${
+                    activeView === 'event'
+                      ? 'bg-slate-950 text-emerald-300 border-slate-800'
+                      : qrTiming.isUpcoming
+                        ? 'bg-cyan-950/80 text-cyan-300 border-cyan-500/50 animate-pulse'
+                        : 'bg-emerald-950/80 text-emerald-300 border-emerald-500/50'
+                  }`}>
+                    QR: {qrTiming.startTimeFormatted}
+                  </span>
+                )}
               </span>
             </motion.button>
 
@@ -1389,6 +1471,18 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               whileTap={{ scale: 0.94 }}
               whileHover={{ scale: 1.03 }}
               onClick={() => {
+                if (!eventBroadcast) {
+                  setErrorMessage('Walang aktibong official work program o coastal cleanup scheduled ngayon kaya hindi maaaring mag-upload ng attendance.');
+                  return;
+                }
+                if (qrTiming.isUpcoming) {
+                  setErrorMessage(`Hindi pa lumalabas ang Official Event QR Code sa advisory content. Lalabas ito sa ganap na ${qrTiming.startTimeFormatted}. Saka pa lamang pwedeng mag-upload ng attendance.`);
+                  return;
+                }
+                if (qrTiming.isExpired) {
+                  setErrorMessage(`Naglaho na ang Official Event QR Code sa advisory content dahil lumagpas na sa ${qrTiming.endTimeFormatted}. Sarado na ang pag-upload.`);
+                  return;
+                }
                 setActiveView('upload');
                 setTimeout(() => {
                   modalScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2177,9 +2271,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                         <ShieldCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400" />
                         <span className="hidden xs:inline">Admin</span>
                       </button>
-                      <span className="text-[10px] sm:text-sm font-mono text-emerald-300 font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md sm:rounded-lg bg-emerald-950/60 border border-emerald-500/30">
-                        {eventBroadcast.startTime}
-                      </span>
+                      <div className="flex items-center space-x-1 sm:space-x-1.5 font-mono text-[9px] sm:text-xs">
+                        <span className="text-[10px] sm:text-xs text-emerald-300 font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md sm:rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+                          {eventBroadcast.startTime}
+                        </span>
+                      </div>
                       <button
                         type="button"
                         onClick={() => setActiveView('login')}
@@ -2196,7 +2292,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     <h3 className="text-sm xs:text-base sm:text-xl lg:text-2xl xl:text-3xl font-black text-white leading-tight drop-shadow-md truncate sm:whitespace-normal">
                       {eventBroadcast.activityTitle}
                     </h3>
-                    <div className="flex flex-wrap items-center gap-x-2.5 sm:gap-x-4 gap-y-0.5 text-[10px] xs:text-[11px] sm:text-sm lg:text-[14px] font-mono">
+                    <div className="flex flex-wrap items-center gap-x-2.5 sm:gap-x-4 gap-y-1 text-[10px] xs:text-[11px] sm:text-sm lg:text-[14px] font-mono">
                       <p className="text-emerald-300 font-semibold flex items-center gap-1 drop-shadow truncate">
                         <MapPin className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-400 shrink-0" />
                         <span className="truncate">Brgy. {eventBroadcast.barangay} • {eventBroadcast.targetArea}</span>
@@ -2208,31 +2304,56 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Attendance Photo Upload Action Banner (QR Code generator removed as requested) */}
-                  <div className="p-2 xs:p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-slate-950/70 border border-emerald-400/50 backdrop-blur-md shadow-md flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-4 animate-fadeIn">
-                    <div className="space-y-0.5 sm:space-y-1 text-left flex-1 min-w-0">
-                      <div className="inline-flex items-center space-x-1 sm:space-x-1.5 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[9px] sm:text-xs font-mono font-bold">
-                        <Camera className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400 shrink-0" />
-                        <span>PATUNAY SA PAGDALO • UPLOAD ATTENDANCE</span>
+                  {/* Attendance Photo Upload Action Banner with Embedded Event QR Code */}
+                  {qrTiming.isActive && (
+                    /* ------------------------------------------------------------- */
+                    /* ACTIVE (LUMABAS NA ANG QR CODE SA TAKDANG ORAS)               */
+                    /* Matches image_ed35ddde.png & image_679df947.png               */
+                    /* ------------------------------------------------------------- */
+                    <div className="p-2.5 xs:p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-950/80 border border-emerald-400/60 backdrop-blur-md shadow-[0_0_25px_rgba(16,185,129,0.25)] flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-5 animate-fadeIn">
+                      {/* Embedded QR Code */}
+                      {eventQrUrl && (
+                        <div className="flex flex-col items-center shrink-0 cursor-pointer group" onClick={() => { setIsUnfolded(true); setActiveView('upload'); }}>
+                          <div className="p-1.5 sm:p-2 rounded-xl bg-slate-900 border-2 border-emerald-400/80 group-hover:border-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.4)] group-hover:scale-105 transition-all">
+                            <img src={eventQrUrl} alt="Official Event QR Code" className="w-20 h-20 xs:w-24 xs:h-24 sm:w-28 sm:h-28 object-contain rounded-lg" />
+                          </div>
+                          <span className="text-[9px] sm:text-[10px] text-emerald-300 font-mono font-bold tracking-tight mt-1 flex items-center gap-1 group-hover:text-emerald-200">
+                            <QrCode className="w-3 h-3 text-emerald-400" />
+                            <span>I-scan para mag-upload</span>
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="space-y-1 text-left flex-1 min-w-0">
+                        <div className="inline-flex items-center space-x-1 sm:space-x-1.5 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[9px] sm:text-xs font-mono font-bold">
+                          <Camera className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400 shrink-0" />
+                          <span>PATUNAY SA PAGDALO • UPLOAD ATTENDANCE</span>
+                        </div>
+                        <p className="text-[10px] sm:text-sm text-slate-200 font-sans leading-snug">
+                          I-scan ang Event QR Code o i-click ang button para direktang pumunta sa pag-upload ng geotagged & watermarked photo:
+                        </p>
+                        {qrTiming.endTimeFormatted && (
+                          <div className="text-[9px] sm:text-[10px] font-mono text-emerald-400/90 flex items-center gap-1 pt-0.5">
+                            <Clock className="w-3 h-3 text-emerald-400 shrink-0" />
+                            <span>Bukas hanggang <strong>{qrTiming.endTimeFormatted}</strong> ({qrTiming.countdownFormatted} nalalabi bago maglaho)</span>
+                          </div>
+                        )}
                       </div>
-                      <p className="text-[10px] sm:text-sm text-slate-200 font-sans leading-tight">
-                        Mag-upload ng patunay na larawan (geotagged & watermarked photo) sa pagdalo:
-                      </p>
+                      
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsUnfolded(true);
+                          setActiveView('upload');
+                        }}
+                        className="w-full sm:w-auto py-2.5 sm:py-3 px-4 sm:px-5 rounded-lg sm:rounded-xl fluid-btn-emerald text-slate-950 font-mono font-black text-[10px] sm:text-sm flex items-center justify-center space-x-1.5 transition-all cursor-pointer border border-emerald-300 active:scale-95 shadow-[0_0_16px_rgba(16,185,129,0.55)] shrink-0"
+                      >
+                        <Camera className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-950 shrink-0" />
+                        <span className="uppercase font-black truncate tracking-wide">Upload Attendance Photo</span>
+                        <Upload className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-950 shrink-0" />
+                      </button>
                     </div>
-                    
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsUnfolded(true);
-                        setActiveView('upload');
-                      }}
-                      className="w-full sm:w-auto py-2 sm:py-2.5 px-3.5 sm:px-5 rounded-lg sm:rounded-xl fluid-btn-emerald text-slate-950 font-mono font-black text-[10px] sm:text-sm flex items-center justify-center space-x-1.5 transition-all cursor-pointer border border-emerald-300 active:scale-95 shadow-[0_0_14px_rgba(16,185,129,0.55)] shrink-0"
-                    >
-                      <Camera className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-950 shrink-0" />
-                      <span className="uppercase font-black truncate tracking-wide">Upload Attendance Photo</span>
-                      <Upload className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-950 shrink-0" />
-                    </button>
-                  </div>
+                  )}
 
                   {/* 3-Column Compact Reminder Grid */}
                   <div className="grid grid-cols-3 gap-1 xs:gap-1.5 sm:gap-2.5 text-[9px] xs:text-[10px] sm:text-sm font-mono text-slate-300 text-left">
@@ -2307,12 +2428,22 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
                   {/* Bottom Author Row - Responsive on Mobile & Desktop */}
                   <div className="text-[9.5px] xs:text-[10px] sm:text-xs md:text-sm font-mono text-slate-400 pt-1.5 sm:pt-2.5 border-t border-white/10 flex flex-row items-center justify-between gap-1">
-                    <div className="flex items-center gap-1 text-emerald-300 font-bold whitespace-nowrap shrink-0">
-                      <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400 shrink-0 animate-pulse" />
-                      <span className="bg-emerald-950/70 border border-emerald-500/30 px-1.5 py-0.5 rounded text-emerald-300 font-mono tracking-wider whitespace-nowrap text-[9px] sm:text-xs">
-                        {eventTimeLeft.formatted}
+                    <div className="flex items-center gap-1.5 text-emerald-300 font-bold whitespace-nowrap shrink-0">
+                      <Clock className={`w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 ${qrTiming.isActive ? 'text-emerald-400 animate-pulse' : qrTiming.isUpcoming ? 'text-cyan-400' : 'text-rose-400'}`} />
+                      <span className={`px-1.5 py-0.5 rounded font-mono tracking-wider whitespace-nowrap text-[9px] sm:text-xs border ${
+                        qrTiming.isUpcoming
+                          ? 'bg-cyan-950/80 border-cyan-500/40 text-cyan-300'
+                          : qrTiming.isActive
+                            ? 'bg-emerald-950/70 border-emerald-500/30 text-emerald-300'
+                            : 'bg-rose-950/70 border-rose-500/30 text-rose-300'
+                      }`}>
+                        {qrTiming.isUpcoming
+                          ? `Lalabas sa: ${qrTiming.countdownFormatted}`
+                          : qrTiming.isActive
+                            ? `${qrTiming.countdownFormatted} left`
+                            : `Naglaho na (${qrTiming.endTimeFormatted})`}
                       </span>
-                      <span className="text-emerald-400/80 font-normal text-[8.5px] sm:text-xs">left</span>
+                      {qrTiming.isActive && <span className="text-emerald-400/80 font-normal text-[8.5px] sm:text-xs">bago maglaho</span>}
                     </div>
                     <div className="text-[9px] xs:text-[9.5px] sm:text-xs text-slate-300 truncate text-right">
                       By: <strong className="text-emerald-400 font-bold">{eventBroadcast.sentByAdminName || 'Admin Officer'}</strong>

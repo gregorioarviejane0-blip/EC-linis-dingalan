@@ -252,18 +252,7 @@ export function checkIsBroadcastActive(broadcast: any): boolean {
   try {
     const nowDeviceMs = getDingalanNow().getTime();
 
-    // 1. Check Start Schedule Arrival (kung kelan magsisimulang lumabas sa login page batay sa device clock)
-    const startRawDate = broadcast.qrDisplayStartDate || broadcast.eventDate || broadcast.date;
-    const startRawTime = broadcast.qrDisplayStartTime || broadcast.startTime || broadcast.callTime;
-    if (startRawDate && startRawTime) {
-      const targetStartDeviceMs = parsePstDateTime(startRawDate, startRawTime, 0, 0);
-      if (targetStartDeviceMs > 0 && nowDeviceMs < targetStartDeviceMs) {
-        // Scheduled in the future; hindi pa dumarating ang itinakdang oras sa device
-        return false;
-      }
-    }
-
-    // 2. Determine End Date (YYYY-MM-DD or MM/DD/YYYY)
+    // Determine End Date (YYYY-MM-DD or MM/DD/YYYY)
     const rawEndDate = broadcast.qrDisplayEndDate || broadcast.eventDate || broadcast.date;
     let year = 0, month = 0, day = 0;
     if (rawEndDate && typeof rawEndDate === 'string') {
@@ -288,8 +277,8 @@ export function checkIsBroadcastActive(broadcast: any): boolean {
       day = todayDevice.getDate();
     }
 
-    // 3. Parse End Time
-    let rawTimeStr = broadcast.qrDisplayEndTime || broadcast.estimatedEndTime || broadcast.endTime || broadcast.callTime || '11:59 PM';
+    // Parse End Time
+    let rawTimeStr = broadcast.qrDisplayEndTime || broadcast.estimatedEndTime || '11:59 PM';
     rawTimeStr = String(rawTimeStr).trim();
 
     // Handle range strings like "6:00 am - 3;55 Pm (4 na Oras)" -> extract the second part
@@ -327,6 +316,73 @@ export function checkIsBroadcastActive(broadcast: any): boolean {
   } catch {
     return true;
   }
+}
+
+/**
+ * Formats time strings (e.g. "06:00" -> "06:00 AM", "23:59" -> "11:59 PM")
+ */
+export function formatFriendlyTime(rawTimeStr?: string): string {
+  if (!rawTimeStr) return '';
+  const clean = String(rawTimeStr).trim();
+  if (/am|pm/i.test(clean)) return clean;
+  const m = clean.match(/^(\d{1,2})[:;](\d{2})$/);
+  if (m) {
+    let h = parseInt(m[1], 10);
+    const min = m[2];
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return `${String(h).padStart(2, '0')}:${min} ${ampm}`;
+  }
+  return clean;
+}
+
+/**
+ * Checks specifically whether the Event QR Code and Upload attendance button
+ * should be visible (released), upcoming (waiting for scheduled release time), or expired.
+ */
+export function checkIsQrReleased(broadcast: any): {
+  isUpcoming: boolean;
+  isActive: boolean;
+  isExpired: boolean;
+  startMs: number;
+  endMs: number;
+  startTimeFormatted: string;
+  endTimeFormatted: string;
+} {
+  if (!broadcast) {
+    return {
+      isUpcoming: false,
+      isActive: false,
+      isExpired: false,
+      startMs: 0,
+      endMs: 0,
+      startTimeFormatted: '',
+      endTimeFormatted: '',
+    };
+  }
+
+  const nowMs = getDingalanNow().getTime();
+  const startDateStr = broadcast.qrDisplayStartDate || broadcast.eventDate || broadcast.date || new Date().toISOString().split('T')[0];
+  const startTimeStr = broadcast.qrDisplayStartTime || broadcast.startTime || broadcast.callTime || '06:00 AM';
+  const endDateStr = broadcast.qrDisplayEndDate || broadcast.eventDate || broadcast.date || startDateStr;
+  const endTimeStr = broadcast.qrDisplayEndTime || broadcast.estimatedEndTime || '11:59 PM';
+
+  const startMs = parsePstDateTime(startDateStr, startTimeStr, 6, 0);
+  const endMs = parsePstDateTime(endDateStr, endTimeStr, 23, 59);
+
+  const isUpcoming = startMs > 0 && nowMs < startMs;
+  const isExpired = endMs > 0 && nowMs > endMs;
+  const isActive = !isUpcoming && !isExpired;
+
+  return {
+    isUpcoming,
+    isActive,
+    isExpired,
+    startMs,
+    endMs,
+    startTimeFormatted: formatFriendlyTime(startTimeStr),
+    endTimeFormatted: formatFriendlyTime(endTimeStr),
+  };
 }
 
 /**

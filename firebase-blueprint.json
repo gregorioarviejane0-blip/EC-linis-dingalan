@@ -146,6 +146,19 @@
         "createdAt": { "type": "string" }
       },
       "required": ["id", "senderAlias", "category", "message", "status"]
+    },
+    "ActivityAssignment": {
+      "title": "ActivityAssignment",
+      "description": "Leader and beneficiary assignments to clean-up programs",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "activityId": { "type": "string", "maxLength": 128 },
+        "beneficiaryId": { "type": "string", "maxLength": 128 },
+        "assignedAt": { "type": "string" },
+        "status": { "type": "string", "enum": ["assigned", "attended", "excused", "absent"] }
+      },
+      "required": ["id", "activityId", "beneficiaryId"]
     }
   },
   "firestore": {
@@ -160,6 +173,10 @@
     "/activities/{activityId}": {
       "schema": { "$ref": "#/entities/Activity" },
       "description": "Clean-up activities and programs"
+    },
+    "/assignments/{assignmentId}": {
+      "schema": { "$ref": "#/entities/ActivityAssignment" },
+      "description": "Beneficiary assignments to work programs"
     },
     "/attendances/{attendanceId}": {
       "schema": { "$ref": "#/entities/Attendance" },

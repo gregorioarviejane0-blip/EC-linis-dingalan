@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Activity, ActivityAssignment, ActivityStatus, AttendanceRecord, Beneficiary, DingalanBarangay, User } from '../types';
+import { api } from '../services/api';
 import {
   Calendar,
   Clock,
@@ -134,7 +135,7 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
     requiredTools: '',
     waterReminder: '',
     recommendedAttire: '',
-    qrScheduleEnabled: false,
+    qrScheduleEnabled: true,
     qrDisplayStartDate: '',
     qrDisplayStartTime: '06:00',
     qrDisplayEndDate: '',
@@ -193,7 +194,7 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
     barangay: 'Paltic',
     targetBeneficiariesCount: '4',
     notes: '',
-    qrScheduleEnabled: false,
+    qrScheduleEnabled: true,
     qrDisplayStartDate: new Date().toISOString().split('T')[0],
     qrDisplayStartTime: '06:00',
     qrDisplayEndDate: new Date().toISOString().split('T')[0],
@@ -206,6 +207,17 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
     cleanUpEndLocation: '',
   });
 
+  // Selected leader IDs for Create Modal & Edit Modal
+  const [selectedLeaderIds, setSelectedLeaderIds] = useState<string[]>(() => beneficiaries.map((b) => b.id));
+  const [editSelectedLeaderIds, setEditSelectedLeaderIds] = useState<string[]>([]);
+
+  // Sync selectedLeaderIds when beneficiaries change
+  useEffect(() => {
+    if (selectedLeaderIds.length === 0 && beneficiaries.length > 0) {
+      setSelectedLeaderIds(beneficiaries.map((b) => b.id));
+    }
+  }, [beneficiaries]);
+
   const filteredActivities = activities.filter((a) => {
     if (filterStatus === 'ALL') return true;
     return a.status === filterStatus;
@@ -216,7 +228,7 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
     try {
       const payload = {
         ...newActivity,
-        targetBeneficiariesCount: Number(newActivity.targetBeneficiariesCount) || 1,
+        targetBeneficiariesCount: Number(newActivity.targetBeneficiariesCount) || selectedLeaderIds.length || 1,
         qrDisplayStartDate: newActivity.qrDisplayStartDate || newActivity.date,
         qrDisplayStartTime: newActivity.qrDisplayStartTime || newActivity.callTime || '06:00',
         qrDisplayEndDate: newActivity.qrDisplayEndDate || newActivity.date,
@@ -225,6 +237,24 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
       };
 
       await onCreateActivity(payload);
+
+      // Auto-assign selected leaders to the newly created activity
+      if (selectedLeaderIds.length > 0) {
+        setTimeout(async () => {
+          try {
+            const latestActs = (await api.getActivities()).activities;
+            const createdAct = latestActs.find((a) => a.title === payload.title && a.date === payload.date) || latestActs[0];
+            if (createdAct && createdAct.id) {
+              for (const bId of selectedLeaderIds) {
+                await onAssignBeneficiary(createdAct.id, bId);
+              }
+            }
+          } catch (err) {
+            console.warn('Auto-assign leaders error:', err);
+          }
+        }, 300);
+      }
+
       setIsCreateModalOpen(false);
     } catch (err: any) {
       alert(err.message || 'Failed to create work program');
@@ -233,6 +263,8 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
 
   const handleOpenEditModal = (act: Activity) => {
     setEditingActivity(act);
+    const assignedIds = assignments.filter((a) => a.activityId === act.id).map((a) => a.beneficiaryId);
+    setEditSelectedLeaderIds(assignedIds.length > 0 ? assignedIds : beneficiaries.map((b) => b.id));
     setEditForm({
       title: act.title || '',
       programType: act.programType || 'COASTAL_CLEANUP',
@@ -248,7 +280,7 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
       requiredTools: act.requiredTools || '',
       waterReminder: act.waterReminder || '',
       recommendedAttire: act.recommendedAttire || '',
-      qrScheduleEnabled: act.qrScheduleEnabled ?? false,
+      qrScheduleEnabled: act.qrScheduleEnabled ?? true,
       qrDisplayStartDate: act.qrDisplayStartDate || act.date || new Date().toISOString().split('T')[0],
       qrDisplayStartTime: act.qrDisplayStartTime || '06:00',
       qrDisplayEndDate: act.qrDisplayEndDate || act.date || new Date().toISOString().split('T')[0],
@@ -266,9 +298,14 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
     if (!editingActivity || !onUpdateActivity) return;
     setIsSavingEdit(true);
     try {
+      const assignedBenes = beneficiaries.filter((b) => editSelectedLeaderIds.includes(b.id));
+      const personnelStrings = assignedBenes.map((b) => `${b.firstName} ${b.lastName} (${b.beneCode})`);
+
       await onUpdateActivity(editingActivity.id, {
         ...editForm,
-        targetBeneficiariesCount: Number(editForm.targetBeneficiariesCount) || 1,
+        targetBeneficiariesCount: Number(editForm.targetBeneficiariesCount) || editSelectedLeaderIds.length || 1,
+        assignedBeneficiariesCount: editSelectedLeaderIds.length,
+        assignedPersonnel: personnelStrings,
         date: editForm.date,
         callTime: editForm.callTime,
         estimatedEndTime: editForm.estimatedEndTime,
@@ -278,6 +315,19 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
         qrDisplayEndDate: editForm.qrDisplayEndDate || editForm.date,
         qrDisplayEndTime: editForm.qrDisplayEndTime || editForm.estimatedEndTime || '23:59',
       });
+
+      // Sync leader assignments for edited activity
+      const currentAssignedIds = assignments.filter((a) => a.activityId === editingActivity.id).map((a) => a.beneficiaryId);
+      const toAssign = editSelectedLeaderIds.filter((id) => !currentAssignedIds.includes(id));
+      const toUnassign = currentAssignedIds.filter((id) => !editSelectedLeaderIds.includes(id));
+
+      for (const bId of toAssign) {
+        await onAssignBeneficiary(editingActivity.id, bId);
+      }
+      for (const bId of toUnassign) {
+        await onUnassignBeneficiary?.(editingActivity.id, bId);
+      }
+
       setEditingActivity(null);
     } catch (err: any) {
       alert(err?.message || 'Nabigo ang pag-update sa work program.');
@@ -483,16 +533,6 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
             ))}
           </div>
 
-          {onOpenGenerateQrModal && (
-            <button
-              onClick={onOpenGenerateQrModal}
-              className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-gradient-to-r from-[#00e599] via-[#00d9b4] to-[#00d4ff] hover:from-[#00f2a5] hover:to-[#22e1ff] text-slate-950 font-mono font-bold text-xs shadow-[0_0_15px_rgba(0,229,153,0.35)] flex items-center space-x-1 transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0"
-              title="Generate Cleanup Event QR Code & Paalala"
-            >
-              <QrCode className="w-3.5 h-3.5 text-slate-950 shrink-0" />
-              <span>Generate Event QR</span>
-            </button>
-          )}
 
           <button
             onClick={() => setIsCreateModalOpen(true)}
@@ -544,14 +584,14 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
             return (
               <div
                 key={act.id}
-                className="bg-slate-800/80 border border-slate-700/80 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 shadow-xl flex flex-col justify-between hover:border-slate-600 transition-all group relative"
+                className="bg-slate-800/80 border border-slate-700/80 rounded-xl sm:rounded-2xl p-2.5 sm:p-5 shadow-xl flex flex-col justify-between hover:border-slate-600 transition-all group relative"
               >
                 <div>
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-700">
+                  <div className="flex items-start justify-between gap-1.5 mb-1.5 sm:mb-2">
+                    <span className="text-[9px] sm:text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-700">
                       {act.programType.replace('_', ' ')}
                     </span>
-                    <div className="flex items-center space-x-1.5">
+                    <div className="flex items-center space-x-1 sm:space-x-1.5">
                       {getStatusBadge(act.status)}
                       {onUpdateActivity && (
                         <button
@@ -560,7 +600,7 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                           className="p-1 rounded-lg bg-amber-500/15 hover:bg-amber-600 text-amber-300 hover:text-white border border-amber-500/40 transition-all cursor-pointer shadow-sm"
                           title="I-edit ang buong content ng work program box na ito"
                         >
-                          <Pencil className="w-3.5 h-3.5" />
+                          <Pencil className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                         </button>
                       )}
                       {onDeleteActivity && (
@@ -570,46 +610,50 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                           className="p-1 rounded-lg bg-rose-500/10 hover:bg-rose-600 text-slate-400 hover:text-white border border-slate-700 hover:border-rose-500 transition-all cursor-pointer"
                           title="Burahin ang box na ito"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                         </button>
                       )}
                     </div>
                   </div>
 
-                  <h3 className="text-sm sm:text-base font-bold text-white group-hover:text-emerald-300 transition-colors line-clamp-2">
+                  <h3 className="text-xs xs:text-sm sm:text-base font-bold text-white group-hover:text-emerald-300 transition-colors line-clamp-2 leading-snug">
                     {act.title}
                   </h3>
-                  <p className="text-[11px] sm:text-xs text-slate-400 mt-1 line-clamp-2">
+                  <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5 sm:mt-1 line-clamp-2 leading-tight">
                     {act.description}
                   </p>
 
                   {/* Logistics Info */}
-                  <div className="mt-3 sm:mt-4 space-y-1 text-xs text-slate-300 bg-slate-900/60 p-2.5 sm:p-3 rounded-xl border border-slate-800">
+                  <div className="mt-2 sm:mt-4 space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs text-slate-300 bg-slate-900/60 p-2 sm:p-3 rounded-lg sm:rounded-xl border border-slate-800">
                     <div className="flex items-center text-slate-200">
-                      <MapPin className="w-3.5 h-3.5 text-emerald-400 mr-1.5 shrink-0" />
+                      <MapPin className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400 mr-1 shrink-0" />
                       <span className="font-semibold truncate">{act.targetArea}</span>
                       <span className="text-slate-400 ml-1 shrink-0">(Brgy. {act.barangay})</span>
                     </div>
-                    <div className="flex flex-wrap items-center text-slate-300 gap-y-1">
+                    <div className="flex flex-wrap items-center text-slate-300 gap-x-2 gap-y-0.5">
                       <span className="flex items-center">
-                        <Calendar className="w-3.5 h-3.5 text-cyan-400 mr-1 shrink-0" />
+                        <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-cyan-400 mr-1 shrink-0" />
                         <span>{act.date}</span>
                       </span>
-                      <span className="flex items-center ml-2.5">
-                        <Clock className="w-3.5 h-3.5 text-cyan-400 mr-1 shrink-0" />
-                        <span>{act.callTime} AM</span>
+                      <span className="flex items-center">
+                        <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-cyan-400 mr-1 shrink-0" />
+                        <span>Call Time: {act.callTime}</span>
+                      </span>
+                      <span className="flex items-center text-cyan-300 font-mono font-bold text-[9px] sm:text-[10px] bg-cyan-950/80 px-1.5 py-0.5 rounded border border-cyan-500/40">
+                        <QrCode className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1 text-cyan-400 shrink-0" />
+                        <span>QR: {act.qrDisplayStartTime || act.callTime || '06:00 AM'}</span>
                       </span>
                     </div>
-                    <div className="text-[10px] sm:text-[11px] text-slate-400 pt-1 border-t border-slate-800">
+                    <div className="text-[9px] sm:text-[11px] text-slate-400 pt-0.5 sm:pt-1 border-t border-slate-800 truncate">
                       Supervisor: <span className="text-slate-200 font-medium">{act.supervisorName}</span>
                     </div>
                   </div>
 
                   {/* Beneficiary Assignment & Compliance Progress */}
-                  <div className="mt-3 sm:mt-4 space-y-1">
-                    <div className="flex items-center justify-between text-[11px] sm:text-xs font-semibold">
+                  <div className="mt-2 sm:mt-4 space-y-1">
+                    <div className="flex items-center justify-between text-[10px] sm:text-xs font-semibold">
                       <span className="text-slate-300 flex items-center">
-                        <Users className="w-3.5 h-3.5 text-emerald-400 mr-1" />
+                        <Users className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400 mr-1 shrink-0" />
                         Assigned Workforce:
                       </span>
                       <span className="font-mono text-emerald-300">
@@ -625,27 +669,27 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
 
                     {/* Expandable Assigned Beneficiaries List & Quick Delete */}
                     {assignedCount > 0 && (
-                      <div className="pt-1.5">
+                      <div className="pt-1">
                         <button
                           type="button"
                           onClick={() => setExpandedActivityId(expandedActivityId === act.id ? null : act.id)}
-                          className="text-[11px] font-mono text-emerald-400 hover:text-emerald-300 flex items-center gap-1 transition-colors cursor-pointer"
+                          className="text-[10px] sm:text-[11px] font-mono text-emerald-400 hover:text-emerald-300 flex items-center gap-1 transition-colors cursor-pointer"
                         >
                           <span>{expandedActivityId === act.id ? '▲ Itago ang naka-assign' : `▼ Tingnan ang mga naka-assign (${assignedCount})`}</span>
                         </button>
                         {expandedActivityId === act.id && (
-                          <div className="mt-2 p-2 rounded-xl bg-slate-950/90 border border-slate-800 space-y-1.5 max-h-40 overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden">
-                            <div className="text-[10px] uppercase font-mono font-bold text-slate-400 flex items-center justify-between pb-1 border-b border-slate-800">
+                          <div className="mt-1.5 p-1.5 sm:p-2 rounded-xl bg-slate-950/90 border border-slate-800 space-y-1 max-h-36 overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden">
+                            <div className="text-[9px] sm:text-[10px] uppercase font-mono font-bold text-slate-400 flex items-center justify-between pb-1 border-b border-slate-800">
                               <span>Naka-Assigned:</span>
                               <span className="text-emerald-400 font-mono">{assignedCount}</span>
                             </div>
                             {beneficiaries
                               .filter((b) => assignments.some((asg) => asg.activityId === act.id && asg.beneficiaryId === b.id))
                               .map((b) => (
-                                <div key={b.id} className="flex items-center justify-between py-1 px-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-xs">
-                                  <div className="truncate pr-2">
-                                    <span className="font-bold text-white text-[11px]">{b.firstName} {b.lastName}</span>
-                                    <span className="text-[10px] text-slate-400 ml-1.5 font-mono">({b.beneCode} • {b.barangay})</span>
+                                <div key={b.id} className="flex items-center justify-between py-0.5 px-1 rounded-lg bg-slate-900/80 border border-slate-800 text-[10px] sm:text-xs">
+                                  <div className="truncate pr-1">
+                                    <span className="font-bold text-white text-[10px] sm:text-[11px]">{b.firstName} {b.lastName}</span>
+                                    <span className="text-[9px] text-slate-400 ml-1 font-mono">({b.beneCode} • {b.barangay})</span>
                                   </div>
                                   <button
                                     type="button"
@@ -655,10 +699,10 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                                          await onUnassignBeneficiary(act.id, b.id);
                                        }
                                     }}
-                                    className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/20 p-1 rounded transition-colors shrink-0 cursor-pointer flex items-center gap-0.5 text-[10px]"
+                                    className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/20 p-0.5 rounded transition-colors shrink-0 cursor-pointer flex items-center gap-0.5 text-[9px]"
                                     title={`Burahin/Alisin si ${b.firstName} ${b.lastName} sa program`}
                                   >
-                                    <Trash2 className="w-3 h-3" />
+                                    <Trash2 className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                                     <span>Alisin</span>
                                   </button>
                                 </div>
@@ -671,13 +715,13 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                 </div>
 
                 {/* Action Buttons */}
-                <div className="mt-3.5 sm:mt-5 pt-2.5 sm:pt-3 border-t border-slate-700/60 flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex flex-wrap items-center gap-1.5">
+                <div className="mt-2.5 sm:mt-5 pt-2 sm:pt-3 border-t border-slate-700/60 flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 text-[10px] sm:text-xs">
+                  <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
                     <button
                       onClick={() => handleOpenAssignModal(act)}
-                      className="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-slate-700/80 hover:bg-slate-700 text-xs font-semibold text-slate-200 rounded-lg transition-colors border border-slate-600 flex items-center shrink-0 cursor-pointer"
+                      className="px-2 py-1 sm:px-3 sm:py-1.5 bg-slate-700/80 hover:bg-slate-700 font-semibold text-slate-200 rounded-lg transition-colors border border-slate-600 flex items-center shrink-0 cursor-pointer"
                     >
-                      <Users className="w-3 h-3 mr-1 text-slate-400" />
+                      <Users className="w-3 h-3 mr-1 text-slate-400 shrink-0" />
                       Assign ({assignedCount})
                     </button>
 
@@ -685,10 +729,10 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                       <button
                         type="button"
                         onClick={() => handleOpenEditModal(act)}
-                        className="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-amber-500/15 hover:bg-amber-600 text-amber-300 hover:text-white text-xs font-semibold rounded-lg transition-colors border border-amber-500/40 flex items-center shrink-0 cursor-pointer shadow-sm"
+                        className="px-2 py-1 sm:px-3 sm:py-1.5 bg-amber-500/15 hover:bg-amber-600 text-amber-300 hover:text-white font-semibold rounded-lg transition-colors border border-amber-500/40 flex items-center shrink-0 cursor-pointer shadow-sm"
                         title="I-edit ang buong content ng work program box na ito"
                       >
-                        <Pencil className="w-3 h-3 mr-1" />
+                        <Pencil className="w-3 h-3 mr-1 shrink-0" />
                         <span>I-edit</span>
                       </button>
                     )}
@@ -697,25 +741,25 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                       <button
                         type="button"
                         onClick={() => setActivityToDelete(act)}
-                        className="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-rose-500/10 hover:bg-rose-600 text-rose-300 hover:text-white text-xs font-semibold rounded-lg transition-colors border border-rose-500/30 flex items-center shrink-0 cursor-pointer"
+                        className="px-2 py-1 sm:px-3 sm:py-1.5 bg-rose-500/10 hover:bg-rose-600 text-rose-300 hover:text-white font-semibold rounded-lg transition-colors border border-rose-500/30 flex items-center shrink-0 cursor-pointer"
                         title="Burahin ang box na ito"
                       >
-                        <Trash2 className="w-3 h-3 mr-1" />
+                        <Trash2 className="w-3 h-3 mr-1 shrink-0" />
                         <span>Burahin</span>
                       </button>
                     )}
                   </div>
 
-                  <div className="flex items-center space-x-1.5 shrink-0">
+                  <div className="flex items-center space-x-1 sm:space-x-1.5 shrink-0">
                     {onSetAsActiveLoginAdvisory && (
                       <button
                         type="button"
                         onClick={() => onSetAsActiveLoginAdvisory(act)}
-                        className="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-slate-950 text-xs font-bold rounded-lg transition-all border border-emerald-500/40 flex items-center gap-1 shadow cursor-pointer shrink-0"
+                        className="px-2 py-1 sm:px-3 sm:py-1.5 bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-slate-950 font-bold rounded-lg transition-all border border-emerald-500/40 flex items-center gap-1 shadow cursor-pointer shrink-0"
                         title="Ipakita at i-sync ang content ng program na ito sa Login Advisory Card (Pangalawang Picture)"
                       >
-                        <Radio className="w-3.5 h-3.5 animate-pulse text-emerald-400 group-hover:text-slate-950" />
-                        <span>Ipakita sa Login (Picture 2)</span>
+                        <Radio className="w-3 h-3 sm:w-3.5 sm:h-3.5 animate-pulse text-emerald-400 group-hover:text-slate-950 shrink-0" />
+                        <span className="truncate">Ipakita sa Login (Picture 2)</span>
                       </button>
                     )}
 
@@ -723,10 +767,10 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                       <button
                         type="button"
                         onClick={() => onOpenGenerateQrModalWithActivity(act)}
-                        className="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white text-xs font-bold rounded-lg transition-colors border border-emerald-500/40 flex items-center gap-1 shadow cursor-pointer shrink-0"
+                        className="px-2 py-1 sm:px-3 sm:py-1.5 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white font-bold rounded-lg transition-colors border border-emerald-500/40 flex items-center gap-1 shadow cursor-pointer shrink-0"
                         title="I-load sa QR Event Generator ang program na ito"
                       >
-                        <QrCode className="w-3.5 h-3.5" />
+                        <QrCode className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
                         <span className="hidden xs:inline">QR Notice</span>
                       </button>
                     )}
@@ -734,10 +778,10 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                     <button
                       type="button"
                       onClick={() => setAutoReportActivity(act)}
-                      className="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-cyan-600/90 hover:bg-cyan-600 text-xs font-bold text-white rounded-lg transition-colors flex items-center gap-1 shadow cursor-pointer shrink-0"
+                      className="px-2 py-1 sm:px-3 sm:py-1.5 bg-cyan-600/90 hover:bg-cyan-600 font-bold text-white rounded-lg transition-colors flex items-center gap-1 shadow cursor-pointer shrink-0"
                       title="I-view ang Auto Report ng Work Program na ito"
                     >
-                      <FileText className="w-3.5 h-3.5" />
+                      <FileText className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
                       <span>Report</span>
                     </button>
                   </div>
@@ -778,7 +822,7 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
             <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1.5 text-xs text-slate-300">
               <p className="font-bold text-white text-sm">{activityToDelete.title}</p>
               <p className="text-[11px] text-emerald-300">Brgy. {activityToDelete.barangay} • {activityToDelete.targetArea}</p>
-              <p className="text-[11px] text-slate-400">{activityToDelete.date} • {activityToDelete.callTime} AM</p>
+              <p className="text-[11px] text-slate-400">{activityToDelete.date} • {activityToDelete.callTime}</p>
             </div>
 
             <p className="text-xs text-slate-300 leading-relaxed">
@@ -1319,55 +1363,10 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                 </div>
               </div>
 
-              {/* Clean-up Scope Area & Route (Start & End Points for Map Visualization) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-xl bg-slate-950/70 border border-emerald-500/40">
-                <div>
-                  <label className="block text-[11px] font-semibold text-emerald-300 mb-1 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span>Sisimulang Lugar / Starting Point *</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newActivity.cleanUpStartLocation}
-                    onChange={(e) => setNewActivity({ ...newActivity, cleanUpStartLocation: e.target.value })}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
-                    placeholder="e.g. Feeder Port Wharf / Purok 1"
-                  />
-                </div>
 
-                <div>
-                  <label className="block text-[11px] font-semibold text-rose-300 mb-1 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-rose-400"></span>
-                    <span>Tatapusang Lugar / Ending Point *</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newActivity.cleanUpEndLocation}
-                    onChange={(e) => setNewActivity({ ...newActivity, cleanUpEndLocation: e.target.value })}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
-                    placeholder="e.g. Rock Sea Wall / Lighthouse Trail"
-                  />
-                </div>
 
-                <div className="sm:col-span-2">
-                  <label className="block text-[11px] font-semibold text-cyan-300 mb-1 flex items-center justify-between">
-                    <span>Clean-up Scope Area (Sakop na Lawak / km² o Hangganan) *</span>
-                    <span className="text-[10px] text-cyan-400 font-mono">Igu-guhit sa Mapa</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newActivity.cleanUpScopeArea}
-                    onChange={(e) => setNewActivity({ ...newActivity, cleanUpScopeArea: e.target.value })}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none font-mono"
-                    placeholder="e.g. 2.5 km² shoreline / 500m coastal zone"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              {/* Primary Activity Schedule: Date, Call Time, End Time & Total Hours */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-300 mb-1">
                     Activity Date *
@@ -1385,7 +1384,7 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                         qrDisplayEndDate: newDate,
                       }));
                     }}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none font-mono"
                   />
                 </div>
 
@@ -1402,7 +1401,6 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                       setNewActivity((prev) => ({
                         ...prev,
                         callTime: newTime,
-                        qrDisplayStartTime: newTime,
                       }));
                     }}
                     placeholder="06:00 AM"
@@ -1423,7 +1421,6 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                       setNewActivity((prev) => ({
                         ...prev,
                         estimatedEndTime: newEndTime,
-                        qrDisplayEndTime: newEndTime,
                       }));
                     }}
                     placeholder="11:59 PM"
@@ -1445,6 +1442,75 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                 </div>
               </div>
 
+              {/* Dedicated Separated Container: Oras ng Paglabas at Paglaho ng QR Code (Matching picture) */}
+              <div className="p-3 sm:p-3.5 rounded-xl bg-slate-900/90 border-2 border-cyan-500/40 space-y-2 shadow-inner">
+                <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-slate-800 pb-2">
+                  <div className="flex items-center space-x-1.5 text-cyan-300 font-mono font-bold text-xs">
+                    <QrCode className="w-4 h-4 text-cyan-400 shrink-0" />
+                    <span>Iskedyul ng QR Code & Upload (Hiwalay sa Call Time)</span>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold text-emerald-300 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30">
+                    ✓ Mauunang lalabas ang Activity bago ang QR
+                  </span>
+                </div>
+
+                <p className="text-[11px] text-slate-300 font-sans leading-relaxed">
+                  Ang na-create na <strong>Program Activity</strong> ay mauunang lalabas sa advisory content ayon sa Call Time. Ang <strong>QR Code at Upload button</strong> naman ay lalabas lamang kapag sumapit na ang itinakdang oras sa ibaba:
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block text-[11px] font-mono font-bold text-cyan-300 mb-1 flex items-center space-x-1.5">
+                      <QrCode className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                      <span>Paglabas ng QR *</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={newActivity.qrDisplayStartTime}
+                      onChange={(e) => {
+                        const newQrTime = e.target.value;
+                        setNewActivity((prev) => ({
+                          ...prev,
+                          qrDisplayStartTime: newQrTime,
+                        }));
+                      }}
+                      placeholder="06:00"
+                      className="w-full bg-slate-950 border-2 border-cyan-500/70 rounded-xl px-3 py-2 text-xs text-cyan-200 focus:border-cyan-400 focus:outline-none font-mono font-bold shadow-[0_0_12px_rgba(6,182,212,0.25)]"
+                      title="Eksaktong oras kung kailan lalabas ang Event QR Code sa advisory content"
+                    />
+                    <span className="text-[10px] text-cyan-400/80 font-mono mt-0.5 block">
+                      Hal. 06:00 o 06:00 AM (oras kung kailan lilitaw ang QR)
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-mono font-bold text-rose-300 mb-1 flex items-center space-x-1.5">
+                      <QrCode className="w-3.5 h-3.5 text-rose-400 shrink-0 opacity-80" />
+                      <span>Paglaho ng QR *</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={newActivity.qrDisplayEndTime}
+                      onChange={(e) => {
+                        const newQrEndTime = e.target.value;
+                        setNewActivity((prev) => ({
+                          ...prev,
+                          qrDisplayEndTime: newQrEndTime,
+                        }));
+                      }}
+                      placeholder="23:59"
+                      className="w-full bg-slate-950 border-2 border-rose-500/70 rounded-xl px-3 py-2 text-xs text-rose-200 focus:border-rose-400 focus:outline-none font-mono font-bold shadow-[0_0_12px_rgba(244,63,94,0.25)]"
+                      title="Eksaktong oras kung kailan kusang maglalaho/mabubura ang Event QR Code sa advisory content"
+                    />
+                    <span className="text-[10px] text-rose-400/80 font-mono mt-0.5 block">
+                      Hal. 23:59 o 11:59 PM (oras kung kailan mabubura ang QR)
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-[11px] font-semibold text-slate-300 mb-1">
                   Description / Operational Guidelines
@@ -1458,23 +1524,59 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                 />
               </div>
 
-              {/* Name List of Assigned Leaders / Beneficiaries */}
+              {/* Name List of Assigned Leaders / Beneficiaries (Interactive Selection) */}
               <div className="pt-3 border-t border-slate-800 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-emerald-400 font-mono flex items-center">
-                    <Users className="w-3.5 h-3.5 mr-1.5" />
-                    Listahan ng mga Naka-Asign na Lider ({beneficiaries.length})
+                    <Users className="w-3.5 h-3.5 mr-1.5 text-emerald-400 shrink-0" />
+                    Listahan ng mga Naka-Asign na Lider ({selectedLeaderIds.length} / {beneficiaries.length})
                   </span>
-                  <span className="text-[10px] text-slate-400">Mula sa Asign Leader Tab</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedLeaderIds.length === beneficiaries.length) {
+                        setSelectedLeaderIds([]);
+                      } else {
+                        setSelectedLeaderIds(beneficiaries.map((b) => b.id));
+                      }
+                    }}
+                    className="text-[10px] text-cyan-300 hover:text-cyan-200 font-mono font-bold underline cursor-pointer"
+                  >
+                    {selectedLeaderIds.length === beneficiaries.length ? 'I-deselect Lahat' : 'Piliin Lahat'}
+                  </button>
                 </div>
-                <div className="max-h-36 overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden space-y-1 p-2 rounded-xl bg-slate-950/80 border border-slate-800 text-xs">
+                <div className="max-h-40 overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden space-y-1.5 p-2 rounded-xl bg-slate-950/80 border border-slate-800 text-xs">
                   {beneficiaries.length > 0 ? (
-                    beneficiaries.map((b) => (
-                      <div key={b.id} className="flex items-center justify-between p-1.5 rounded bg-slate-900 border border-slate-800">
-                        <span className="font-bold text-white text-[11px]">{b.firstName} {b.lastName}</span>
-                        <span className="text-[10px] text-emerald-300 font-mono">Brgy. {b.barangay} (${b.beneCode})</span>
-                      </div>
-                    ))
+                    beneficiaries.map((b) => {
+                      const isSelected = selectedLeaderIds.includes(b.id);
+                      return (
+                        <label
+                          key={b.id}
+                          className={`flex items-center justify-between p-2 rounded-lg border transition-all cursor-pointer select-none ${
+                            isSelected
+                              ? 'bg-emerald-950/60 border-emerald-500/60 text-white'
+                              : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:bg-slate-800/60'
+                          }`}
+                        >
+                          <div className="flex items-center space-x-2.5">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => {
+                                if (isSelected) {
+                                  setSelectedLeaderIds((prev) => prev.filter((id) => id !== b.id));
+                                } else {
+                                  setSelectedLeaderIds((prev) => [...prev, b.id]);
+                                }
+                              }}
+                              className="w-4 h-4 rounded border-slate-700 text-emerald-500 focus:ring-emerald-500 cursor-pointer"
+                            />
+                            <span className="font-bold text-white text-xs">{b.firstName} {b.lastName}</span>
+                          </div>
+                          <span className="text-[10px] text-emerald-300 font-mono">Brgy. {b.barangay} (${b.beneCode})</span>
+                        </label>
+                      );
+                    })
                   ) : (
                     <div className="p-2 text-center text-[11px] text-slate-500 italic">
                       Walang pang lider na naka-register. Magdagdag sa Asign Leader tab.
@@ -1617,56 +1719,10 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                 </div>
               </div>
 
-              {/* Clean-up Scope Area & Route (Start & End Points for Map Visualization) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-xl bg-slate-950/70 border border-amber-500/40">
-                <div>
-                  <label className="block text-xs font-mono font-bold text-emerald-300 mb-1 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span>Sisimulang Lugar / Starting Point <span className="text-rose-400">*</span></span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={editForm.cleanUpStartLocation}
-                    onChange={(e) => setEditForm({ ...editForm, cleanUpStartLocation: e.target.value })}
-                    placeholder="Hal. Feeder Port Wharf / Purok 1"
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:border-amber-400 focus:outline-none"
-                  />
-                </div>
 
-                <div>
-                  <label className="block text-xs font-mono font-bold text-rose-300 mb-1 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-rose-400"></span>
-                    <span>Tatapusang Lugar / Ending Point <span className="text-rose-400">*</span></span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={editForm.cleanUpEndLocation}
-                    onChange={(e) => setEditForm({ ...editForm, cleanUpEndLocation: e.target.value })}
-                    placeholder="Hal. Rock Sea Wall / Lighthouse Trail"
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:border-amber-400 focus:outline-none"
-                  />
-                </div>
-
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-mono font-bold text-amber-300 mb-1 flex items-center justify-between">
-                    <span>Clean-up Scope Area (Sakop na Lawak / km² o Hangganan) <span className="text-rose-400">*</span></span>
-                    <span className="text-[10px] text-amber-400 font-mono">Igu-guhit sa Mapa</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={editForm.cleanUpScopeArea}
-                    onChange={(e) => setEditForm({ ...editForm, cleanUpScopeArea: e.target.value })}
-                    placeholder="Hal. 2.5 km² shoreline / 500m coastal zone"
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:border-amber-400 focus:outline-none font-mono"
-                  />
-                </div>
-              </div>
 
               {/* Row 4: Date, Call Time, Estimated End Time & Total Hours */}
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
                   <label className="block text-xs font-mono font-bold text-slate-300 mb-1">
                     Petsa ng Gawain (Date) <span className="text-rose-400">*</span>
@@ -1701,7 +1757,6 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                       setEditForm((prev) => ({
                         ...prev,
                         callTime: newT,
-                        qrDisplayStartTime: newT,
                       }));
                     }}
                     placeholder="06:00 AM"
@@ -1722,7 +1777,6 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                       setEditForm((prev) => ({
                         ...prev,
                         estimatedEndTime: newEnd,
-                        qrDisplayEndTime: newEnd,
                       }));
                     }}
                     placeholder="11:59 PM"
@@ -1741,6 +1795,75 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                     placeholder="4 na Oras"
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-amber-400 focus:outline-none font-mono"
                   />
+                </div>
+              </div>
+
+              {/* Dedicated Separated Container: Oras ng Paglabas at Paglaho ng QR Code (Content sa Picture) */}
+              <div className="p-3 sm:p-3.5 rounded-xl bg-slate-900/90 border-2 border-cyan-500/40 space-y-2 shadow-inner">
+                <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-slate-800 pb-2">
+                  <div className="flex items-center space-x-1.5 text-cyan-300 font-mono font-bold text-xs">
+                    <QrCode className="w-4 h-4 text-cyan-400 shrink-0" />
+                    <span>Iskedyul ng QR Code & Upload (Hiwalay sa Call Time)</span>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold text-emerald-300 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30">
+                    ✓ Mauunang lalabas ang Activity bago ang QR
+                  </span>
+                </div>
+
+                <p className="text-[11px] text-slate-300 font-sans leading-relaxed">
+                  Ang na-create na <strong>Program Activity</strong> ay mauunang lalabas sa advisory content ayon sa Call Time. Ang <strong>QR Code at Upload button</strong> naman ay lalabas lamang kapag sumapit na ang itinakdang oras sa ibaba:
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block text-xs font-mono font-bold text-cyan-300 mb-1 flex items-center space-x-1.5">
+                      <QrCode className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                      <span>Paglabas ng QR Code <span className="text-rose-400">*</span></span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editForm.qrDisplayStartTime}
+                      onChange={(e) => {
+                        const newQrT = e.target.value;
+                        setEditForm((prev) => ({
+                          ...prev,
+                          qrDisplayStartTime: newQrT,
+                        }));
+                      }}
+                      placeholder="06:00"
+                      className="w-full bg-slate-950 border-2 border-cyan-500/70 rounded-xl px-3 py-2 text-xs text-cyan-200 focus:border-cyan-400 focus:outline-none font-mono font-bold shadow-[0_0_12px_rgba(6,182,212,0.25)]"
+                      title="Eksaktong oras kung kailan lalabas ang Official Event QR Code sa Advisory content"
+                    />
+                    <span className="text-[10px] text-cyan-400/80 font-mono mt-0.5 block">
+                      Hal. 06:00 o 06:00 AM (oras kung kailan lilitaw ang QR)
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-mono font-bold text-rose-300 mb-1 flex items-center space-x-1.5">
+                      <QrCode className="w-3.5 h-3.5 text-rose-400 shrink-0 opacity-80" />
+                      <span>Paglaho ng QR Code <span className="text-rose-400">*</span></span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editForm.qrDisplayEndTime}
+                      onChange={(e) => {
+                        const newQrEndT = e.target.value;
+                        setEditForm((prev) => ({
+                          ...prev,
+                          qrDisplayEndTime: newQrEndT,
+                        }));
+                      }}
+                      placeholder="23:59"
+                      className="w-full bg-slate-950 border-2 border-rose-500/70 rounded-xl px-3 py-2 text-xs text-rose-200 focus:border-rose-400 focus:outline-none font-mono font-bold shadow-[0_0_12px_rgba(244,63,94,0.25)]"
+                      title="Eksaktong oras kung kailan kusang maglalaho/mabubura ang Official Event QR Code sa Advisory content"
+                    />
+                    <span className="text-[10px] text-rose-400/80 font-mono mt-0.5 block">
+                      Hal. 23:59 o 11:59 PM (oras kung kailan mabubura ang QR)
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -1828,6 +1951,67 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                 </div>
               </div>
 
+              {/* Name List of Assigned Leaders / Beneficiaries for Edit Modal */}
+              <div className="pt-3 border-t border-slate-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-400 font-mono flex items-center">
+                    <Users className="w-3.5 h-3.5 mr-1.5 text-amber-400 shrink-0" />
+                    Listahan ng mga Naka-Asign na Lider ({editSelectedLeaderIds.length} / {beneficiaries.length})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (editSelectedLeaderIds.length === beneficiaries.length) {
+                        setEditSelectedLeaderIds([]);
+                      } else {
+                        setEditSelectedLeaderIds(beneficiaries.map((b) => b.id));
+                      }
+                    }}
+                    className="text-[10px] text-amber-300 hover:text-amber-200 font-mono font-bold underline cursor-pointer"
+                  >
+                    {editSelectedLeaderIds.length === beneficiaries.length ? 'I-deselect Lahat' : 'Piliin Lahat'}
+                  </button>
+                </div>
+                <div className="max-h-40 overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden space-y-1.5 p-2 rounded-xl bg-slate-950/80 border border-slate-800 text-xs">
+                  {beneficiaries.length > 0 ? (
+                    beneficiaries.map((b) => {
+                      const isSelected = editSelectedLeaderIds.includes(b.id);
+                      return (
+                        <label
+                          key={b.id}
+                          className={`flex items-center justify-between p-2 rounded-lg border transition-all cursor-pointer select-none ${
+                            isSelected
+                              ? 'bg-amber-950/60 border-amber-500/60 text-white'
+                              : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:bg-slate-800/60'
+                          }`}
+                        >
+                          <div className="flex items-center space-x-2.5">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => {
+                                if (isSelected) {
+                                  setEditSelectedLeaderIds((prev) => prev.filter((id) => id !== b.id));
+                                } else {
+                                  setEditSelectedLeaderIds((prev) => [...prev, b.id]);
+                                }
+                              }}
+                              className="w-4 h-4 rounded border-slate-700 text-amber-500 focus:ring-amber-500 cursor-pointer"
+                            />
+                            <span className="font-bold text-white text-xs">{b.firstName} {b.lastName}</span>
+                          </div>
+                          <span className="text-[10px] text-emerald-300 font-mono">Brgy. {b.barangay} (${b.beneCode})</span>
+                        </label>
+                      );
+                    })
+                  ) : (
+                    <div className="p-2 text-center text-[11px] text-slate-500 italic">
+                      Walang pang lider na naka-register.
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Form Action Buttons */}
               <div className="pt-3 border-t border-slate-800 flex items-center justify-end space-x-3">
                 <button
@@ -1889,7 +2073,7 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                 </div>
                 <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
                   <span className="text-[10px] uppercase font-mono text-slate-400 block">Petsa / Oras</span>
-                  <span className="text-xs sm:text-sm font-bold text-cyan-300 font-mono">{autoReportActivity.date} • {autoReportActivity.callTime} AM</span>
+                  <span className="text-xs sm:text-sm font-bold text-cyan-300 font-mono">{autoReportActivity.date} • {autoReportActivity.callTime}</span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
                   <span className="text-[10px] uppercase font-mono text-slate-400 block">Naka-Assign</span>

@@ -623,37 +623,70 @@ export class ApiService {
 
   // --- ACTIVITIES ---
   async getActivities(): Promise<{ activities: Activity[]; assignments: ActivityAssignment[] }> {
+    let activities: Activity[] = [];
+    let assignments: ActivityAssignment[] = [];
+
+    // 1. Authoritative cross-device check from Firestore
     try {
-      const res = await fetch('/api/activities', { headers: this.getAuthHeaders() });
-      if (res.ok) {
-        return await res.json();
+      const snap = await getDocs(collection(db, 'activities'));
+      if (!snap.empty) {
+        activities = snap.docs.map((d) => ({ ...d.data(), id: d.id } as Activity));
+        activities.sort(
+          (a, b) =>
+            new Date(b.createdAt || b.date || 0).getTime() -
+            new Date(a.createdAt || a.date || 0).getTime()
+        );
+        localStorage.setItem(LS_ACTIVITIES, JSON.stringify(activities));
       }
-    } catch {
-      // offline fallback
+    } catch (fsErr) {
+      handleFirestoreError(fsErr, OperationType.GET, 'activities');
     }
-    const rawActs = localStorage.getItem(LS_ACTIVITIES);
-    const rawAsgs = localStorage.getItem(LS_ASSIGNMENTS);
-    return {
-      activities: rawActs ? JSON.parse(rawActs) : INITIAL_ACTIVITIES,
-      assignments: rawAsgs ? JSON.parse(rawAsgs) : INITIAL_ASSIGNMENTS,
-    };
+
+    // Also load persistent assignments from Firestore if present
+    try {
+      const asgSnap = await getDocs(collection(db, 'assignments'));
+      if (!asgSnap.empty) {
+        assignments = asgSnap.docs.map((d) => ({ ...d.data(), id: d.id } as ActivityAssignment));
+        localStorage.setItem(LS_ASSIGNMENTS, JSON.stringify(assignments));
+      }
+    } catch (fsErr) {
+      handleFirestoreError(fsErr, OperationType.GET, 'assignments');
+    }
+
+    // 2. Fallback to Server API if Firestore was empty
+    if (activities.length === 0) {
+      try {
+        const res = await fetch('/api/activities', { headers: this.getAuthHeaders() });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.activities) && data.activities.length > 0) {
+            activities = data.activities;
+            if (assignments.length === 0) {
+              assignments = data.assignments || [];
+            }
+            localStorage.setItem(LS_ACTIVITIES, JSON.stringify(activities));
+          }
+        }
+      } catch {}
+    }
+
+    // 3. Resilient fallback to LocalStorage
+    if (activities.length === 0) {
+      const rawActs = localStorage.getItem(LS_ACTIVITIES);
+      activities = rawActs ? JSON.parse(rawActs) : INITIAL_ACTIVITIES;
+    }
+
+    if (assignments.length === 0) {
+      const rawAsgs = localStorage.getItem(LS_ASSIGNMENTS);
+      assignments = rawAsgs ? JSON.parse(rawAsgs) : INITIAL_ASSIGNMENTS;
+    }
+
+    return { activities, assignments };
   }
 
   async createActivity(activityData: Partial<Activity>): Promise<Activity> {
-    try {
-      const res = await fetch('/api/activities', {
-        method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(activityData),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        return data.activity;
-      }
-    } catch {
-      // offline
-    }
-    const acts = (await this.getActivities()).activities;
+    const rawActs = localStorage.getItem(LS_ACTIVITIES);
+    const acts: Activity[] = rawActs ? JSON.parse(rawActs) : INITIAL_ACTIVITIES;
     const newAct: Activity = {
       id: `act-${Date.now().toString().slice(-6)}`,
       title: activityData.title!,
@@ -666,48 +699,91 @@ export class ApiService {
       menroSupervisorId: this.currentUser.id,
       supervisorName: this.currentUser.name,
       targetBeneficiariesCount: Number(activityData.targetBeneficiariesCount) || 15,
-      assignedBeneficiariesCount: 0,
+      assignedBeneficiariesCount: Number(activityData.assignedBeneficiariesCount) || 0,
       attendedBeneficiariesCount: 0,
-      status: 'scheduled',
+      status: activityData.status || 'ongoing',
       notes: activityData.notes || '',
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       qrScheduleEnabled: activityData.qrScheduleEnabled ?? true,
       qrDisplayMode: activityData.qrDisplayMode || 'match_event',
       qrDisplayStartDate: activityData.qrDisplayStartDate || activityData.date,
       qrDisplayStartTime: activityData.qrDisplayStartTime || activityData.callTime,
       qrDisplayEndDate: activityData.qrDisplayEndDate || activityData.date,
-      qrDisplayEndTime: activityData.qrDisplayEndTime || '11:59 PM',
+      qrDisplayEndTime: activityData.qrDisplayEndTime || '23:59',
       estimatedEndTime: activityData.estimatedEndTime || activityData.qrDisplayEndTime || '11:59 PM',
+      totalHours: activityData.totalHours || '4 na Oras',
       requiredTools: activityData.requiredTools || '',
       waterReminder: activityData.waterReminder || '',
       recommendedAttire: activityData.recommendedAttire || '',
+      assignedPersonnel: activityData.assignedPersonnel || [],
       ...activityData,
     };
+
     acts.unshift(newAct);
     localStorage.setItem(LS_ACTIVITIES, JSON.stringify(acts));
+
+    // 1. Permanent write to Firestore
+    try {
+      await setDoc(doc(db, 'activities', newAct.id), newAct);
+    } catch (fsErr) {
+      handleFirestoreError(fsErr, OperationType.WRITE, `activities/${newAct.id}`);
+    }
+
+    // 2. Write to backend API
+    try {
+      await fetch('/api/activities', {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(newAct),
+      });
+    } catch {}
+
+    // 3. Broadcast across tabs
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      try {
+        const bc = new BroadcastChannel('ld_sync');
+        bc.postMessage({ type: 'CREATE_ACTIVITY', activity: newAct });
+        bc.close();
+      } catch {}
+    }
+
     return newAct;
   }
 
   async deleteActivity(id: string): Promise<boolean> {
-    try {
-      fetch(`/api/activities/${id}`, {
-        method: 'DELETE',
-        headers: this.getAuthHeaders(),
-      }).catch(() => {});
-    } catch {}
-
     const rawActs = localStorage.getItem(LS_ACTIVITIES);
     const list: Activity[] = rawActs ? JSON.parse(rawActs) : INITIAL_ACTIVITIES;
     const updated = list.filter(a => a.id !== id);
     localStorage.setItem(LS_ACTIVITIES, JSON.stringify(updated));
 
-    // Also remove related assignments
+    // 1. Permanent delete from Firestore
+    try {
+      await deleteDoc(doc(db, 'activities', id));
+    } catch (fsErr) {
+      handleFirestoreError(fsErr, OperationType.DELETE, `activities/${id}`);
+    }
+
+    // 2. Delete from server
+    try {
+      await fetch(`/api/activities/${id}`, {
+        method: 'DELETE',
+        headers: this.getAuthHeaders(),
+      });
+    } catch {}
+
+    // 3. Clean up associated assignments in LocalStorage and Firestore
     const rawAsgs = localStorage.getItem(LS_ASSIGNMENTS);
     if (rawAsgs) {
       try {
         const asgs: ActivityAssignment[] = JSON.parse(rawAsgs);
+        const toDeleteAsgs = asgs.filter(asg => asg.activityId === id);
         const filteredAsgs = asgs.filter(asg => asg.activityId !== id);
         localStorage.setItem(LS_ASSIGNMENTS, JSON.stringify(filteredAsgs));
+
+        for (const asg of toDeleteAsgs) {
+          deleteDoc(doc(db, 'assignments', asg.id)).catch(() => {});
+        }
       } catch {}
     }
 
@@ -723,39 +799,49 @@ export class ApiService {
   }
 
   async updateActivity(id: string, activityData: Partial<Activity>): Promise<Activity> {
-    try {
-      fetch(`/api/activities/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() },
-        body: JSON.stringify(activityData),
-      }).catch(() => {});
-    } catch {}
-
     const rawActs = localStorage.getItem(LS_ACTIVITIES);
     const list: Activity[] = rawActs ? JSON.parse(rawActs) : INITIAL_ACTIVITIES;
     const index = list.findIndex(a => a.id === id);
     if (index === -1) throw new Error('Activity not found');
-    const updated = { ...list[index], ...activityData, updatedAt: new Date().toISOString() };
+
+    const updated: Activity = {
+      ...list[index],
+      ...activityData,
+      id,
+      updatedAt: new Date().toISOString(),
+    };
     list[index] = updated;
     localStorage.setItem(LS_ACTIVITIES, JSON.stringify(list));
+
+    // 1. Permanent write to Firestore (authoritative persistence)
+    try {
+      await setDoc(doc(db, 'activities', id), updated, { merge: true });
+    } catch (fsErr) {
+      handleFirestoreError(fsErr, OperationType.WRITE, `activities/${id}`);
+    }
+
+    // 2. Await PUT update to Server API
+    try {
+      await fetch(`/api/activities/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() },
+        body: JSON.stringify(updated),
+      });
+    } catch {}
+
+    // 3. Broadcast across windows and tabs
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      try {
+        const bc = new BroadcastChannel('ld_sync');
+        bc.postMessage({ type: 'UPDATE_ACTIVITY', activity: updated });
+        bc.close();
+      } catch {}
+    }
+
     return updated;
   }
 
   async assignBeneficiary(activityId: string, beneficiaryId: string): Promise<ActivityAssignment> {
-    try {
-      const res = await fetch(`/api/activities/${activityId}/assignments`, {
-        method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify({ beneficiaryId }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        return data.assignment;
-      }
-    } catch {
-      // offline fallback
-    }
-
     const newAsg: ActivityAssignment = {
       id: `asg-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       activityId,
@@ -764,6 +850,7 @@ export class ApiService {
       status: 'assigned',
     };
 
+    // 1. LocalStorage
     const rawAsgs = localStorage.getItem(LS_ASSIGNMENTS);
     const asgs: ActivityAssignment[] = rawAsgs ? JSON.parse(rawAsgs) : [];
     asgs.push(newAsg);
@@ -781,23 +868,34 @@ export class ApiService {
       } catch {}
     }
 
+    // 2. Permanent write to Firestore
+    try {
+      await setDoc(doc(db, 'assignments', newAsg.id), newAsg);
+    } catch (fsErr) {
+      handleFirestoreError(fsErr, OperationType.WRITE, `assignments/${newAsg.id}`);
+    }
+
+    // 3. Server API
+    try {
+      await fetch(`/api/activities/${activityId}/assignments`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ beneficiaryId }),
+      });
+    } catch {}
+
     return newAsg;
   }
 
   async unassignBeneficiary(activityId: string, beneficiaryId: string): Promise<boolean> {
-    try {
-      await fetch(`/api/activities/${activityId}/assignments/${beneficiaryId}`, {
-        method: 'DELETE',
-        headers: this.getAuthHeaders(),
-      });
-    } catch {
-      // offline fallback
-    }
-
+    // 1. LocalStorage
     const rawAsgs = localStorage.getItem(LS_ASSIGNMENTS);
+    let removedId: string | null = null;
     if (rawAsgs) {
       try {
         const asgs: ActivityAssignment[] = JSON.parse(rawAsgs);
+        const found = asgs.find(asg => asg.activityId === activityId && asg.beneficiaryId === beneficiaryId);
+        if (found) removedId = found.id;
         const filtered = asgs.filter(asg => !(asg.activityId === activityId && asg.beneficiaryId === beneficiaryId));
         localStorage.setItem(LS_ASSIGNMENTS, JSON.stringify(filtered));
       } catch {}
@@ -815,23 +913,35 @@ export class ApiService {
       } catch {}
     }
 
+    // 2. Permanent delete from Firestore
+    if (removedId) {
+      try {
+        await deleteDoc(doc(db, 'assignments', removedId));
+      } catch (fsErr) {
+        handleFirestoreError(fsErr, OperationType.DELETE, `assignments/${removedId}`);
+      }
+    }
+
+    // 3. Server API
+    try {
+      await fetch(`/api/activities/${activityId}/assignments/${beneficiaryId}`, {
+        method: 'DELETE',
+        headers: this.getAuthHeaders(),
+      });
+    } catch {}
+
     return true;
   }
 
   async clearActivityAssignments(activityId: string): Promise<boolean> {
-    try {
-      await fetch(`/api/activities/${activityId}/assignments`, {
-        method: 'DELETE',
-        headers: this.getAuthHeaders(),
-      });
-    } catch {
-      // offline fallback
-    }
-
     const rawAsgs = localStorage.getItem(LS_ASSIGNMENTS);
+    const toDeleteIds: string[] = [];
     if (rawAsgs) {
       try {
         const asgs: ActivityAssignment[] = JSON.parse(rawAsgs);
+        asgs.forEach(asg => {
+          if (asg.activityId === activityId) toDeleteIds.push(asg.id);
+        });
         const filtered = asgs.filter(asg => asg.activityId !== activityId);
         localStorage.setItem(LS_ASSIGNMENTS, JSON.stringify(filtered));
       } catch {}
@@ -849,19 +959,47 @@ export class ApiService {
       } catch {}
     }
 
+    // Delete from Firestore
+    for (const id of toDeleteIds) {
+      deleteDoc(doc(db, 'assignments', id)).catch(() => {});
+    }
+
+    // Server API
+    try {
+      await fetch(`/api/activities/${activityId}/assignments`, {
+        method: 'DELETE',
+        headers: this.getAuthHeaders(),
+      });
+    } catch {}
+
     return true;
   }
 
   async clearAllActivities(): Promise<boolean> {
+    localStorage.setItem(LS_ACTIVITIES, JSON.stringify([]));
+    localStorage.setItem(LS_ASSIGNMENTS, JSON.stringify([]));
+
+    // Delete all activities and assignments from Firestore
+    try {
+      const snap = await getDocs(collection(db, 'activities'));
+      const delPromises: Promise<void>[] = [];
+      snap.forEach(d => delPromises.push(deleteDoc(doc(db, 'activities', d.id))));
+      await Promise.all(delPromises);
+
+      const asgSnap = await getDocs(collection(db, 'assignments'));
+      const asgDelPromises: Promise<void>[] = [];
+      asgSnap.forEach(d => asgDelPromises.push(deleteDoc(doc(db, 'assignments', d.id))));
+      await Promise.all(asgDelPromises);
+    } catch (fsErr) {
+      handleFirestoreError(fsErr, OperationType.DELETE, 'activities');
+    }
+
     try {
       fetch('/api/activities', {
         method: 'DELETE',
         headers: this.getAuthHeaders(),
       }).catch(() => {});
     } catch {}
-
-    localStorage.setItem(LS_ACTIVITIES, JSON.stringify([]));
-    localStorage.setItem(LS_ASSIGNMENTS, JSON.stringify([]));
 
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       try {

@@ -40,6 +40,12 @@ service cloud.firestore {
       allow create, update, delete: if true;
     }
 
+    // Activity Assignments Collection
+    match /assignments/{assignmentId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
     // Attendances Collection
     match /attendances/{attendanceId} {
       allow read: if true;

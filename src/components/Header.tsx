@@ -288,22 +288,6 @@ export const Header: React.FC<HeaderProps> = ({
 
 
 
-          {/* Generate Event QR Button */}
-          {onOpenGenerateQrModal && (
-            <motion.button
-              whileHover={{ scale: 1.05, y: -1 }}
-              whileTap={{ scale: 0.94 }}
-              transition={{ type: 'spring', stiffness: 450, damping: 18 }}
-              onClick={onOpenGenerateQrModal}
-              className="relative overflow-hidden group px-2 py-1 sm:px-2.5 sm:py-0.5 rounded-full bg-gradient-to-r from-[#00e599] via-[#00d9b4] to-[#00d4ff] hover:from-[#00f2a5] hover:to-[#22e1ff] text-slate-950 font-mono font-bold text-[9.5px] sm:text-[10px] xl:text-[10.5px] flex items-center justify-center space-x-1 shadow-[0_0_10px_rgba(0,229,153,0.35)] cursor-pointer shrink-0 border border-emerald-300/40 select-none"
-              title="Generate Cleanup Event QR Code & Paalala"
-            >
-              <QrCode className="w-3 h-3 sm:w-2.5 sm:h-2.5 xl:w-3 xl:h-3 text-slate-950 shrink-0 transition-transform duration-300 group-hover:rotate-12" />
-              <span className="font-black tracking-tight group-hover:tracking-wider transition-all duration-200">
-                <span className="hidden sm:inline">Event </span>QR
-              </span>
-            </motion.button>
-          )}
 
           {/* Anonymous Messages Inbox Button */}
           {isAdminOrSuperAdmin && onOpenAnonymousInboxModal && (
