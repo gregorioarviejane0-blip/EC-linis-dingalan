@@ -29,6 +29,8 @@ import {
   ChevronLeft,
   ChevronDown,
   Minimize2,
+  Maximize2,
+  ZoomIn,
   QrCode,
   Camera,
   Upload,
@@ -132,6 +134,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [isUnfolded, setIsUnfolded] = useState<boolean>(true);
   const [isBroadcastHidden, setIsBroadcastHidden] = useState<boolean>(false);
   const [isAnonymousModalOpen, setIsAnonymousModalOpen] = useState<boolean>(false);
+  const [isEnlargedQrOpen, setIsEnlargedQrOpen] = useState<boolean>(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const modalScrollRef = useRef<HTMLDivElement>(null);
 
@@ -850,6 +853,127 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       .then((url) => setEventQrUrl(url))
       .catch((err) => console.error('Error generating event QR fallback:', err));
   }, [eventBroadcast]);
+
+  // Download Event QR Code handler
+  const handleDownloadQrCode = () => {
+    if (!eventQrUrl) return;
+    const link = document.createElement('a');
+    link.href = eventQrUrl;
+    const brgyName = eventBroadcast?.barangay || 'Dingalan';
+    const actDate = eventBroadcast?.eventDate || 'Today';
+    link.download = `Linis_Dingalan_Official_QR_${brgyName}_${actDate}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Print Event QR Code handler
+  const handlePrintQrCode = () => {
+    if (!eventQrUrl) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      window.print();
+      return;
+    }
+    const brgy = eventBroadcast?.barangay || 'Paltic';
+    const title = eventBroadcast?.activityTitle || 'LGU Environmental Cleanup Drive';
+    const date = eventBroadcast?.eventDate || new Date().toISOString().split('T')[0];
+    const area = eventBroadcast?.targetArea || 'Dingalan Operations Center';
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Print Official QR Code - ${title}</title>
+          <style>
+            body {
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+              text-align: center;
+              padding: 40px 20px;
+              color: #0f172a;
+              background-color: #f8fafc;
+            }
+            .card {
+              border: 3px solid #059669;
+              border-radius: 20px;
+              padding: 30px;
+              max-width: 500px;
+              margin: 0 auto;
+              background: #ffffff;
+              box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            }
+            .header {
+              font-weight: 800;
+              font-size: 13px;
+              color: #047857;
+              letter-spacing: 1.5px;
+              text-transform: uppercase;
+              margin-bottom: 6px;
+            }
+            .title {
+              font-size: 22px;
+              font-weight: 900;
+              margin: 10px 0 6px 0;
+              color: #0f172a;
+              line-height: 1.2;
+            }
+            .sub {
+              font-size: 13px;
+              color: #475569;
+              font-weight: 600;
+              margin-bottom: 20px;
+            }
+            .qr-wrapper {
+              display: inline-block;
+              padding: 12px;
+              border: 4px solid #10b981;
+              border-radius: 16px;
+              background: #ffffff;
+              box-shadow: 0 8px 20px rgba(16,185,129,0.15);
+            }
+            .qr-img {
+              width: 300px;
+              height: 300px;
+              object-fit: contain;
+              display: block;
+            }
+            .instructions {
+              margin-top: 20px;
+              font-size: 13px;
+              font-weight: bold;
+              color: #047857;
+              text-transform: uppercase;
+            }
+            .footer {
+              margin-top: 6px;
+              font-size: 11px;
+              color: #64748b;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <div class="header">MUNICIPALITY OF DINGALAN • PESO & MENRO</div>
+            <div class="title">${title}</div>
+            <div class="sub">Brgy. ${brgy} • ${area} | Petsa: ${date}</div>
+            <div class="qr-wrapper">
+              <img src="${eventQrUrl}" class="qr-img" alt="Official Event QR Code" />
+            </div>
+            <div class="instructions">Official Attendance QR Code</div>
+            <div class="footer">
+              I-scan gamit ang mobile camera o Linis Dingalan scanner app para sa verification.
+            </div>
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
   // Live Countdown Timer State for Event Advisory
   const [eventTimeLeft, setEventTimeLeft] = useState<{
@@ -2388,11 +2512,18 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     /* ACTIVE (FIXED HEIGHT & STABLE POSITION MATCHING UPCOMING)     */
                     /* ------------------------------------------------------------- */
                     <div className="min-h-[90px] sm:min-h-[100px] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-950/95 border-2 border-emerald-400/70 backdrop-blur-md shadow-[0_0_20px_rgba(16,185,129,0.25)] flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-4 w-full max-w-full overflow-hidden animate-fadeIn">
-                      {/* Embedded QR Code */}
+                      {/* Embedded QR Code (Click to Enlarge) */}
                       {eventQrUrl && (
-                        <div className="flex items-center space-x-3 min-w-0 w-full sm:w-auto shrink-0 cursor-pointer group" onClick={() => { setIsUnfolded(true); setActiveView('upload'); }}>
-                          <div className="p-1 rounded-xl bg-slate-900 border-2 border-emerald-400/80 group-hover:border-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.4)] group-hover:scale-105 transition-all">
+                        <div
+                          className="flex items-center space-x-3 min-w-0 w-full sm:w-auto shrink-0 cursor-pointer group"
+                          onClick={() => setIsEnlargedQrOpen(true)}
+                          title="I-click para lumaki ang QR Code sa screen"
+                        >
+                          <div className="relative p-1 rounded-xl bg-slate-900 border-2 border-emerald-400/80 group-hover:border-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.4)] group-hover:scale-105 transition-all">
                             <img src={eventQrUrl} alt="Official Event QR Code" className="w-12 h-12 sm:w-14 sm:h-14 object-contain rounded-lg" />
+                            <div className="absolute -top-1 -right-1 bg-emerald-400 text-slate-950 rounded-full p-0.5 shadow-md group-hover:scale-110 transition-transform">
+                              <Maximize2 className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                            </div>
                           </div>
                           <div className="text-left font-mono min-w-0">
                             <span className="text-[8.5px] sm:text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">
@@ -2401,6 +2532,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                             <span className="text-xs sm:text-sm font-bold text-emerald-300 flex items-center gap-1.5 truncate">
                               <QrCode className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                               <span className="truncate">Active Event QR Code</span>
+                              <span className="text-[8px] sm:text-[9px] text-emerald-300 bg-emerald-950/90 border border-emerald-500/40 px-1.5 py-0.5 rounded flex items-center gap-1 shrink-0 font-bold group-hover:bg-emerald-900 transition-colors">
+                                <Maximize2 className="w-2.5 h-2.5 text-emerald-400" /> Click to enlarge
+                              </span>
                             </span>
                           </div>
                         </div>
@@ -3052,6 +3186,108 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               : undefined
           }
         />
+      )}
+
+      {/* ========================================================================= */}
+      {/* ENLARGED EVENT QR CODE POPUP MODAL                                        */}
+      {/* ========================================================================= */}
+      {isEnlargedQrOpen && eventQrUrl && (
+        <div
+          className="fixed inset-0 z-[99999] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn"
+          onClick={() => setIsEnlargedQrOpen(false)}
+        >
+          <div
+            className="bg-slate-900 border-2 border-emerald-400/80 shadow-[0_0_50px_rgba(16,185,129,0.45)] rounded-2xl sm:rounded-3xl p-5 sm:p-7 max-w-sm sm:max-w-md w-full text-center space-y-4 relative animate-scaleIn"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-emerald-500/30 pb-3">
+              <div className="flex items-center space-x-2 text-emerald-300 font-mono font-bold text-xs sm:text-sm uppercase tracking-wider">
+                <QrCode className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400 animate-pulse" />
+                <span>Active Event QR Code</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEnlargedQrOpen(false)}
+                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer border border-slate-700"
+              >
+                <X className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+            </div>
+
+            {/* Event Details */}
+            {eventBroadcast && (
+              <div className="font-mono text-xs text-slate-300 space-y-1 bg-slate-950/80 p-3 rounded-xl border border-slate-800 text-left">
+                <p className="font-bold text-emerald-300 text-sm">{eventBroadcast.activityTitle}</p>
+                <p className="text-[11px] text-slate-400">Brgy. {eventBroadcast.barangay} • {eventBroadcast.targetArea}</p>
+                {eventBroadcast.eventDate && (
+                  <p className="text-[10px] text-cyan-400/90">Petsa: {eventBroadcast.eventDate}</p>
+                )}
+              </div>
+            )}
+
+            {/* High-Resolution QR Display Frame */}
+            <div className="p-3 sm:p-4 bg-white rounded-2xl border-4 border-emerald-400/70 shadow-[0_0_30px_rgba(16,185,129,0.3)] inline-block">
+              <img
+                src={eventQrUrl}
+                alt="Enlarged Event QR Code"
+                className="w-56 h-56 xs:w-64 xs:h-64 sm:w-72 sm:h-72 object-contain"
+              />
+            </div>
+
+            <div className="space-y-1.5 font-mono">
+              <p className="text-xs sm:text-sm font-bold text-emerald-300 tracking-wide uppercase flex items-center justify-center gap-1.5">
+                <Maximize2 className="w-3.5 h-3.5 text-emerald-400" />
+                I-scan gamit ang mobile camera
+              </p>
+              <p className="text-[10px] sm:text-xs text-slate-400">
+                Naka-enlarge sa screen para sa mabilis at mas madaling pag-scan ng QR code.
+              </p>
+            </div>
+
+            {/* Action buttons (Print QR, Download QR, Upload Attendance, Close) */}
+            <div className="pt-2 grid grid-cols-2 gap-2 font-mono">
+              <button
+                type="button"
+                onClick={handlePrintQrCode}
+                className="py-2.5 px-3 rounded-xl bg-teal-950/80 hover:bg-teal-900 border border-teal-500/50 text-teal-300 font-bold text-xs uppercase transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md active:scale-95"
+              >
+                <Printer className="w-4 h-4 text-teal-400 shrink-0" />
+                <span>Print QR Code</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDownloadQrCode}
+                className="py-2.5 px-3 rounded-xl bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/50 text-cyan-300 font-bold text-xs uppercase transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md active:scale-95"
+              >
+                <Download className="w-4 h-4 text-cyan-400 shrink-0" />
+                <span>Download QR</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEnlargedQrOpen(false);
+                  setIsUnfolded(true);
+                  setActiveView('upload');
+                }}
+                className="py-2.5 px-3 rounded-xl fluid-btn-emerald text-slate-950 font-black text-xs uppercase transition-all cursor-pointer shadow-[0_0_15px_rgba(16,185,129,0.4)] flex items-center justify-center gap-1.5 active:scale-95 col-span-2 sm:col-span-1"
+              >
+                <Camera className="w-4 h-4 text-slate-950 shrink-0" />
+                <span>Upload Photo</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsEnlargedQrOpen(false)}
+                className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs uppercase transition-colors cursor-pointer border border-slate-700 col-span-2 sm:col-span-1"
+              >
+                Isara
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
