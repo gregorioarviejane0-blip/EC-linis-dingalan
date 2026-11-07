@@ -1903,15 +1903,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                                 </button>
                               </div>
 
-                              <button
-                                type="button"
-                                onClick={handleUploadSamplePhotos}
-                                disabled={uploadIsProcessing}
-                                className="w-full py-1 sm:py-2 px-2 sm:px-3 rounded-md sm:rounded-lg bg-slate-950/60 hover:bg-slate-900 border border-slate-800 text-slate-300 hover:text-emerald-300 text-[9px] sm:text-[11px] font-mono font-bold flex items-center justify-center gap-1 sm:gap-1.5 transition-colors cursor-pointer uppercase"
-                              >
-                                <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400 shrink-0" />
-                                <span className="truncate">LOAD SAMPLE PHOTOS PARA SA TEST</span>
-                              </button>
 
                               {/* Thumbnail previews */}
                               {uploadPhotos.length > 0 && (
@@ -2265,7 +2256,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
                   {eventBroadcast ? (
 
-                  <div className="relative rounded-xl sm:rounded-3xl border-2 border-emerald-400/80 shadow-[0_0_40px_rgba(16,185,129,0.35),inset_0_0_20px_rgba(16,185,129,0.15)] bg-slate-950/95 hover:bg-slate-950/98 backdrop-blur-md p-3.5 xs:p-4 sm:p-6 lg:p-7 space-y-2 sm:space-y-4 transition-all duration-300 hover:border-emerald-300 animate-scaleIn w-full text-left flex flex-col my-auto">
+                  <div className="relative rounded-xl sm:rounded-3xl border-2 border-emerald-400/80 shadow-[0_0_40px_rgba(16,185,129,0.35),inset_0_0_20px_rgba(16,185,129,0.15)] bg-slate-950/95 hover:bg-slate-950/98 backdrop-blur-md p-3.5 xs:p-4 sm:p-6 lg:p-7 space-y-2 sm:space-y-4 transition-all duration-300 hover:border-emerald-300 animate-scaleIn w-full text-left flex flex-col my-0">
                     {/* Top Bar inside Card */}
                     <div className="flex items-center justify-between border-b border-white/10 pb-1.5 sm:pb-3 gap-1.5">
                       <div className="flex items-center space-x-1.5 sm:space-x-2.5 min-w-0">
@@ -2322,95 +2313,70 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   {/* Attendance Photo Upload Action Banner with Embedded Event QR Code */}
                   {qrTiming.isUpcoming && (
                     /* ------------------------------------------------------------- */
-                    /* UPCOMING (NAKA-LOCK ANG QR CODE AT UPLOAD BUTTON)             */
-                    /* Exact match with Picture 6 (image_ed35ddde.png)               */
+                    /* UPCOMING (100% CONTAINED INSIDE BOX WITH LIVE COUNTDOWN)     */
                     /* ------------------------------------------------------------- */
-                    <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-950/90 border-2 border-cyan-500/70 backdrop-blur-md shadow-[0_0_30px_rgba(6,182,212,0.25)] flex flex-col md:flex-row items-center justify-between gap-3 sm:gap-4 animate-fadeIn">
-                      {/* Left: Dashed Locked Box */}
-                      <div className="flex flex-col items-center shrink-0">
-                        <div className="w-24 h-24 xs:w-28 xs:h-28 sm:w-32 sm:h-32 rounded-2xl border-2 border-dashed border-cyan-400/80 bg-cyan-950/30 flex flex-col items-center justify-center p-2 text-center shadow-[inset_0_0_15px_rgba(6,182,212,0.2)]">
-                          <Lock className="w-7 h-7 sm:w-9 sm:h-9 text-cyan-400 mb-1" />
-                          <span className="text-[9px] sm:text-[10px] font-mono font-bold text-slate-300 uppercase leading-tight">
-                            LALABAS SA:
-                          </span>
-                          <span className="text-[11px] sm:text-xs font-mono font-black text-cyan-300 leading-tight">
-                            {qrTiming.startTimeFormatted || eventBroadcast.startTime}
+                    <div className="min-h-[90px] sm:min-h-[100px] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-950/95 border-2 border-cyan-500/70 backdrop-blur-md shadow-[0_0_20px_rgba(6,182,212,0.25)] flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-4 w-full max-w-full overflow-hidden animate-fadeIn">
+                      {/* Left: Box ng QR Code (Locked) */}
+                      <div className="flex items-center space-x-3 min-w-0 w-full sm:w-auto">
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl border-2 border-dashed border-cyan-400/80 bg-cyan-950/40 flex flex-col items-center justify-center p-1 text-center shadow-[inset_0_0_12px_rgba(6,182,212,0.25)] shrink-0">
+                          <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400 mb-0.5" />
+                          <span className="text-[8px] sm:text-[9px] font-mono font-black text-cyan-300 uppercase tracking-tight">
+                            NAKA-LOCK
                           </span>
                         </div>
-                        <span className="text-[9px] sm:text-[10px] text-cyan-300 font-mono font-bold tracking-tight mt-1.5 flex items-center gap-1">
-                          <Clock className="w-3 h-3 text-cyan-400 shrink-0" />
-                          <span>Naka-lock ang QR</span>
-                        </span>
+                        <div className="text-left font-mono min-w-0">
+                          <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                            Box ng QR Code:
+                          </span>
+                          <span className="text-xs sm:text-sm font-bold text-cyan-300 flex items-center gap-1.5 truncate">
+                            <Clock className="w-3.5 h-3.5 text-cyan-400 shrink-0 animate-pulse" />
+                            <span className="truncate">Locked QR Code</span>
+                          </span>
+                        </div>
                       </div>
 
-                      {/* Center: Schedule & Live Countdown Announcement */}
-                      <div className="space-y-1.5 text-center md:text-left flex-1 min-w-0 px-1 sm:px-2">
-                        <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[9px] sm:text-xs font-mono font-bold">
-                          <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-cyan-400 shrink-0" />
-                          <span className="uppercase tracking-wide">ORAS NG PAGLABAS NG QR CODE AT UPLOAD BUTTON</span>
-                        </div>
-
-                        <div className="flex flex-wrap items-center justify-center md:justify-start gap-1.5 sm:gap-2 pt-0.5 font-mono text-[11px] sm:text-sm text-slate-200">
-                          <span>Nakatakdang Lumabas sa Ganap na:</span>
-                          <span className="px-2.5 py-0.5 rounded-lg bg-cyan-950/80 border border-cyan-400/70 text-cyan-300 font-black shadow-[0_0_10px_rgba(6,182,212,0.3)]">
+                      {/* Right: Oras ng Paglabas & Live Ticking Countdown Box (100% Contained) */}
+                      <div className="flex flex-col items-start sm:items-end text-left sm:text-right font-mono space-y-1 w-full sm:w-auto min-w-0">
+                        <div className="flex items-center space-x-1.5 text-[9.5px] sm:text-[10.5px] text-slate-300 font-bold uppercase tracking-wide max-w-full flex-wrap">
+                          <span>ORAS NG PAGLABAS:</span>
+                          <span className="px-2 py-0.5 rounded-md bg-cyan-950/90 border border-cyan-400/60 text-cyan-300 font-black text-xs shadow-sm">
                             {qrTiming.startTimeFormatted || eventBroadcast.startTime}
                           </span>
                         </div>
 
-                        <div className="flex flex-wrap items-center justify-center md:justify-start gap-1.5 sm:gap-2 font-mono text-[11px] sm:text-sm text-slate-300">
-                          <span>Lalabas sa loob ng:</span>
-                          <span className="px-2.5 py-1 rounded-lg bg-slate-900 border border-cyan-500/50 text-cyan-300 font-bold tracking-wider shadow-inner">
+                        {/* Live Ticking Countdown Timer */}
+                        <div className="flex items-center space-x-1 text-[10px] sm:text-xs text-slate-200 bg-slate-900/90 px-2.5 py-1 rounded-lg border border-cyan-500/50 shadow-inner max-w-full">
+                          <span className="text-slate-400 text-[9px] sm:text-[10px] uppercase font-bold">Lalabas sa:</span>
+                          <span className="text-cyan-300 font-black font-mono tracking-wider animate-pulse">
                             {qrTiming.countdownFormatted}
                           </span>
                         </div>
-
-                        <p className="text-[10px] sm:text-xs text-slate-300 font-sans leading-relaxed pt-0.5">
-                          Awtomatikong lalabas dito ang Official Event QR Code at magiging aktibo ang upload button sa pagsapit ng <strong className="text-cyan-300 font-bold">{qrTiming.startTimeFormatted || eventBroadcast.startTime}</strong>.
-                        </p>
-                      </div>
-
-                      {/* Right: Locked Button */}
-                      <div className="flex flex-col items-center md:items-end w-full md:w-auto shrink-0">
-                        <button
-                          type="button"
-                          disabled
-                          className="w-full md:w-auto py-2.5 sm:py-3 px-4 sm:px-5 rounded-lg sm:rounded-xl bg-slate-900/90 border-2 border-cyan-500/60 text-cyan-300 font-mono font-bold text-[10px] sm:text-xs flex items-center justify-center space-x-1.5 cursor-not-allowed opacity-85 shadow-[0_0_15px_rgba(6,182,212,0.2)]"
-                        >
-                          <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-400 shrink-0" />
-                          <span className="uppercase tracking-wide font-black">
-                            LALABAS SA {qrTiming.startTimeFormatted || eventBroadcast.startTime}
-                          </span>
-                        </button>
-                        <span className="text-[9px] sm:text-[10px] font-mono text-cyan-400/80 mt-1">
-                          Maghintay sa takdang oras
-                        </span>
                       </div>
                     </div>
                   )}
 
                   {qrTiming.isExpired && (
                     /* ------------------------------------------------------------- */
-                    /* EXPIRED (NAGLAHO NA ANG QR CODE SA PAGSAPIT NG TAKDANG ORAS)  */
-                    /* Matches user request: "maglalaho yung QR code"               */
+                    /* EXPIRED (FIXED HEIGHT & STABLE POSITION)                      */
                     /* ------------------------------------------------------------- */
-                    <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-rose-950/40 border-2 border-rose-500/60 backdrop-blur-md shadow-[0_0_25px_rgba(244,63,94,0.25)] flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 animate-fadeIn">
-                      <div className="flex items-center space-x-3 text-left">
-                        <div className="w-12 h-12 rounded-xl bg-rose-500/20 border border-rose-500/50 flex items-center justify-center text-rose-400 shrink-0">
-                          <AlertCircle className="w-6 h-6" />
+                    <div className="min-h-[90px] sm:min-h-[100px] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-rose-950/40 border-2 border-rose-500/60 backdrop-blur-md shadow-[0_0_20px_rgba(244,63,94,0.25)] flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-4 w-full max-w-full overflow-hidden animate-fadeIn">
+                      <div className="flex items-center space-x-3 text-left min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-500/50 flex items-center justify-center text-rose-400 shrink-0">
+                          <AlertCircle className="w-5 h-5" />
                         </div>
-                        <div className="space-y-0.5">
+                        <div className="space-y-0.5 min-w-0">
                           <div className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[9px] sm:text-xs font-mono font-bold">
-                            <span>NAGLAHO NA ANG QR CODE • SARADO NA ANG PAG-UPLOAD</span>
+                            <span>NAGLAHO NA ANG QR CODE</span>
                           </div>
-                          <p className="text-[10px] sm:text-xs text-rose-200">
-                            Lumagpas na sa nakatakdang oras ({qrTiming.endTimeFormatted}). Kusang naglaho ang Event QR Code at sarado na ang attendance.
+                          <p className="text-[9.5px] sm:text-xs text-rose-200 truncate">
+                            Lumagpas na sa nakatakdang oras ({qrTiming.endTimeFormatted}). Sarado na ang pag-upload.
                           </p>
                         </div>
                       </div>
                       <button
                         type="button"
                         disabled
-                        className="py-2 px-4 rounded-lg bg-rose-900/40 border border-rose-700/60 text-rose-300 font-mono text-xs font-bold cursor-not-allowed opacity-75 shrink-0"
+                        className="py-1.5 px-3 rounded-lg bg-rose-900/40 border border-rose-700/60 text-rose-300 font-mono text-xs font-bold cursor-not-allowed opacity-75 shrink-0"
                       >
                         SARADO NA
                       </button>
@@ -2419,51 +2385,48 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
                   {qrTiming.isActive && (
                     /* ------------------------------------------------------------- */
-                    /* ACTIVE (LUMABAS NA ANG QR CODE SA TAKDANG ORAS)               */
-                    /* Matches image_ed35ddde.png & image_679df947.png               */
+                    /* ACTIVE (FIXED HEIGHT & STABLE POSITION MATCHING UPCOMING)     */
                     /* ------------------------------------------------------------- */
-                    <div className="p-2.5 xs:p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-950/80 border border-emerald-400/60 backdrop-blur-md shadow-[0_0_25px_rgba(16,185,129,0.25)] flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-5 animate-fadeIn">
+                    <div className="min-h-[90px] sm:min-h-[100px] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-950/95 border-2 border-emerald-400/70 backdrop-blur-md shadow-[0_0_20px_rgba(16,185,129,0.25)] flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-4 w-full max-w-full overflow-hidden animate-fadeIn">
                       {/* Embedded QR Code */}
                       {eventQrUrl && (
-                        <div className="flex flex-col items-center shrink-0 cursor-pointer group" onClick={() => { setIsUnfolded(true); setActiveView('upload'); }}>
-                          <div className="p-1.5 sm:p-2 rounded-xl bg-slate-900 border-2 border-emerald-400/80 group-hover:border-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.4)] group-hover:scale-105 transition-all">
-                            <img src={eventQrUrl} alt="Official Event QR Code" className="w-20 h-20 xs:w-24 xs:h-24 sm:w-28 sm:h-28 object-contain rounded-lg" />
+                        <div className="flex items-center space-x-3 min-w-0 w-full sm:w-auto shrink-0 cursor-pointer group" onClick={() => { setIsUnfolded(true); setActiveView('upload'); }}>
+                          <div className="p-1 rounded-xl bg-slate-900 border-2 border-emerald-400/80 group-hover:border-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.4)] group-hover:scale-105 transition-all">
+                            <img src={eventQrUrl} alt="Official Event QR Code" className="w-12 h-12 sm:w-14 sm:h-14 object-contain rounded-lg" />
                           </div>
-                          <span className="text-[9px] sm:text-[10px] text-emerald-300 font-mono font-bold tracking-tight mt-1 flex items-center gap-1 group-hover:text-emerald-200">
-                            <QrCode className="w-3 h-3 text-emerald-400" />
-                            <span>I-scan para mag-upload</span>
-                          </span>
+                          <div className="text-left font-mono min-w-0">
+                            <span className="text-[8.5px] sm:text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">
+                              Box ng QR Code:
+                            </span>
+                            <span className="text-xs sm:text-sm font-bold text-emerald-300 flex items-center gap-1.5 truncate">
+                              <QrCode className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                              <span className="truncate">Active Event QR Code</span>
+                            </span>
+                          </div>
                         </div>
                       )}
 
-                      <div className="space-y-1 text-left flex-1 min-w-0">
-                        <div className="inline-flex items-center space-x-1 sm:space-x-1.5 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[9px] sm:text-xs font-mono font-bold">
-                          <Camera className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400 shrink-0" />
-                          <span>PATUNAY SA PAGDALO • UPLOAD ATTENDANCE</span>
-                        </div>
-                        <p className="text-[10px] sm:text-sm text-slate-200 font-sans leading-snug">
-                          I-scan ang Event QR Code o i-click ang button para direktang pumunta sa pag-upload ng geotagged & watermarked photo:
-                        </p>
+                      {/* Right: Upload Attendance Photo Button */}
+                      <div className="flex flex-col items-start sm:items-end text-left sm:text-right font-mono space-y-1 w-full sm:w-auto min-w-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsUnfolded(true);
+                            setActiveView('upload');
+                          }}
+                          className="py-1.5 sm:py-2 px-3 sm:px-4 rounded-xl fluid-btn-emerald text-slate-950 font-mono font-black text-xs flex items-center justify-center space-x-1.5 transition-all cursor-pointer border border-emerald-300 active:scale-95 shadow-[0_0_14px_rgba(16,185,129,0.55)] shrink-0 uppercase tracking-wider"
+                        >
+                          <Camera className="w-3.5 h-3.5 text-slate-950 shrink-0" />
+                          <span className="truncate">Upload Attendance Photo</span>
+                        </button>
+
                         {qrTiming.endTimeFormatted && (
-                          <div className="text-[9px] sm:text-[10px] font-mono text-emerald-400/90 flex items-center gap-1 pt-0.5">
-                            <Clock className="w-3 h-3 text-emerald-400 shrink-0" />
-                            <span>Bukas hanggang <strong>{qrTiming.endTimeFormatted}</strong> ({qrTiming.countdownFormatted} nalalabi bago maglaho)</span>
+                          <div className="text-[8.5px] sm:text-[9.5px] font-mono text-emerald-300/90 flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-emerald-400 shrink-0 animate-pulse" />
+                            <span>{qrTiming.countdownFormatted} nalalabi bago maglaho</span>
                           </div>
                         )}
                       </div>
-                      
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsUnfolded(true);
-                          setActiveView('upload');
-                        }}
-                        className="w-full sm:w-auto py-2.5 sm:py-3 px-4 sm:px-5 rounded-lg sm:rounded-xl fluid-btn-emerald text-slate-950 font-mono font-black text-[10px] sm:text-sm flex items-center justify-center space-x-1.5 transition-all cursor-pointer border border-emerald-300 active:scale-95 shadow-[0_0_16px_rgba(16,185,129,0.55)] shrink-0"
-                      >
-                        <Camera className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-950 shrink-0" />
-                        <span className="uppercase font-black truncate tracking-wide">Upload Attendance Photo</span>
-                        <Upload className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-950 shrink-0" />
-                      </button>
                     </div>
                   )}
 
