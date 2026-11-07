@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Activity, ActivityAssignment, ActivityStatus, AttendanceRecord, Beneficiary, DingalanBarangay, User } from '../types';
 import { api } from '../services/api';
+import { deduplicateActivities, findDuplicateActivity, normalizeActivityKey } from '../utils/activityDeduplication';
 import {
   Calendar,
   Clock,
@@ -66,6 +67,42 @@ const DINGALAN_BARANGAYS: DingalanBarangay[] = [
   'Umiray',
 ];
 
+function normalizeTimeWithCallTime(rawTime?: string, refCallTime?: string): string {
+  if (!rawTime) return '';
+  const trimmed = String(rawTime).trim();
+  if (/am|pm/i.test(trimmed)) return trimmed;
+  const isCallTimePm = refCallTime && /pm/i.test(refCallTime);
+  const m = trimmed.match(/^(\d{1,2})[:;](\d{2})$/);
+  if (m) {
+    let h = parseInt(m[1], 10);
+    const min = m[2];
+    if (h >= 12) {
+      return `${String(h > 12 ? h - 12 : 12).padStart(2, '0')}:${min} PM`;
+    }
+    if (isCallTimePm && h >= 1 && h <= 11) {
+      return `${String(h).padStart(2, '0')}:${min} PM`;
+    }
+    return `${String(h === 0 ? 12 : h).padStart(2, '0')}:${min} AM`;
+  }
+  return trimmed;
+}
+
+function normalizeEndTime(rawTime?: string): string {
+  if (!rawTime) return '11:59 PM';
+  const trimmed = String(rawTime).trim();
+  if (/am|pm/i.test(trimmed)) return trimmed;
+  const m = trimmed.match(/^(\d{1,2})[:;](\d{2})$/);
+  if (m) {
+    let h = parseInt(m[1], 10);
+    const min = m[2];
+    if (h === 23 || h === 24 || (h >= 12 && h < 23)) {
+      return `${String(h > 12 ? h - 12 : 12).padStart(2, '0')}:${min} PM`;
+    }
+    return `${String(h).padStart(2, '0')}:${min} PM`;
+  }
+  return trimmed;
+}
+
 export const ActivityManagement: React.FC<ActivityManagementProps> = ({
   activities,
   assignments,
@@ -86,6 +123,7 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
 }) => {
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const [assignModalActivity, setAssignModalActivity] = useState<Activity | null>(null);
   const [autoReportActivity, setAutoReportActivity] = useState<Activity | null>(null);
   const [selectedBeneIds, setSelectedBeneIds] = useState<string[]>([]);
@@ -218,32 +256,52 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
     }
   }, [beneficiaries]);
 
-  const filteredActivities = activities.filter((a) => {
+  // Strictly deduplicate activities by ID and normalized composite key (title, date, barangay)
+  const uniqueActivities = useMemo(() => deduplicateActivities(activities), [activities]);
+
+  const filteredActivities = uniqueActivities.filter((a) => {
     if (filterStatus === 'ALL') return true;
     return a.status === filterStatus;
   });
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isCreating) return;
+    setIsCreating(true);
     try {
+      const normStartTime = normalizeTimeWithCallTime(newActivity.qrDisplayStartTime || newActivity.callTime, newActivity.callTime);
+      const normEndTime = normalizeEndTime(newActivity.qrDisplayEndTime || newActivity.estimatedEndTime);
       const payload = {
         ...newActivity,
         targetBeneficiariesCount: Number(newActivity.targetBeneficiariesCount) || selectedLeaderIds.length || 1,
         qrDisplayStartDate: newActivity.qrDisplayStartDate || newActivity.date,
-        qrDisplayStartTime: newActivity.qrDisplayStartTime || newActivity.callTime || '06:00',
+        qrDisplayStartTime: normStartTime,
         qrDisplayEndDate: newActivity.qrDisplayEndDate || newActivity.date,
-        qrDisplayEndTime: newActivity.qrDisplayEndTime || newActivity.estimatedEndTime || '23:59',
-        estimatedEndTime: newActivity.estimatedEndTime || newActivity.qrDisplayEndTime || '11:59 PM',
+        qrDisplayEndTime: normEndTime,
+        estimatedEndTime: newActivity.estimatedEndTime || normEndTime,
       };
 
-      await onCreateActivity(payload);
+      // Check if an activity with the same title, date, and barangay already exists
+      const existingMatch = findDuplicateActivity(payload, uniqueActivities);
+      if (existingMatch && onUpdateActivity) {
+        // Update existing instead of creating duplicate card
+        await onUpdateActivity(existingMatch.id, payload);
+      } else {
+        await onCreateActivity(payload);
+      }
 
       // Auto-assign selected leaders to the newly created activity
       if (selectedLeaderIds.length > 0) {
         setTimeout(async () => {
           try {
             const latestActs = (await api.getActivities()).activities;
-            const createdAct = latestActs.find((a) => a.title === payload.title && a.date === payload.date) || latestActs[0];
+            const createdAct =
+              latestActs.find(
+                (a) =>
+                  (a.title || '').trim().toLowerCase() === (payload.title || '').trim().toLowerCase() &&
+                  a.date === payload.date &&
+                  a.barangay === payload.barangay
+              ) || latestActs[0];
             if (createdAct && createdAct.id) {
               for (const bId of selectedLeaderIds) {
                 await onAssignBeneficiary(createdAct.id, bId);
@@ -258,6 +316,8 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
       setIsCreateModalOpen(false);
     } catch (err: any) {
       alert(err.message || 'Failed to create work program');
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -300,6 +360,8 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
     try {
       const assignedBenes = beneficiaries.filter((b) => editSelectedLeaderIds.includes(b.id));
       const personnelStrings = assignedBenes.map((b) => `${b.firstName} ${b.lastName} (${b.beneCode})`);
+      const normStartTime = normalizeTimeWithCallTime(editForm.qrDisplayStartTime || editForm.callTime, editForm.callTime);
+      const normEndTime = normalizeEndTime(editForm.qrDisplayEndTime || editForm.estimatedEndTime);
 
       await onUpdateActivity(editingActivity.id, {
         ...editForm,
@@ -308,12 +370,12 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
         assignedPersonnel: personnelStrings,
         date: editForm.date,
         callTime: editForm.callTime,
-        estimatedEndTime: editForm.estimatedEndTime,
+        estimatedEndTime: editForm.estimatedEndTime || normEndTime,
         totalHours: editForm.totalHours,
         qrDisplayStartDate: editForm.qrDisplayStartDate || editForm.date,
-        qrDisplayStartTime: editForm.qrDisplayStartTime || editForm.callTime || '06:00',
+        qrDisplayStartTime: normStartTime,
         qrDisplayEndDate: editForm.qrDisplayEndDate || editForm.date,
-        qrDisplayEndTime: editForm.qrDisplayEndTime || editForm.estimatedEndTime || '23:59',
+        qrDisplayEndTime: normEndTime,
       });
 
       // Sync leader assignments for edited activity
@@ -1442,8 +1504,8 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                 </div>
               </div>
 
-              {/* Dedicated Separated Container: Oras ng Paglabas at Paglaho ng QR Code (Matching picture) */}
-              <div className="p-3 sm:p-3.5 rounded-xl bg-slate-900/90 border-2 border-cyan-500/40 space-y-2 shadow-inner">
+              {/* Dedicated Separated Container: Iskedyul ng QR Code & Upload (Hiwalay sa Call Time - Petsa at Oras) */}
+              <div className="p-3.5 sm:p-4 rounded-xl bg-slate-900/90 border-2 border-cyan-500/50 space-y-3 shadow-inner">
                 <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-slate-800 pb-2">
                   <div className="flex items-center space-x-1.5 text-cyan-300 font-mono font-bold text-xs">
                     <QrCode className="w-4 h-4 text-cyan-400 shrink-0" />
@@ -1455,56 +1517,92 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                 </div>
 
                 <p className="text-[11px] text-slate-300 font-sans leading-relaxed">
-                  Ang na-create na <strong>Program Activity</strong> ay mauunang lalabas sa advisory content ayon sa Call Time. Ang <strong>QR Code at Upload button</strong> naman ay lalabas lamang kapag sumapit na ang itinakdang oras sa ibaba:
+                  Ang na-create na <strong>Program Activity</strong> ay mauunang lalabas sa advisory content ayon sa Call Time. Ang <strong>QR Code at Upload button</strong> naman ay lalabas lamang kapag sumapit na ang itinakdang petsa at oras sa ibaba:
                 </p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                  <div>
-                    <label className="block text-[11px] font-mono font-bold text-cyan-300 mb-1 flex items-center space-x-1.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+                  {/* Column 1: Paglabas ng QR (Release Date & Time) */}
+                  <div className="p-3 rounded-xl bg-slate-950/90 border border-cyan-500/50 space-y-2">
+                    <label className="block text-xs font-mono font-bold text-cyan-300 flex items-center space-x-1.5">
                       <QrCode className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                      <span>Paglabas ng QR *</span>
+                      <span>Paglabas ng QR Code <span className="text-rose-400">*</span></span>
                     </label>
-                    <input
-                      type="text"
-                      required
-                      value={newActivity.qrDisplayStartTime}
-                      onChange={(e) => {
-                        const newQrTime = e.target.value;
-                        setNewActivity((prev) => ({
-                          ...prev,
-                          qrDisplayStartTime: newQrTime,
-                        }));
-                      }}
-                      placeholder="06:00"
-                      className="w-full bg-slate-950 border-2 border-cyan-500/70 rounded-xl px-3 py-2 text-xs text-cyan-200 focus:border-cyan-400 focus:outline-none font-mono font-bold shadow-[0_0_12px_rgba(6,182,212,0.25)]"
-                      title="Eksaktong oras kung kailan lalabas ang Event QR Code sa advisory content"
-                    />
-                    <span className="text-[10px] text-cyan-400/80 font-mono mt-0.5 block">
+
+                    <div>
+                      <span className="block text-[10px] font-mono text-slate-300 mb-1 font-bold">Petsa ng Paglabas (Release Date):</span>
+                      <input
+                        type="date"
+                        required
+                        value={newActivity.qrDisplayStartDate || newActivity.date}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setNewActivity((prev) => ({ ...prev, qrDisplayStartDate: val }));
+                        }}
+                        className="w-full bg-slate-900 border border-cyan-500/60 rounded-lg px-2.5 py-1.5 text-xs text-cyan-200 focus:border-cyan-400 focus:outline-none font-mono font-semibold"
+                      />
+                    </div>
+
+                    <div>
+                      <span className="block text-[10px] font-mono text-slate-300 mb-1 font-bold">Oras ng Paglabas (Release Time):</span>
+                      <input
+                        type="text"
+                        required
+                        value={newActivity.qrDisplayStartTime}
+                        onChange={(e) => {
+                          const newQrTime = e.target.value;
+                          setNewActivity((prev) => ({
+                            ...prev,
+                            qrDisplayStartTime: newQrTime,
+                          }));
+                        }}
+                        placeholder="06:00 AM"
+                        className="w-full bg-slate-900 border border-cyan-500/60 rounded-lg px-2.5 py-1.5 text-xs text-cyan-200 focus:border-cyan-400 focus:outline-none font-mono font-bold shadow-[0_0_10px_rgba(6,182,212,0.2)]"
+                      />
+                    </div>
+                    <span className="text-[9.5px] text-cyan-400/80 font-mono mt-0.5 block">
                       Hal. 06:00 o 06:00 AM (oras kung kailan lilitaw ang QR)
                     </span>
                   </div>
 
-                  <div>
-                    <label className="block text-[11px] font-mono font-bold text-rose-300 mb-1 flex items-center space-x-1.5">
+                  {/* Column 2: Paglaho ng QR (Expiration Date & Time) */}
+                  <div className="p-3 rounded-xl bg-slate-950/90 border border-rose-500/50 space-y-2">
+                    <label className="block text-xs font-mono font-bold text-rose-300 flex items-center space-x-1.5">
                       <QrCode className="w-3.5 h-3.5 text-rose-400 shrink-0 opacity-80" />
-                      <span>Paglaho ng QR *</span>
+                      <span>Paglaho ng QR Code <span className="text-rose-400">*</span></span>
                     </label>
-                    <input
-                      type="text"
-                      required
-                      value={newActivity.qrDisplayEndTime}
-                      onChange={(e) => {
-                        const newQrEndTime = e.target.value;
-                        setNewActivity((prev) => ({
-                          ...prev,
-                          qrDisplayEndTime: newQrEndTime,
-                        }));
-                      }}
-                      placeholder="23:59"
-                      className="w-full bg-slate-950 border-2 border-rose-500/70 rounded-xl px-3 py-2 text-xs text-rose-200 focus:border-rose-400 focus:outline-none font-mono font-bold shadow-[0_0_12px_rgba(244,63,94,0.25)]"
-                      title="Eksaktong oras kung kailan kusang maglalaho/mabubura ang Event QR Code sa advisory content"
-                    />
-                    <span className="text-[10px] text-rose-400/80 font-mono mt-0.5 block">
+
+                    <div>
+                      <span className="block text-[10px] font-mono text-slate-300 mb-1 font-bold">Petsa ng Paglaho (Expiration Date):</span>
+                      <input
+                        type="date"
+                        required
+                        value={newActivity.qrDisplayEndDate || newActivity.date}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setNewActivity((prev) => ({ ...prev, qrDisplayEndDate: val }));
+                        }}
+                        className="w-full bg-slate-900 border border-rose-500/60 rounded-lg px-2.5 py-1.5 text-xs text-rose-200 focus:border-rose-400 focus:outline-none font-mono font-semibold"
+                      />
+                    </div>
+
+                    <div>
+                      <span className="block text-[10px] font-mono text-slate-300 mb-1 font-bold">Oras ng Paglaho (Expiration Time):</span>
+                      <input
+                        type="text"
+                        required
+                        value={newActivity.qrDisplayEndTime}
+                        onChange={(e) => {
+                          const newQrEndTime = e.target.value;
+                          setNewActivity((prev) => ({
+                            ...prev,
+                            qrDisplayEndTime: newQrEndTime,
+                          }));
+                        }}
+                        placeholder="11:59 PM"
+                        className="w-full bg-slate-900 border border-rose-500/60 rounded-lg px-2.5 py-1.5 text-xs text-rose-200 focus:border-rose-400 focus:outline-none font-mono font-bold shadow-[0_0_10px_rgba(244,63,94,0.2)]"
+                      />
+                    </div>
+                    <span className="text-[9.5px] text-rose-400/80 font-mono mt-0.5 block">
                       Hal. 23:59 o 11:59 PM (oras kung kailan mabubura ang QR)
                     </span>
                   </div>
@@ -1595,9 +1693,14 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-lg cursor-pointer"
+                  disabled={isCreating}
+                  className={`px-5 py-2 text-xs font-bold text-white rounded-xl shadow-lg transition-all ${
+                    isCreating
+                      ? 'bg-emerald-800 opacity-60 cursor-not-allowed'
+                      : 'bg-emerald-600 hover:bg-emerald-500 cursor-pointer active:scale-95'
+                  }`}
                 >
-                  Create Program
+                  {isCreating ? 'Nilo-load...' : 'Create Program'}
                 </button>
               </div>
             </form>
@@ -1798,8 +1901,8 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                 </div>
               </div>
 
-              {/* Dedicated Separated Container: Oras ng Paglabas at Paglaho ng QR Code (Content sa Picture) */}
-              <div className="p-3 sm:p-3.5 rounded-xl bg-slate-900/90 border-2 border-cyan-500/40 space-y-2 shadow-inner">
+              {/* Dedicated Separated Container: Iskedyul ng QR Code & Upload (Hiwalay sa Call Time - Petsa at Oras) */}
+              <div className="p-3.5 sm:p-4 rounded-xl bg-slate-900/90 border-2 border-cyan-500/50 space-y-3 shadow-inner">
                 <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-slate-800 pb-2">
                   <div className="flex items-center space-x-1.5 text-cyan-300 font-mono font-bold text-xs">
                     <QrCode className="w-4 h-4 text-cyan-400 shrink-0" />
@@ -1811,56 +1914,92 @@ export const ActivityManagement: React.FC<ActivityManagementProps> = ({
                 </div>
 
                 <p className="text-[11px] text-slate-300 font-sans leading-relaxed">
-                  Ang na-create na <strong>Program Activity</strong> ay mauunang lalabas sa advisory content ayon sa Call Time. Ang <strong>QR Code at Upload button</strong> naman ay lalabas lamang kapag sumapit na ang itinakdang oras sa ibaba:
+                  Ang na-create na <strong>Program Activity</strong> ay mauunang lalabas sa advisory content ayon sa Call Time. Ang <strong>QR Code at Upload button</strong> naman ay lalabas lamang kapag sumapit na ang itinakdang petsa at oras sa ibaba:
                 </p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                  <div>
-                    <label className="block text-xs font-mono font-bold text-cyan-300 mb-1 flex items-center space-x-1.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+                  {/* Column 1: Paglabas ng QR (Release Date & Time) */}
+                  <div className="p-3 rounded-xl bg-slate-950/90 border border-cyan-500/50 space-y-2">
+                    <label className="block text-xs font-mono font-bold text-cyan-300 flex items-center space-x-1.5">
                       <QrCode className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                       <span>Paglabas ng QR Code <span className="text-rose-400">*</span></span>
                     </label>
-                    <input
-                      type="text"
-                      required
-                      value={editForm.qrDisplayStartTime}
-                      onChange={(e) => {
-                        const newQrT = e.target.value;
-                        setEditForm((prev) => ({
-                          ...prev,
-                          qrDisplayStartTime: newQrT,
-                        }));
-                      }}
-                      placeholder="06:00"
-                      className="w-full bg-slate-950 border-2 border-cyan-500/70 rounded-xl px-3 py-2 text-xs text-cyan-200 focus:border-cyan-400 focus:outline-none font-mono font-bold shadow-[0_0_12px_rgba(6,182,212,0.25)]"
-                      title="Eksaktong oras kung kailan lalabas ang Official Event QR Code sa Advisory content"
-                    />
-                    <span className="text-[10px] text-cyan-400/80 font-mono mt-0.5 block">
+
+                    <div>
+                      <span className="block text-[10px] font-mono text-slate-300 mb-1 font-bold">Petsa ng Paglabas (Release Date):</span>
+                      <input
+                        type="date"
+                        required
+                        value={editForm.qrDisplayStartDate || editForm.date}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEditForm((prev) => ({ ...prev, qrDisplayStartDate: val }));
+                        }}
+                        className="w-full bg-slate-900 border border-cyan-500/60 rounded-lg px-2.5 py-1.5 text-xs text-cyan-200 focus:border-cyan-400 focus:outline-none font-mono font-semibold"
+                      />
+                    </div>
+
+                    <div>
+                      <span className="block text-[10px] font-mono text-slate-300 mb-1 font-bold">Oras ng Paglabas (Release Time):</span>
+                      <input
+                        type="text"
+                        required
+                        value={editForm.qrDisplayStartTime}
+                        onChange={(e) => {
+                          const newQrT = e.target.value;
+                          setEditForm((prev) => ({
+                            ...prev,
+                            qrDisplayStartTime: newQrT,
+                          }));
+                        }}
+                        placeholder="06:00 AM"
+                        className="w-full bg-slate-900 border border-cyan-500/60 rounded-lg px-2.5 py-1.5 text-xs text-cyan-200 focus:border-cyan-400 focus:outline-none font-mono font-bold shadow-[0_0_10px_rgba(6,182,212,0.2)]"
+                      />
+                    </div>
+                    <span className="text-[9.5px] text-cyan-400/80 font-mono mt-0.5 block">
                       Hal. 06:00 o 06:00 AM (oras kung kailan lilitaw ang QR)
                     </span>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-mono font-bold text-rose-300 mb-1 flex items-center space-x-1.5">
+                  {/* Column 2: Paglaho ng QR (Expiration Date & Time) */}
+                  <div className="p-3 rounded-xl bg-slate-950/90 border border-rose-500/50 space-y-2">
+                    <label className="block text-xs font-mono font-bold text-rose-300 flex items-center space-x-1.5">
                       <QrCode className="w-3.5 h-3.5 text-rose-400 shrink-0 opacity-80" />
                       <span>Paglaho ng QR Code <span className="text-rose-400">*</span></span>
                     </label>
-                    <input
-                      type="text"
-                      required
-                      value={editForm.qrDisplayEndTime}
-                      onChange={(e) => {
-                        const newQrEndT = e.target.value;
-                        setEditForm((prev) => ({
-                          ...prev,
-                          qrDisplayEndTime: newQrEndT,
-                        }));
-                      }}
-                      placeholder="23:59"
-                      className="w-full bg-slate-950 border-2 border-rose-500/70 rounded-xl px-3 py-2 text-xs text-rose-200 focus:border-rose-400 focus:outline-none font-mono font-bold shadow-[0_0_12px_rgba(244,63,94,0.25)]"
-                      title="Eksaktong oras kung kailan kusang maglalaho/mabubura ang Official Event QR Code sa Advisory content"
-                    />
-                    <span className="text-[10px] text-rose-400/80 font-mono mt-0.5 block">
+
+                    <div>
+                      <span className="block text-[10px] font-mono text-slate-300 mb-1 font-bold">Petsa ng Paglaho (Expiration Date):</span>
+                      <input
+                        type="date"
+                        required
+                        value={editForm.qrDisplayEndDate || editForm.date}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEditForm((prev) => ({ ...prev, qrDisplayEndDate: val }));
+                        }}
+                        className="w-full bg-slate-900 border border-rose-500/60 rounded-lg px-2.5 py-1.5 text-xs text-rose-200 focus:border-rose-400 focus:outline-none font-mono font-semibold"
+                      />
+                    </div>
+
+                    <div>
+                      <span className="block text-[10px] font-mono text-slate-300 mb-1 font-bold">Oras ng Paglaho (Expiration Time):</span>
+                      <input
+                        type="text"
+                        required
+                        value={editForm.qrDisplayEndTime}
+                        onChange={(e) => {
+                          const newQrEndT = e.target.value;
+                          setEditForm((prev) => ({
+                            ...prev,
+                            qrDisplayEndTime: newQrEndT,
+                          }));
+                        }}
+                        placeholder="11:59 PM"
+                        className="w-full bg-slate-900 border border-rose-500/60 rounded-lg px-2.5 py-1.5 text-xs text-rose-200 focus:border-rose-400 focus:outline-none font-mono font-bold shadow-[0_0_10px_rgba(244,63,94,0.2)]"
+                      />
+                    </div>
+                    <span className="text-[9.5px] text-rose-400/80 font-mono mt-0.5 block">
                       Hal. 23:59 o 11:59 PM (oras kung kailan mabubura ang QR)
                     </span>
                   </div>

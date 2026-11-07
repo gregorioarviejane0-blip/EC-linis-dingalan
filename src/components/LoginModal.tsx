@@ -654,19 +654,34 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       }
     }
 
-    // 2. Prioritize explicitly broadcasted event if active
+    // 2. Prioritize explicitly broadcasted event if active, keeping schedule in sync with latest activity updates
     if (propEventBroadcast && propEventBroadcast.id && checkIsBroadcastActive(propEventBroadcast)) {
+      const matchingAct = (allActivities || []).find(
+        (a) => a.id === propEventBroadcast.activityId || (a.title && a.title.trim().toLowerCase() === (propEventBroadcast.activityTitle || '').trim().toLowerCase())
+      );
+      const effectiveBroadcast = matchingAct ? {
+        ...propEventBroadcast,
+        startTime: matchingAct.callTime || propEventBroadcast.startTime,
+        estimatedEndTime: matchingAct.estimatedEndTime || propEventBroadcast.estimatedEndTime,
+        eventDate: matchingAct.date || propEventBroadcast.eventDate,
+        qrDisplayStartDate: matchingAct.qrDisplayStartDate || propEventBroadcast.qrDisplayStartDate || matchingAct.date,
+        qrDisplayStartTime: matchingAct.qrDisplayStartTime || propEventBroadcast.qrDisplayStartTime || matchingAct.callTime,
+        qrDisplayEndDate: matchingAct.qrDisplayEndDate || propEventBroadcast.qrDisplayEndDate || matchingAct.date,
+        qrDisplayEndTime: matchingAct.qrDisplayEndTime || propEventBroadcast.qrDisplayEndTime || matchingAct.estimatedEndTime,
+        totalHours: matchingAct.totalHours || propEventBroadcast.totalHours,
+      } : propEventBroadcast;
+
       setActiveBroadcast((prev) => {
         if (
           prev &&
-          prev.id === propEventBroadcast.id &&
-          prev.startTime === propEventBroadcast.startTime &&
-          prev.qrDisplayStartTime === propEventBroadcast.qrDisplayStartTime &&
-          prev.qrDisplayEndTime === propEventBroadcast.qrDisplayEndTime
+          prev.id === effectiveBroadcast.id &&
+          prev.startTime === effectiveBroadcast.startTime &&
+          prev.qrDisplayStartTime === effectiveBroadcast.qrDisplayStartTime &&
+          prev.qrDisplayEndTime === effectiveBroadcast.qrDisplayEndTime
         ) {
           return prev;
         }
-        return propEventBroadcast;
+        return effectiveBroadcast;
       });
       return;
     }
@@ -1201,7 +1216,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   return (
     <div
       ref={modalScrollRef}
-      className={`fixed inset-0 z-50 w-screen h-[100dvh] ${activeView === 'anonymous' || activeView === 'upload' || activeView === 'event' ? 'overflow-hidden sm:overflow-y-auto' : 'overflow-y-auto'} bg-transparent font-sans text-slate-100 flex flex-col justify-between scrollbar-none [&::-webkit-scrollbar]:hidden`}
+      className="fixed inset-0 z-50 w-screen h-[100dvh] overflow-y-auto bg-transparent font-sans text-slate-100 flex flex-col justify-between scrollbar-none [&::-webkit-scrollbar]:hidden"
     >
       {/* ========================================================================= */}
       {/* CINEMATIC DINGALAN LIGHTHOUSE VIDEO CLIP (PANNING TO THE RIGHT)           */}
@@ -1540,7 +1555,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       {/* ========================================================================= */}
       {/* MAIN CENTER HERO CONTAINER (FITS 100% INTO WHOLE SCREEN MOBILE & DESKTOP) */}
       {/* ========================================================================= */}
-      <div className={`relative z-10 w-full max-w-[1750px] mx-auto px-2 xs:px-3 sm:px-6 lg:px-8 xl:px-12 flex-1 min-h-0 flex flex-col items-center justify-center my-auto ${activeView === 'upload' || activeView === 'event' ? 'py-0.5 sm:py-3' : 'py-2 sm:py-3'} overscroll-contain ${activeView === 'anonymous' || activeView === 'upload' || activeView === 'event' ? 'overflow-hidden' : 'overflow-y-auto sm:overflow-y-auto'}`}>
+      <div className="relative z-10 w-full max-w-[1750px] mx-auto px-2 xs:px-3 sm:px-6 lg:px-8 xl:px-12 flex-1 min-h-0 flex flex-col items-center justify-center my-auto py-3 sm:py-6 lg:py-8 overscroll-contain overflow-y-auto">
         <div className="w-full flex flex-col lg:grid lg:grid-cols-12 gap-3 sm:gap-5 lg:gap-6 xl:gap-8 items-center lg:items-center justify-center my-auto flex-1">
           
           {/* --------------------------------------------------------------------- */}
@@ -1649,7 +1664,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     /* ========================================================================= */
                     /* PATUNAY SA PAGDALO: UPLOAD ACCOMPLISHMENT (COMPACT ON MOBILE SCREEN)      */
                     /* ========================================================================= */
-                    <div className="relative rounded-xl sm:rounded-3xl border-2 border-emerald-500/70 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_40px_rgba(16,185,129,0.25)] bg-slate-900/95 hover:bg-slate-900 backdrop-blur-md overflow-hidden animate-scaleIn w-full max-w-xl sm:max-w-2xl mx-auto text-left flex flex-col h-auto max-h-[calc(100dvh-70px)] sm:max-h-[85vh] my-0">
+                    <div className="relative rounded-xl sm:rounded-3xl border-2 border-emerald-500/70 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_40px_rgba(16,185,129,0.25)] bg-slate-900/95 hover:bg-slate-900 backdrop-blur-md animate-scaleIn w-full max-w-xl sm:max-w-2xl mx-auto text-left flex flex-col h-auto my-auto">
                       {/* Hidden file inputs */}
                       <input
                         type="file"
@@ -2250,7 +2265,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
                   {eventBroadcast ? (
 
-                  <div className="relative rounded-xl sm:rounded-3xl border-2 border-emerald-400/80 shadow-[0_0_40px_rgba(16,185,129,0.35),inset_0_0_20px_rgba(16,185,129,0.15)] bg-slate-950/95 hover:bg-slate-950/98 backdrop-blur-md p-2.5 xs:p-3 sm:p-6 lg:p-7 space-y-1.5 xs:space-y-2 sm:space-y-4 transition-all duration-300 hover:border-emerald-300 animate-scaleIn w-full text-left flex flex-col max-h-[calc(100dvh-65px)] sm:max-h-none overflow-y-auto sm:overflow-visible scrollbar-none [&::-webkit-scrollbar]:hidden">
+                  <div className="relative rounded-xl sm:rounded-3xl border-2 border-emerald-400/80 shadow-[0_0_40px_rgba(16,185,129,0.35),inset_0_0_20px_rgba(16,185,129,0.15)] bg-slate-950/95 hover:bg-slate-950/98 backdrop-blur-md p-3.5 xs:p-4 sm:p-6 lg:p-7 space-y-2 sm:space-y-4 transition-all duration-300 hover:border-emerald-300 animate-scaleIn w-full text-left flex flex-col my-auto">
                     {/* Top Bar inside Card */}
                     <div className="flex items-center justify-between border-b border-white/10 pb-1.5 sm:pb-3 gap-1.5">
                       <div className="flex items-center space-x-1.5 sm:space-x-2.5 min-w-0">
@@ -2305,6 +2320,103 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   </div>
 
                   {/* Attendance Photo Upload Action Banner with Embedded Event QR Code */}
+                  {qrTiming.isUpcoming && (
+                    /* ------------------------------------------------------------- */
+                    /* UPCOMING (NAKA-LOCK ANG QR CODE AT UPLOAD BUTTON)             */
+                    /* Exact match with Picture 6 (image_ed35ddde.png)               */
+                    /* ------------------------------------------------------------- */
+                    <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-950/90 border-2 border-cyan-500/70 backdrop-blur-md shadow-[0_0_30px_rgba(6,182,212,0.25)] flex flex-col md:flex-row items-center justify-between gap-3 sm:gap-4 animate-fadeIn">
+                      {/* Left: Dashed Locked Box */}
+                      <div className="flex flex-col items-center shrink-0">
+                        <div className="w-24 h-24 xs:w-28 xs:h-28 sm:w-32 sm:h-32 rounded-2xl border-2 border-dashed border-cyan-400/80 bg-cyan-950/30 flex flex-col items-center justify-center p-2 text-center shadow-[inset_0_0_15px_rgba(6,182,212,0.2)]">
+                          <Lock className="w-7 h-7 sm:w-9 sm:h-9 text-cyan-400 mb-1" />
+                          <span className="text-[9px] sm:text-[10px] font-mono font-bold text-slate-300 uppercase leading-tight">
+                            LALABAS SA:
+                          </span>
+                          <span className="text-[11px] sm:text-xs font-mono font-black text-cyan-300 leading-tight">
+                            {qrTiming.startTimeFormatted || eventBroadcast.startTime}
+                          </span>
+                        </div>
+                        <span className="text-[9px] sm:text-[10px] text-cyan-300 font-mono font-bold tracking-tight mt-1.5 flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-cyan-400 shrink-0" />
+                          <span>Naka-lock ang QR</span>
+                        </span>
+                      </div>
+
+                      {/* Center: Schedule & Live Countdown Announcement */}
+                      <div className="space-y-1.5 text-center md:text-left flex-1 min-w-0 px-1 sm:px-2">
+                        <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[9px] sm:text-xs font-mono font-bold">
+                          <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-cyan-400 shrink-0" />
+                          <span className="uppercase tracking-wide">ORAS NG PAGLABAS NG QR CODE AT UPLOAD BUTTON</span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-center md:justify-start gap-1.5 sm:gap-2 pt-0.5 font-mono text-[11px] sm:text-sm text-slate-200">
+                          <span>Nakatakdang Lumabas sa Ganap na:</span>
+                          <span className="px-2.5 py-0.5 rounded-lg bg-cyan-950/80 border border-cyan-400/70 text-cyan-300 font-black shadow-[0_0_10px_rgba(6,182,212,0.3)]">
+                            {qrTiming.startTimeFormatted || eventBroadcast.startTime}
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-center md:justify-start gap-1.5 sm:gap-2 font-mono text-[11px] sm:text-sm text-slate-300">
+                          <span>Lalabas sa loob ng:</span>
+                          <span className="px-2.5 py-1 rounded-lg bg-slate-900 border border-cyan-500/50 text-cyan-300 font-bold tracking-wider shadow-inner">
+                            {qrTiming.countdownFormatted}
+                          </span>
+                        </div>
+
+                        <p className="text-[10px] sm:text-xs text-slate-300 font-sans leading-relaxed pt-0.5">
+                          Awtomatikong lalabas dito ang Official Event QR Code at magiging aktibo ang upload button sa pagsapit ng <strong className="text-cyan-300 font-bold">{qrTiming.startTimeFormatted || eventBroadcast.startTime}</strong>.
+                        </p>
+                      </div>
+
+                      {/* Right: Locked Button */}
+                      <div className="flex flex-col items-center md:items-end w-full md:w-auto shrink-0">
+                        <button
+                          type="button"
+                          disabled
+                          className="w-full md:w-auto py-2.5 sm:py-3 px-4 sm:px-5 rounded-lg sm:rounded-xl bg-slate-900/90 border-2 border-cyan-500/60 text-cyan-300 font-mono font-bold text-[10px] sm:text-xs flex items-center justify-center space-x-1.5 cursor-not-allowed opacity-85 shadow-[0_0_15px_rgba(6,182,212,0.2)]"
+                        >
+                          <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-400 shrink-0" />
+                          <span className="uppercase tracking-wide font-black">
+                            LALABAS SA {qrTiming.startTimeFormatted || eventBroadcast.startTime}
+                          </span>
+                        </button>
+                        <span className="text-[9px] sm:text-[10px] font-mono text-cyan-400/80 mt-1">
+                          Maghintay sa takdang oras
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {qrTiming.isExpired && (
+                    /* ------------------------------------------------------------- */
+                    /* EXPIRED (NAGLAHO NA ANG QR CODE SA PAGSAPIT NG TAKDANG ORAS)  */
+                    /* Matches user request: "maglalaho yung QR code"               */
+                    /* ------------------------------------------------------------- */
+                    <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-rose-950/40 border-2 border-rose-500/60 backdrop-blur-md shadow-[0_0_25px_rgba(244,63,94,0.25)] flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 animate-fadeIn">
+                      <div className="flex items-center space-x-3 text-left">
+                        <div className="w-12 h-12 rounded-xl bg-rose-500/20 border border-rose-500/50 flex items-center justify-center text-rose-400 shrink-0">
+                          <AlertCircle className="w-6 h-6" />
+                        </div>
+                        <div className="space-y-0.5">
+                          <div className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[9px] sm:text-xs font-mono font-bold">
+                            <span>NAGLAHO NA ANG QR CODE • SARADO NA ANG PAG-UPLOAD</span>
+                          </div>
+                          <p className="text-[10px] sm:text-xs text-rose-200">
+                            Lumagpas na sa nakatakdang oras ({qrTiming.endTimeFormatted}). Kusang naglaho ang Event QR Code at sarado na ang attendance.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        disabled
+                        className="py-2 px-4 rounded-lg bg-rose-900/40 border border-rose-700/60 text-rose-300 font-mono text-xs font-bold cursor-not-allowed opacity-75 shrink-0"
+                      >
+                        SARADO NA
+                      </button>
+                    </div>
+                  )}
+
                   {qrTiming.isActive && (
                     /* ------------------------------------------------------------- */
                     /* ACTIVE (LUMABAS NA ANG QR CODE SA TAKDANG ORAS)               */
@@ -2480,7 +2592,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 /* ========================================================================= */
                 /* NO ACTIVE SCHEDULE: COMPACT PROFESSIONAL ADVISORY CARD (FITS MOBILE)      */
                 /* ========================================================================= */
-                <div className="relative rounded-xl sm:rounded-3xl border-2 border-slate-700/80 shadow-[0_0_40px_rgba(0,0,0,0.8),inset_0_0_20px_rgba(16,185,129,0.12)] bg-slate-950/95 hover:bg-slate-950/98 backdrop-blur-md p-2.5 xs:p-3 sm:p-6 lg:p-7 space-y-1.5 xs:space-y-2 sm:space-y-4 transition-all duration-300 hover:border-slate-600 animate-scaleIn w-full max-w-xl sm:max-w-2xl mx-auto text-left flex flex-col max-h-[calc(100dvh-65px)] sm:max-h-none overflow-y-auto sm:overflow-visible scrollbar-none [&::-webkit-scrollbar]:hidden">
+                <div className="relative rounded-xl sm:rounded-3xl border-2 border-slate-700/80 shadow-[0_0_40px_rgba(0,0,0,0.8),inset_0_0_20px_rgba(16,185,129,0.12)] bg-slate-950/95 hover:bg-slate-950/98 backdrop-blur-md p-3.5 xs:p-4 sm:p-6 lg:p-7 space-y-2 sm:space-y-4 transition-all duration-300 hover:border-slate-600 animate-scaleIn w-full max-w-xl sm:max-w-2xl mx-auto text-left flex flex-col my-auto">
                   {/* Top Bar inside Card */}
                   <div className="flex items-center justify-between border-b border-white/10 pb-1.5 sm:pb-3 gap-1.5">
                     <div className="flex items-center space-x-1.5 sm:space-x-2.5 min-w-0">

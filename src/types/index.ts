@@ -210,6 +210,7 @@ export interface EventQrBroadcast {
 export interface AnonymousMessage {
   id: string;
   senderAlias: string;
+  departmentName?: string;
   category: 'report' | 'feedback' | 'allowance_inquiry' | 'emergency' | 'general';
   categoryLabelTagalog: string;
   priority: 'normal' | 'urgent' | 'confidential';

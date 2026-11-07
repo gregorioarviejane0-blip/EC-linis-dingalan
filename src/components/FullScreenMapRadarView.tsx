@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   MapPin,
   Compass,
@@ -32,6 +32,7 @@ import {
 import { User, Activity } from '../types';
 import { useDingalanClock } from '../utils/philippineClock';
 import { DINGALAN_MAP_SECTORS, MapSector } from './CinematicBentoHomepage';
+import { getBarangayPurokData, BarangayPurokData, PurokInfo } from '../data/dingalanPurokData';
 
 interface FullScreenMapRadarViewProps {
   currentUser: User;
@@ -159,6 +160,10 @@ export const FullScreenMapRadarView: React.FC<FullScreenMapRadarViewProps> = ({
   const currentSector: MapSector =
     DINGALAN_MAP_SECTORS.find((s) => s.id === selectedSectorId) || DINGALAN_MAP_SECTORS[0];
 
+  const currentPurokData = useMemo(() => {
+    return getBarangayPurokData(currentSector.id) || getBarangayPurokData(currentSector.name) || null;
+  }, [currentSector]);
+
   const sectorActivity = activities.find(
     (a) =>
       a.barangay?.toLowerCase() === currentSector.name.toLowerCase() ||
@@ -224,29 +229,51 @@ export const FullScreenMapRadarView: React.FC<FullScreenMapRadarViewProps> = ({
           query = 'Paltic, Dingalan, Aurora, Philippines';
           zoom = 15;
           break;
+        case 'poblacion':
         case 'dingalan':
           query = 'Poblacion, Dingalan, Aurora, Philippines';
           zoom = 16;
           break;
-        case 'butas':
-          query = '15.3850,121.3980 (Butas na Bato, Dingalan)';
+        case 'aplaya':
+          query = 'Aplaya, Dingalan, Aurora, Philippines';
           zoom = 16;
           break;
-        case 'bay':
-          query = 'Dingalan Bay, Aurora, Philippines';
-          zoom = 14;
+        case 'butas':
+          query = 'Butas na Bato, Dingalan, Aurora, Philippines';
+          zoom = 16;
           break;
+        case 'cabischasan':
         case 'cabog':
-          query = 'Cabog, Matawe, Dingalan, Aurora, Philippines';
+          query = 'Cabischasan, Dingalan, Aurora, Philippines';
+          zoom = 15;
+          break;
+        case 'caragsacan':
+          query = 'Caragsacan, Dingalan, Aurora, Philippines';
+          zoom = 15;
+          break;
+        case 'davil-davilan':
+          query = 'Davil-davilan, Dingalan, Aurora, Philippines';
+          zoom = 15;
+          break;
+        case 'dikapanikian':
+          query = 'Dikapanikian, Dingalan, Aurora, Philippines';
           zoom = 15;
           break;
         case 'ibona':
           query = 'Ibona, Dingalan, Aurora, Philippines';
           zoom = 15;
           break;
+        case 'tanawan':
+          query = 'Tanawan, Dingalan, Aurora, Philippines';
+          zoom = 15;
+          break;
         case 'umiray':
           query = 'Umiray, Dingalan, Aurora, Philippines';
           zoom = 15;
+          break;
+        case 'bay':
+          query = 'Dingalan Bay, Aurora, Philippines';
+          zoom = 14;
           break;
         default:
           query = `${sector.name}, Dingalan, Aurora, Philippines`;
@@ -476,36 +503,46 @@ export const FullScreenMapRadarView: React.FC<FullScreenMapRadarViewProps> = ({
               <div className="hidden md:block self-end pointer-events-auto bg-slate-950/90 backdrop-blur-md border border-cyan-500/50 rounded-2xl p-3.5 shadow-2xl max-w-xs">
                 <div className="flex items-center space-x-2 pb-2 mb-2 border-b border-slate-800">
                   <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping" />
                   <span className="text-xs font-mono font-extrabold text-white uppercase tracking-wider">
-                    Dingalan Jurisdictions (7 Puroks)
+                    Dingalan Barangays
                   </span>
                 </div>
-                <div className="space-y-1.5">
-                  {DINGALAN_MAP_SECTORS.map((sec) => (
-                    <button
-                      key={`jurisdiction-badge-${sec.id}`}
-                      type="button"
-                      onClick={() => handleSectorSelect(sec.id)}
-                      className={`w-full text-left px-2 py-1 rounded-lg text-[10px] font-mono flex items-center justify-between transition-all cursor-pointer ${
-                        selectedSectorId === sec.id
-                          ? 'bg-cyan-500 text-slate-950 font-bold shadow'
-                          : 'bg-slate-900/80 text-slate-300 hover:bg-slate-800 hover:text-cyan-300'
-                      }`}
-                    >
-                      <div className="flex items-center space-x-1.5">
-                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: sec.color }} />
-                        <span className="truncate">{sec.name}</span>
-                      </div>
-                      <span className="text-[9px] opacity-80">{sec.areaSqKm}</span>
-                    </button>
-                  ))}
+                <div className="space-y-1.5 max-h-[300px] overflow-y-auto pr-1">
+                  {DINGALAN_MAP_SECTORS.map((sec) => {
+                    const secPuroks = getBarangayPurokData(sec.id)?.puroks || [];
+                    return (
+                      <button
+                        key={`jurisdiction-badge-${sec.id}`}
+                        type="button"
+                        onClick={() => handleSectorSelect(sec.id)}
+                        className={`w-full text-left px-2 py-1 rounded-lg text-[10px] font-mono flex items-center justify-between transition-all cursor-pointer ${
+                          selectedSectorId === sec.id
+                            ? 'bg-cyan-500 text-slate-950 font-bold shadow'
+                            : 'bg-slate-900/80 text-slate-300 hover:bg-slate-800 hover:text-cyan-300'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-1.5">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: sec.color }} />
+                          <span className="truncate">{sec.name}</span>
+                        </div>
+                        <span className="text-[9px] opacity-80">{secPuroks.length} Puroks</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* Bottom Center Active Jurisdiction Indicator (Hidden on mobile to maximize map) */}
-              <div className="hidden md:flex self-center pointer-events-none px-4 py-2 rounded-xl bg-slate-950/90 backdrop-blur-md border border-cyan-500/40 text-cyan-300 text-xs font-mono font-bold shadow-2xl items-center space-x-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span>ACTIVE TERRITORIAL JURISDICTION SCOPE: {currentSector.name} ({currentSector.subName})</span>
+              {/* Bottom Center Active Jurisdiction Indicator */}
+              <div className="hidden md:flex self-center pointer-events-auto px-4 py-2 rounded-xl bg-slate-950/95 backdrop-blur-md border border-cyan-500/50 text-cyan-300 text-xs font-mono font-bold shadow-2xl items-center space-x-3">
+                <div className="flex items-center space-x-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>AKTIBONG BARANGAY: {currentSector.name} ({currentSector.subName})</span>
+                </div>
+                <div className="px-3 py-1 rounded-lg bg-slate-900 border border-cyan-500/40 text-cyan-300 font-bold text-xs flex items-center space-x-1.5">
+                  <Compass className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>{currentPurokData?.puroks.length || 0} Purok</span>
+                </div>
               </div>
             </div>
           )}
@@ -524,9 +561,15 @@ export const FullScreenMapRadarView: React.FC<FullScreenMapRadarViewProps> = ({
 
         {/* Bottom Horizontal Barangay Quick Selector Strip */}
         <div className="shrink-0 z-30 px-3 py-2 bg-slate-950/90 backdrop-blur-xl border-t border-slate-800 flex items-center justify-between gap-2 overflow-x-auto">
-          <div className="flex items-center space-x-1 text-xs font-mono font-bold text-slate-400 shrink-0">
-            <MapPin className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="hidden sm:inline">Pumili ng Barangay / Sector:</span>
+          <div className="flex items-center space-x-2 shrink-0">
+            <div className="flex items-center space-x-1 text-xs font-mono font-bold text-slate-400">
+              <MapPin className="w-3.5 h-3.5 text-cyan-400" />
+              <span className="hidden sm:inline">Pumili ng Barangay:</span>
+            </div>
+            <div className="px-2.5 py-1 rounded-lg bg-slate-900 text-cyan-300 font-bold text-xs font-mono flex items-center space-x-1 shrink-0 border border-slate-800">
+              <Compass className="w-3 h-3 text-cyan-400" />
+              <span>{currentPurokData?.puroks.length || 0} Purok</span>
+            </div>
           </div>
 
           <div className="flex items-center space-x-1.5 overflow-x-auto py-0.5 no-scrollbar">

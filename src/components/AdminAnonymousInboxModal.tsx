@@ -24,6 +24,7 @@ import {
   RefreshCw,
   Lock,
   ShieldCheck,
+  Building2,
 } from 'lucide-react';
 import { AnonymousMessage, User } from '../types';
 import { api } from '../services/api';
@@ -350,10 +351,18 @@ export const AdminAnonymousInboxModal: React.FC<AdminAnonymousInboxModalProps> =
                       {getPriorityBadge(msg.priority)}
                     </div>
 
-                    {/* Category Label */}
-                    <p className="text-[11px] font-bold text-emerald-300 leading-tight">
-                      {msg.categoryLabelTagalog}
-                    </p>
+                    {/* Category Label & Optional Department Badge */}
+                    <div className="flex items-center justify-between gap-1">
+                      <p className="text-[11px] font-bold text-emerald-300 leading-tight">
+                        {msg.categoryLabelTagalog}
+                      </p>
+                      {msg.departmentName && (
+                        <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/40 flex items-center space-x-1 shrink-0" title={`Departamento: ${msg.departmentName}`}>
+                          <Building2 className="w-2.5 h-2.5 text-cyan-400" />
+                          <span className="truncate max-w-[100px]">{msg.departmentName}</span>
+                        </span>
+                      )}
+                    </div>
 
                     {/* Snippet text */}
                     <p className="text-xs text-slate-300 font-sans line-clamp-2 leading-relaxed">
@@ -396,6 +405,12 @@ export const AdminAnonymousInboxModal: React.FC<AdminAnonymousInboxModalProps> =
                     <p className="text-xs font-bold text-emerald-400">
                       Paksa: {selectedMessage.categoryLabelTagalog}
                     </p>
+                    {selectedMessage.departmentName && (
+                      <div className="inline-flex items-center space-x-1.5 text-xs font-mono text-cyan-300 bg-cyan-950/80 px-2.5 py-1 rounded-lg border border-cyan-500/40 mt-1">
+                        <Building2 className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                        <span>Departamento: <strong>{selectedMessage.departmentName}</strong></span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="text-[11px] font-mono text-cyan-300 bg-cyan-950/60 px-3 py-1 rounded-xl border border-cyan-500/30 flex items-center gap-1.5">

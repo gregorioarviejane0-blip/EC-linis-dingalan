@@ -179,11 +179,15 @@ export function formatPhilippineDateTime(timestampOrStr?: string | Date, fallbac
 /**
  * Converts a Philippine Standard Time (PST, UTC+8) date string and time string to UTC epoch milliseconds
  */
+/**
+ * Converts a Philippine Standard Time (PST, UTC+8) date string and time string to UTC epoch milliseconds
+ */
 export function parsePstDateTime(
   dateStr?: string,
   timeStr?: string,
   defaultHour = 6,
-  defaultMinute = 0
+  defaultMinute = 0,
+  referenceTimeStr?: string
 ): number {
   if (!dateStr) return 0;
   let year = 0, month = 0, day = 0;
@@ -231,9 +235,16 @@ export function parsePstDateTime(
       if (ampm === 'PM' && hours < 12) hours += 12;
       if (ampm === 'AM' && hours === 12) hours = 0;
 
-      // If no AM/PM provided and defaultHour was end time (e.g. 23) and hours <= 11 (e.g. "11:59" or "5:00")
-      if (!ampm && defaultHour >= 12 && hours >= 1 && hours <= 11) {
-        hours += 12;
+      // If no AM/PM provided in timeStr:
+      if (!ampm) {
+        const refHasPm = referenceTimeStr && /PM/i.test(referenceTimeStr);
+        const refHasAm = referenceTimeStr && /AM/i.test(referenceTimeStr);
+
+        if (refHasPm && hours >= 1 && hours <= 11) {
+          hours += 12;
+        } else if (!refHasAm && defaultHour >= 12 && hours >= 1 && hours <= 11) {
+          hours += 12;
+        }
       }
     }
   }
@@ -321,7 +332,7 @@ export function checkIsBroadcastActive(broadcast: any): boolean {
 /**
  * Formats time strings (e.g. "06:00" -> "06:00 AM", "23:59" -> "11:59 PM")
  */
-export function formatFriendlyTime(rawTimeStr?: string): string {
+export function formatFriendlyTime(rawTimeStr?: string, referenceTimeStr?: string): string {
   if (!rawTimeStr) return '';
   const clean = String(rawTimeStr).trim();
   if (/am|pm/i.test(clean)) return clean;
@@ -329,8 +340,17 @@ export function formatFriendlyTime(rawTimeStr?: string): string {
   if (m) {
     let h = parseInt(m[1], 10);
     const min = m[2];
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    h = h % 12 || 12;
+    const refHasPm = referenceTimeStr && /PM/i.test(referenceTimeStr);
+    let ampm = 'AM';
+    if (h >= 12) {
+      ampm = 'PM';
+      if (h > 12) h -= 12;
+    } else if (refHasPm && h >= 1 && h <= 11) {
+      ampm = 'PM';
+    } else if (h === 0) {
+      h = 12;
+      ampm = 'AM';
+    }
     return `${String(h).padStart(2, '0')}:${min} ${ampm}`;
   }
   return clean;
@@ -366,9 +386,10 @@ export function checkIsQrReleased(broadcast: any): {
   const startTimeStr = broadcast.qrDisplayStartTime || broadcast.startTime || broadcast.callTime || '06:00 AM';
   const endDateStr = broadcast.qrDisplayEndDate || broadcast.eventDate || broadcast.date || startDateStr;
   const endTimeStr = broadcast.qrDisplayEndTime || broadcast.estimatedEndTime || '11:59 PM';
+  const callTimeRef = broadcast.startTime || broadcast.callTime || '';
 
-  const startMs = parsePstDateTime(startDateStr, startTimeStr, 6, 0);
-  const endMs = parsePstDateTime(endDateStr, endTimeStr, 23, 59);
+  const startMs = parsePstDateTime(startDateStr, startTimeStr, 6, 0, callTimeRef);
+  const endMs = parsePstDateTime(endDateStr, endTimeStr, 23, 59, callTimeRef);
 
   const isUpcoming = startMs > 0 && nowMs < startMs;
   const isExpired = endMs > 0 && nowMs > endMs;
@@ -380,8 +401,8 @@ export function checkIsQrReleased(broadcast: any): {
     isExpired,
     startMs,
     endMs,
-    startTimeFormatted: formatFriendlyTime(startTimeStr),
-    endTimeFormatted: formatFriendlyTime(endTimeStr),
+    startTimeFormatted: formatFriendlyTime(startTimeStr, callTimeRef),
+    endTimeFormatted: formatFriendlyTime(endTimeStr, callTimeRef),
   };
 }
 

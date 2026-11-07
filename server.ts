@@ -360,8 +360,34 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   app.post('/api/activities', (req: Request, res: Response) => {
     const user = (req as any).user as User;
     const body = req.body;
+
+    const normTitle = (body.title || '').trim().toLowerCase();
+    const normDate = (body.date || '').trim();
+    const normBrgy = (body.barangay || '').trim().toLowerCase();
+
+    // Check if activity already exists by ID or by (title + date + barangay)
+    const existingIdx = activities.findIndex((a) => {
+      if (body.id && a.id === body.id) return true;
+      const aTitle = (a.title || '').trim().toLowerCase();
+      const aDate = (a.date || '').trim();
+      const aBrgy = (a.barangay || '').trim().toLowerCase();
+      return normTitle && aTitle === normTitle && aDate === normDate && aBrgy === normBrgy;
+    });
+
+    if (existingIdx !== -1) {
+      const existing = activities[existingIdx];
+      const updatedAct: Activity = {
+        ...existing,
+        ...body,
+        id: existing.id,
+        updatedAt: new Date().toISOString(),
+      };
+      activities[existingIdx] = updatedAct;
+      return res.json({ activity: updatedAct, updated: true });
+    }
+
     const newAct: Activity = {
-      id: `act-${Date.now().toString().slice(-6)}`,
+      id: body.id || `act-${Date.now().toString().slice(-6)}`,
       title: body.title,
       programType: body.programType || 'COASTAL_CLEANUP',
       description: body.description || '',
@@ -377,6 +403,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
       status: 'scheduled',
       notes: body.notes || '',
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       qrScheduleEnabled: body.qrScheduleEnabled ?? true,
       qrDisplayMode: body.qrDisplayMode || 'match_event',
       qrDisplayStartDate: body.qrDisplayStartDate || body.date,
@@ -910,6 +937,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     const newMsg: AnonymousMessage = {
       id: `anon-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       senderAlias: data.senderAlias || `Anonymous Participant #ANON-${Math.floor(1000 + Math.random() * 9000)}`,
+      departmentName: data.departmentName ? String(data.departmentName).trim() : undefined,
       category: data.category || 'report',
       categoryLabelTagalog: data.categoryLabelTagalog || 'Ulat sa Paglilinis / Field Report',
       priority: data.priority || 'normal',

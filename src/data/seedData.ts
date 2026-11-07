@@ -321,6 +321,7 @@ export const INITIAL_ANONYMOUS_MESSAGES: AnonymousMessage[] = [
   {
     id: 'anon-msg-001',
     senderAlias: 'Anonymous Contributor #ANON-7821',
+    departmentName: 'MENRO Operations',
     category: 'report',
     categoryLabelTagalog: 'Ulat sa Paglilinis / Field Report',
     priority: 'urgent',
@@ -335,6 +336,7 @@ export const INITIAL_ANONYMOUS_MESSAGES: AnonymousMessage[] = [
   {
     id: 'anon-msg-002',
     senderAlias: 'Anonymous Field Member #ANON-4109',
+    departmentName: 'PESO Livelihood',
     category: 'feedback',
     categoryLabelTagalog: 'Mungkahi / Rekomendasyon',
     priority: 'normal',

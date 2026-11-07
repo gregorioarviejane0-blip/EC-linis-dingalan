@@ -33,7 +33,8 @@ import {
   X,
 } from 'lucide-react';
 import QRCode from 'qrcode';
-import { useDingalanClock } from '../utils/philippineClock';
+import { useDingalanClock, checkIsQrReleased } from '../utils/philippineClock';
+import { getBarangayPurokData, BarangayPurokData, PurokInfo } from '../data/dingalanPurokData';
 
 export interface MapSector {
   id: string;
@@ -56,7 +57,7 @@ export const DINGALAN_MAP_SECTORS: MapSector[] = [
   {
     id: 'paltic',
     name: 'PALTIC',
-    subName: 'Feeder Port & Rock Sea Wall',
+    subName: 'Feeder Port, Lighthouse & White Beach',
     lat: '15.4225° N',
     lng: '121.4250° E',
     coordsText: '15.4225° N, 121.4250° E',
@@ -67,7 +68,7 @@ export const DINGALAN_MAP_SECTORS: MapSector[] = [
     color: '#10b981', // emerald
     topPct: 7.5,
     leftPct: 56,
-    description: 'Dingalan Feeder Port, Lighthouse, White Beach, and shoreline rock seawall inspection.',
+    description: 'Dingalan Feeder Port, Lighthouse, White Beach, at rock seawall inspection.',
   },
   {
     id: 'dingalan',
@@ -86,6 +87,22 @@ export const DINGALAN_MAP_SECTORS: MapSector[] = [
     description: 'Municipal Center, MENRO Office, Central Public Market at Linis Dingalan command base.',
   },
   {
+    id: 'aplaya',
+    name: 'APLAYA',
+    subName: 'Fisherfolk Community & Coastal Defense',
+    lat: '15.3890° N',
+    lng: '121.3995° E',
+    coordsText: '15.3890° N, 121.3995° E',
+    elevation: '4.0m MSL',
+    areaSqKm: '7.8 km²',
+    status: 'Active Coastal Sweep Zone',
+    type: 'coastal',
+    color: '#14b8a6', // teal
+    topPct: 13.5,
+    leftPct: 36,
+    description: 'Tradisyonal na komunidad ng mga mangingisda, lambat docking area, at coastal protection.',
+  },
+  {
     id: 'butas',
     name: 'BUTAS NA BATO',
     subName: 'Coastal Archway & Coral Reefs',
@@ -102,6 +119,118 @@ export const DINGALAN_MAP_SECTORS: MapSector[] = [
     description: 'Scenic natural rock sea cave at coastal trail buffer zone.',
   },
   {
+    id: 'cabog',
+    name: 'CABISCHASAN (CABOG)',
+    subName: 'Agricultural River Valley & Watershed',
+    lat: '15.3520° N',
+    lng: '121.3780° E',
+    coordsText: '15.3520° N, 121.3780° E',
+    elevation: '16.0m MSL',
+    areaSqKm: '14.8 km²',
+    status: 'High Waste Monitoring Zone',
+    type: 'beach',
+    color: '#f59e0b', // amber
+    topPct: 28.5,
+    leftPct: 29.5,
+    description: 'Malalawak na palayan, patubig ng NIA, at tributary river buffer zone patungong Ibona.',
+  },
+  {
+    id: 'caragsacan',
+    name: 'CARAGSACAN',
+    subName: 'River Floodplain & Highway Corridor',
+    lat: '15.3400° N',
+    lng: '121.3650° E',
+    coordsText: '15.3400° N, 121.3650° E',
+    elevation: '10.0m MSL',
+    areaSqKm: '18.5 km²',
+    status: 'River & Highway Clean-up',
+    type: 'delta',
+    color: '#eab308', // yellow
+    topPct: 34.5,
+    leftPct: 26.5,
+    description: 'Caragsacan River floodplain, coastal sand dunes, at national highway artery.',
+  },
+  {
+    id: 'davil-davilan',
+    name: 'DAVIL-DAVILAN',
+    subName: 'Upland Watershed & Mountain Springs',
+    lat: '15.3620° N',
+    lng: '121.3450° E',
+    coordsText: '15.3620° N, 121.3450° E',
+    elevation: '35.0m MSL',
+    areaSqKm: '22.0 km²',
+    status: 'Watershed Protection Zone',
+    type: 'hub',
+    color: '#22c55e', // green
+    topPct: 22.0,
+    leftPct: 20.0,
+    description: 'Pangunahing pinagkukunan ng inuming tubig ng Dingalan, natural mountain springs, at gubat.',
+  },
+  {
+    id: 'dikapanikian',
+    name: 'DIKAPANIKIAN',
+    subName: 'Rocky Sea Cliffs & Turtle Cove',
+    lat: '15.3150° N',
+    lng: '121.3950° E',
+    coordsText: '15.3150° N, 121.3950° E',
+    elevation: '14.0m MSL',
+    areaSqKm: '16.2 km²',
+    status: 'Marine Wildlife Sanctuary',
+    type: 'coastal',
+    color: '#0ea5e9', // light blue
+    topPct: 44.0,
+    leftPct: 35.0,
+    description: 'Nakatagong cove ng Dikapanikian, pugad ng mga pawikan, at matatarik na bangin ng dagat.',
+  },
+  {
+    id: 'ibona',
+    name: 'IBONA',
+    subName: 'River Delta & Mangrove Estuary',
+    lat: '15.2850° N',
+    lng: '121.3720° E',
+    coordsText: '15.2850° N, 121.3720° E',
+    elevation: '6.0m MSL',
+    areaSqKm: '28.3 km²',
+    status: 'Active River Cleanup & Trash Trap',
+    type: 'delta',
+    color: '#ec4899', // pink
+    topPct: 53.5,
+    leftPct: 28.5,
+    description: 'Major river delta, mangrove sanctuary, at MENRO floating trash interceptor booms.',
+  },
+  {
+    id: 'tanawan',
+    name: 'TANAWAN',
+    subName: 'Mountain Viewdeck & Sierra Madre Pass',
+    lat: '15.4120° N',
+    lng: '121.3850° E',
+    coordsText: '15.4120° N, 121.3850° E',
+    elevation: '185.0m MSL',
+    areaSqKm: '24.5 km²',
+    status: 'Eco-Tourism Observation Post',
+    type: 'hub',
+    color: '#f97316', // orange
+    topPct: 8.0,
+    leftPct: 32.0,
+    description: 'Sikat na Dingalan Viewdeck overlooking the Pacific Bay, mountain pass, at kapehan.',
+  },
+  {
+    id: 'umiray',
+    name: 'UMIRAY (MALAMIG)',
+    subName: 'Aurora-Quezon Boundary & Malamig Beach',
+    lat: '15.2100° N',
+    lng: '121.3500° E',
+    coordsText: '15.2100° N, 121.3500° E',
+    elevation: '7.5m MSL',
+    areaSqKm: '52.1 km²',
+    status: 'Coastal Watch Sentinel',
+    type: 'boundary',
+    color: '#a855f7', // purple
+    topPct: 89.5,
+    leftPct: 28.5,
+    description: 'Hangganan ng Aurora at Quezon, Umiray River mouth, at mahabang buhangin ng Malamig beach.',
+  },
+  {
     id: 'bay',
     name: 'Dingalan Bay',
     subName: 'Pacific Ocean Marine Zone',
@@ -115,55 +244,7 @@ export const DINGALAN_MAP_SECTORS: MapSector[] = [
     color: '#60a5fa', // blue
     topPct: 37.5,
     leftPct: 47,
-    description: 'Vast deep-blue Pacific bay, municipal fishing grounds, and coastal current surveillance.',
-  },
-  {
-    id: 'cabog',
-    name: 'CABOG (MATAWE)',
-    subName: 'Intertidal Beach & Rock Pools',
-    lat: '15.3350° N',
-    lng: '121.3850° E',
-    coordsText: '15.3350° N, 121.3850° E',
-    elevation: '5.0m MSL',
-    areaSqKm: '14.8 km²',
-    status: 'High Waste Monitoring Zone',
-    type: 'beach',
-    color: '#f59e0b', // amber
-    topPct: 36.5,
-    leftPct: 29.5,
-    description: 'Matawe tidal rock formations, popular tourist coastline, and mangrove conservation sector.',
-  },
-  {
-    id: 'ibona',
-    name: 'IBONA',
-    subName: 'River Delta & Mangrove Estuary',
-    lat: '15.2850° N',
-    lng: '121.3720° E',
-    coordsText: '15.2850° N, 121.3720° E',
-    elevation: '6.0m MSL',
-    areaSqKm: '28.3 km²',
-    status: 'Active River Cleanup',
-    type: 'delta',
-    color: '#ec4899', // pink
-    topPct: 53.5,
-    leftPct: 28.5,
-    description: 'Major river delta flowing into Dingalan Bay; key watershed and plastic interceptor trap.',
-  },
-  {
-    id: 'umiray',
-    name: 'UMIRAY (MALAMIG)',
-    subName: 'Aurora-Quezon Boundary',
-    lat: '15.2100° N',
-    lng: '121.3500° E',
-    coordsText: '15.2100° N, 121.3500° E',
-    elevation: '7.5m MSL',
-    areaSqKm: '52.1 km²',
-    status: 'Coastal Watch Sentinel',
-    type: 'boundary',
-    color: '#a855f7', // purple
-    topPct: 89.5,
-    leftPct: 28.5,
-    description: 'Southern tip of Dingalan municipality bordering General Nakar; coastal defense and beach monitoring.',
+    description: 'Vast deep-blue Pacific bay, municipal fishing grounds, at coastal current surveillance.',
   },
 ];
 
@@ -208,11 +289,16 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
   const [mapLayer, setMapLayer] = useState<'k' | 'h' | 'p'>('k');
   const [showRadarHud, setShowRadarHud] = useState(true);
   const [radarSweepEnabled, setRadarSweepEnabled] = useState(true);
+  const [selectedPurokForFocus, setSelectedPurokForFocus] = useState<PurokInfo | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
   const currentSector = useMemo(() => {
     return DINGALAN_MAP_SECTORS.find((s) => s.id === selectedSectorId) || DINGALAN_MAP_SECTORS[0];
   }, [selectedSectorId]);
+
+  const currentPurokData = useMemo(() => {
+    return getBarangayPurokData(currentSector.id) || getBarangayPurokData(currentSector.name) || null;
+  }, [currentSector]);
 
   const getSectorEmbedUrl = (sector: MapSector, layer: 'k' | 'h' | 'p' = 'k') => {
     let query = '';
@@ -222,29 +308,51 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
         query = 'Paltic, Dingalan, Aurora, Philippines';
         zoom = 15;
         break;
+      case 'poblacion':
       case 'dingalan':
         query = 'Poblacion, Dingalan, Aurora, Philippines';
         zoom = 16;
         break;
-      case 'butas':
-        query = '15.3850,121.3980 (Butas na Bato, Dingalan)';
+      case 'aplaya':
+        query = 'Aplaya, Dingalan, Aurora, Philippines';
         zoom = 16;
         break;
-      case 'bay':
-        query = 'Dingalan Bay, Aurora, Philippines';
-        zoom = 14;
+      case 'butas':
+        query = 'Butas na Bato, Dingalan, Aurora, Philippines';
+        zoom = 16;
         break;
+      case 'cabischasan':
       case 'cabog':
-        query = 'Cabog, Matawe, Dingalan, Aurora, Philippines';
+        query = 'Cabischasan, Dingalan, Aurora, Philippines';
+        zoom = 15;
+        break;
+      case 'caragsacan':
+        query = 'Caragsacan, Dingalan, Aurora, Philippines';
+        zoom = 15;
+        break;
+      case 'davil-davilan':
+        query = 'Davil-davilan, Dingalan, Aurora, Philippines';
+        zoom = 15;
+        break;
+      case 'dikapanikian':
+        query = 'Dikapanikian, Dingalan, Aurora, Philippines';
         zoom = 15;
         break;
       case 'ibona':
         query = 'Ibona, Dingalan, Aurora, Philippines';
         zoom = 15;
         break;
+      case 'tanawan':
+        query = 'Tanawan, Dingalan, Aurora, Philippines';
+        zoom = 15;
+        break;
       case 'umiray':
         query = 'Umiray, Dingalan, Aurora, Philippines';
         zoom = 15;
+        break;
+      case 'bay':
+        query = 'Dingalan Bay, Aurora, Philippines';
+        zoom = 14;
         break;
       default:
         query = `${sector.name}, Dingalan, Aurora, Philippines`;
@@ -469,20 +577,48 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
           <section className="mb-6 animate-fadeIn">
             <div className="bg-gradient-to-r from-slate-900/90 via-emerald-950/40 to-slate-900/90 border-2 border-emerald-500/50 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 shadow-2xl relative overflow-hidden">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left space-y-3 sm:space-y-0 sm:space-x-4 w-full">
-                  {eventBroadcast.qrDataUrl ? (
-                    <img
-                      src={eventBroadcast.qrDataUrl}
-                      alt="Event QR"
-                      onClick={onOpenEventNoticeModal}
-                      className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl p-1 bg-white object-contain border-2 border-emerald-400/60 shadow-lg shrink-0 cursor-pointer hover:scale-105 transition-transform"
-                      title="I-click upang palakihin ang QR Code"
-                    />
-                  ) : (
-                    <div className="w-20 h-20 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300 shrink-0">
-                      <QrCode className="w-10 h-10" />
-                    </div>
-                  )}
+                {(() => {
+                  const bannerQrTiming = checkIsQrReleased(eventBroadcast);
+                  return (
+                    <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left space-y-3 sm:space-y-0 sm:space-x-4 w-full">
+                      {bannerQrTiming.isUpcoming ? (
+                        <div
+                          onClick={onOpenEventNoticeModal}
+                          className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl p-1 bg-cyan-950/60 border-2 border-dashed border-cyan-400/80 shadow-lg shrink-0 cursor-pointer hover:scale-105 transition-transform flex flex-col items-center justify-center text-center"
+                          title="Naka-lock ang QR Code - Maghintay sa takdang oras"
+                        >
+                          <Lock className="w-6 h-6 sm:w-8 sm:h-8 text-cyan-400 mb-0.5" />
+                          <span className="text-[7.5px] sm:text-[8.5px] font-mono font-bold text-cyan-300 leading-tight">
+                            LALABAS SA:
+                          </span>
+                          <span className="text-[8.5px] sm:text-[9.5px] font-mono font-black text-cyan-200 leading-tight">
+                            {bannerQrTiming.startTimeFormatted}
+                          </span>
+                        </div>
+                      ) : bannerQrTiming.isExpired ? (
+                        <div
+                          onClick={onOpenEventNoticeModal}
+                          className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl p-1 bg-rose-950/60 border-2 border-rose-500/60 shadow-lg shrink-0 cursor-pointer flex flex-col items-center justify-center text-center"
+                          title="Naglaho na ang QR Code"
+                        >
+                          <Lock className="w-6 h-6 text-rose-400 mb-0.5" />
+                          <span className="text-[8px] font-mono font-bold text-rose-300">
+                            NAGLAHO NA
+                          </span>
+                        </div>
+                      ) : eventBroadcast.qrDataUrl ? (
+                        <img
+                          src={eventBroadcast.qrDataUrl}
+                          alt="Event QR"
+                          onClick={onOpenEventNoticeModal}
+                          className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl p-1 bg-white object-contain border-2 border-emerald-400/60 shadow-lg shrink-0 cursor-pointer hover:scale-105 transition-transform"
+                          title="I-click upang palakihin ang QR Code"
+                        />
+                      ) : (
+                        <div className="w-20 h-20 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300 shrink-0">
+                          <QrCode className="w-10 h-10" />
+                        </div>
+                      )}
 
                   <div className="space-y-1 w-full">
                     <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
@@ -511,6 +647,8 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
                     </div>
                   </div>
                 </div>
+              );
+            })()}
 
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto shrink-0">
                   {onOpenEventNoticeModal && (
@@ -741,9 +879,9 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
                     )}
 
                     {/* Live Floating Sector Badge */}
-                    <div className="absolute top-3 left-3 z-10 pointer-events-none flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-950/85 backdrop-blur border border-cyan-500/40 shadow-xl">
+                    <div className="absolute top-3 left-3 z-10 flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-950/90 border border-cyan-500/50 shadow-xl group text-left">
                       <span
-                        className="w-2.5 h-2.5 rounded-full animate-ping"
+                        className="w-2.5 h-2.5 rounded-full animate-ping shrink-0"
                         style={{ backgroundColor: currentSector.color }}
                       />
                       <div className="flex flex-col">
@@ -751,7 +889,7 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
                           📍 {currentSector.name} ({currentSector.coordsText})
                         </span>
                         <span className="text-[10px] font-mono text-emerald-400">
-                          Google Satellite Layer • Elev: {currentSector.elevation}
+                          {currentPurokData ? `${currentPurokData.puroks.length} Purok sa Barangay` : `Elev: ${currentSector.elevation}`}
                         </span>
                       </div>
                     </div>
@@ -763,22 +901,73 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
                       <MapPin className="w-4 h-4 text-cyan-400" />
                       <span className="text-xs font-bold text-white">{currentSector.name}</span>
                       <span className="text-[11px] font-mono text-cyan-300">({currentSector.coordsText})</span>
+                      <span className="text-[11px] font-mono text-emerald-400 hidden sm:inline">
+                        • Elev: {currentSector.elevation}
+                      </span>
                     </div>
-                    <span className="text-[11px] font-mono text-emerald-400">
-                      Elevation: {currentSector.elevation}
-                    </span>
+
+                    <div className="px-3 py-1 rounded-lg bg-slate-950 border border-cyan-500/30 text-cyan-300 font-mono font-bold text-xs flex items-center space-x-1.5">
+                      <Compass className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>{currentPurokData?.puroks.length || 0} Purok sa Barangay</span>
+                    </div>
                   </div>
+
+                  {/* Interactive Quick Purok & Sakop na Area Preview Strip */}
+                  {currentPurokData && (
+                    <div className="mt-3 p-3 rounded-xl bg-slate-950/80 border border-cyan-500/30">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center space-x-2">
+                          <Compass className="w-4 h-4 text-emerald-400" />
+                          <span className="text-xs font-bold text-white font-mono uppercase tracking-wider">
+                            Purok at Sakop na Area sa Brgy. {currentPurokData.barangayName} ({currentPurokData.puroks.length})
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[170px] overflow-y-auto pr-1">
+                        {currentPurokData.puroks.map((purok) => (
+                          <div
+                            key={`bento-purok-${purok.id}`}
+                            className="p-2 rounded-lg bg-slate-900/90 border border-slate-800 flex flex-col justify-between"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-1.5 min-w-0">
+                                <span
+                                  className="w-2 h-2 rounded-full shrink-0"
+                                  style={{ backgroundColor: purok.color }}
+                                />
+                                <span className="text-xs font-bold text-white truncate">
+                                  {purok.name}
+                                </span>
+                              </div>
+                              {purok.coastalZone && (
+                                <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/30 shrink-0">
+                                  Baybayin
+                                </span>
+                              )}
+                            </div>
+
+                            <p className="mt-1 text-[11px] text-slate-300 line-clamp-2">
+                              <span className="text-cyan-400 font-semibold font-mono">Sakop: </span>
+                              {purok.coveredArea}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Sidebar Column: Dingalan Coastal Sectors (Span 4) */}
                 <div className="lg:col-span-4 p-4 border-t lg:border-t-0 lg:border-l border-slate-800 bg-slate-900/95 flex flex-col justify-between">
                   <div>
                     <h4 className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider mb-2.5">
-                      MGA SONA NG BAYBAYIN (GOOGLE MAPS POINTS)
+                      MGA BARANGAY AT SONA NG DINGALAN
                     </h4>
-                    <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
+                    <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
                       {DINGALAN_MAP_SECTORS.map((sector) => {
                         const isSelected = selectedSectorId === sector.id;
+                        const sectorPuroks = getBarangayPurokData(sector.id)?.puroks || [];
                         return (
                           <div
                             key={`overview-list-${sector.id}`}
@@ -799,24 +988,32 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
                                   {sector.name}
                                 </span>
                               </div>
-                              <span
-                                className="text-[9px] font-mono px-1.5 py-0.2 rounded border shrink-0"
-                                style={{
-                                  color: sector.color,
-                                  borderColor: `${sector.color}55`,
-                                  backgroundColor: `${sector.color}15`,
-                                }}
-                              >
-                                {sector.elevation}
-                              </span>
+                              <div className="flex items-center space-x-1 shrink-0">
+                                {sectorPuroks.length > 0 && (
+                                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-cyan-900/60 text-cyan-300 border border-cyan-500/40">
+                                    {sectorPuroks.length} Purok
+                                  </span>
+                                )}
+                                <span
+                                  className="text-[9px] font-mono px-1.5 py-0.2 rounded border"
+                                  style={{
+                                    color: sector.color,
+                                    borderColor: `${sector.color}55`,
+                                    backgroundColor: `${sector.color}15`,
+                                  }}
+                                >
+                                  {sector.elevation}
+                                </span>
+                              </div>
                             </div>
                             <p className="mt-1 text-[11px] text-slate-400 line-clamp-1">
                               {sector.subName}
                             </p>
                             <div className="mt-1.5 flex items-center justify-between text-[10px] font-mono text-slate-500">
                               <span>{sector.coordsText}</span>
-                              <span className="text-cyan-400 font-bold hover:underline">
-                                I-zoom sa Map →
+                              <span className="text-cyan-400 font-bold hover:underline flex items-center space-x-1">
+                                <Compass className="w-3 h-3 text-cyan-400" />
+                                <span>I-view ang Purok →</span>
                               </span>
                             </div>
                           </div>

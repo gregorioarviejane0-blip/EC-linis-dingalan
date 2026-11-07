@@ -5,6 +5,7 @@ import { generateStyledLguQrDataUrl } from '../utils/qrPassGenerator';
 import { OfficialQrPassCard } from './OfficialQrPassCard';
 import {
   QrCode,
+  Lock,
   Wrench,
   Clock,
   MapPin,
@@ -24,6 +25,7 @@ import {
   ChevronRight,
   ShieldCheck,
 } from 'lucide-react';
+import { checkIsQrReleased } from '../utils/philippineClock';
 
 interface EventQrNoticeModalProps {
   isOpen: boolean;
@@ -65,6 +67,11 @@ export const EventQrNoticeModal: React.FC<EventQrNoticeModalProps> = ({
       qrDataUrl?: string;
       rawPayload?: string;
       isBroadcastLatest?: boolean;
+      qrScheduleEnabled?: boolean;
+      qrDisplayStartDate?: string;
+      qrDisplayStartTime?: string;
+      qrDisplayEndDate?: string;
+      qrDisplayEndTime?: string;
     }> = [];
 
     // 1. If broadcast exists, add it at the top
@@ -88,6 +95,11 @@ export const EventQrNoticeModal: React.FC<EventQrNoticeModalProps> = ({
         qrDataUrl: broadcast.qrDataUrl,
         rawPayload: broadcast.qrPayload,
         isBroadcastLatest: true,
+        qrScheduleEnabled: broadcast.qrScheduleEnabled !== false,
+        qrDisplayStartDate: broadcast.qrDisplayStartDate || broadcast.eventDate,
+        qrDisplayStartTime: broadcast.qrDisplayStartTime || broadcast.startTime,
+        qrDisplayEndDate: broadcast.qrDisplayEndDate || broadcast.eventDate,
+        qrDisplayEndTime: broadcast.qrDisplayEndTime || broadcast.estimatedEndTime,
       });
     }
 
@@ -104,16 +116,21 @@ export const EventQrNoticeModal: React.FC<EventQrNoticeModalProps> = ({
           targetArea: act.targetArea,
           date: act.date,
           startTime: act.callTime ? `${act.callTime}` : '06:00 AM',
-          endTime: '10:00 AM',
-          totalHours: '4 na Oras',
+          endTime: act.estimatedEndTime || '10:00 AM',
+          totalHours: act.totalHours || '4 na Oras',
           status: act.status,
           isActive: isActive,
           adminName: act.supervisorName || 'Operations Administrator',
-          tools: 'Walis tingting, dustpan, sako/trash bags, sipit/trash tongs, guwantes (gloves)',
-          waterReminder: 'Magdala ng sariling tumbler o reusable water bottle para sa sapat na hydration sa tabing-dagat',
-          attire: 'Linis Dingalan t-shirt o komportableng damit pang-outdoor, bota/rubber shoes, sombrero o cap laban sa init ng araw',
-          notes: act.notes || 'Magtipon sa Barangay Covered Court bago mag-alas 6:00 ng umaga para sa briefing at cluster assignments.',
+          tools: act.requiredTools || 'Walis tingting, dustpan, sako/trash bags, sipit/trash tongs, guwantes (gloves)',
+          waterReminder: act.waterReminder || 'Magdala ng sariling tumbler o reusable water bottle para sa sapat na hydration sa tabing-dagat',
+          attire: act.recommendedAttire || 'Linis Dingalan t-shirt o komportableng damit pang-outdoor, bota/rubber shoes, sombrero o cap laban sa init ng araw',
+          notes: act.notes || act.description || 'Magtipon sa Barangay Covered Court bago mag-alas 6:00 ng umaga para sa briefing at cluster assignments.',
           isBroadcastLatest: false,
+          qrScheduleEnabled: act.qrScheduleEnabled !== false,
+          qrDisplayStartDate: act.qrDisplayStartDate || act.date,
+          qrDisplayStartTime: act.qrDisplayStartTime || act.callTime,
+          qrDisplayEndDate: act.qrDisplayEndDate || act.date,
+          qrDisplayEndTime: act.qrDisplayEndTime || act.estimatedEndTime,
         });
       }
     });
@@ -254,6 +271,7 @@ export const EventQrNoticeModal: React.FC<EventQrNoticeModalProps> = ({
   }
 
   const currentEvent = historyEvents.find((e) => e.id === selectedEventId) || historyEvents[0];
+  const qrTiming = checkIsQrReleased(currentEvent);
 
   const activeQrCodeUrl = currentEvent.qrDataUrl || generatedQrMap[currentEvent.id];
 
@@ -394,18 +412,30 @@ export const EventQrNoticeModal: React.FC<EventQrNoticeModalProps> = ({
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                const matchedAct = activities.find((a) => a.id === currentEvent.id);
-                onProceedUploadAccomplishment(matchedAct);
-              }}
-              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 font-black text-xs shadow-lg flex items-center justify-center space-x-1.5 cursor-pointer shrink-0 transform hover:scale-105 active:scale-95 transition-all"
-            >
-              <Camera className="w-4 h-4 text-slate-950" />
-              <span>Upload Accomplishment</span>
-            </button>
+            {qrTiming.isUpcoming ? (
+              <div className="px-4 py-2.5 rounded-xl bg-slate-900 border-2 border-cyan-500/60 text-cyan-300 font-mono font-bold text-xs flex items-center justify-center space-x-1.5 cursor-not-allowed opacity-90 shadow-sm shrink-0">
+                <Lock className="w-4 h-4 text-cyan-400" />
+                <span>Lalabas sa {qrTiming.startTimeFormatted}</span>
+              </div>
+            ) : qrTiming.isExpired ? (
+              <div className="px-4 py-2.5 rounded-xl bg-rose-950/60 border border-rose-500/50 text-rose-300 font-mono font-bold text-xs flex items-center justify-center space-x-1.5 cursor-not-allowed opacity-80 shrink-0">
+                <AlertCircle className="w-4 h-4 text-rose-400" />
+                <span>Sarado na ang Upload</span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  const matchedAct = activities.find((a) => a.id === currentEvent.id);
+                  onProceedUploadAccomplishment(matchedAct);
+                }}
+                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 font-black text-xs shadow-lg flex items-center justify-center space-x-1.5 cursor-pointer shrink-0 transform hover:scale-105 active:scale-95 transition-all"
+              >
+                <Camera className="w-4 h-4 text-slate-950" />
+                <span>Upload Accomplishment</span>
+              </button>
+            )}
           </div>
 
           {/* ========================================================================= */}
@@ -414,7 +444,55 @@ export const EventQrNoticeModal: React.FC<EventQrNoticeModalProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
             {/* LEFT: QR CODE DISPLAY (Span 5) */}
             <div className="md:col-span-5 space-y-4">
-              {activeQrCodeUrl ? (
+              {qrTiming.isUpcoming ? (
+                /* LOCKED QR VIEW (Matches Picture 6 image_ed35ddde.png) */
+                <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-slate-950/90 border-2 border-cyan-500/70 backdrop-blur-md shadow-[0_0_25px_rgba(6,182,212,0.25)] space-y-4 text-center">
+                  <div className="w-full aspect-square max-w-[200px] mx-auto rounded-2xl border-2 border-dashed border-cyan-400/80 bg-cyan-950/30 flex flex-col items-center justify-center p-3 text-center shadow-[inset_0_0_15px_rgba(6,182,212,0.2)]">
+                    <Lock className="w-10 h-10 text-cyan-400 mb-2" />
+                    <span className="text-[10px] font-mono font-bold text-slate-300 uppercase leading-tight">
+                      LALABAS SA:
+                    </span>
+                    <span className="text-sm font-mono font-black text-cyan-300 leading-tight">
+                      {qrTiming.startTimeFormatted}
+                    </span>
+                  </div>
+
+                  <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[10px] font-mono font-bold">
+                    <Clock className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    <span>NAKA-LOCK ANG OFFICIAL EVENT QR</span>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1.5 text-left text-xs font-mono">
+                    <div className="flex items-center justify-between text-slate-300">
+                      <span>Nakatakdang Lumabas:</span>
+                      <strong className="text-cyan-300">{qrTiming.startTimeFormatted}</strong>
+                    </div>
+                    {qrTiming.endTimeFormatted && (
+                      <div className="flex items-center justify-between text-slate-400 text-[11px]">
+                        <span>Kusang Maglalaho:</span>
+                        <strong className="text-rose-400">{qrTiming.endTimeFormatted}</strong>
+                      </div>
+                    )}
+                  </div>
+
+                  <p className="text-[11px] text-slate-300 font-sans leading-relaxed">
+                    Mauunang lumabas ang opisyal na paalala at program guidelines. Awtomatikong magpapakita rito ang Official QR Code sa takdang oras (<strong className="text-cyan-300">{qrTiming.startTimeFormatted}</strong>).
+                  </p>
+                </div>
+              ) : qrTiming.isExpired ? (
+                /* EXPIRED QR VIEW */
+                <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-rose-950/40 border-2 border-rose-500/60 backdrop-blur-md shadow-[0_0_25px_rgba(244,63,94,0.25)] space-y-3 text-center">
+                  <div className="w-16 h-16 rounded-2xl bg-rose-500/20 border border-rose-500/50 flex items-center justify-center text-rose-400 mx-auto">
+                    <AlertCircle className="w-8 h-8" />
+                  </div>
+                  <h4 className="text-sm font-black text-white uppercase font-mono">
+                    NAGLAHO NA ANG QR CODE
+                  </h4>
+                  <p className="text-xs text-rose-200">
+                    Lumagpas na sa nakatakdang oras ({qrTiming.endTimeFormatted}). Sarado na ang pagtanggap ng accomplishment photo para sa programang ito.
+                  </p>
+                </div>
+              ) : activeQrCodeUrl ? (
                 <OfficialQrPassCard
                   qrCodeUrl={activeQrCodeUrl}
                   payloadUrl={currentEvent.rawPayload}

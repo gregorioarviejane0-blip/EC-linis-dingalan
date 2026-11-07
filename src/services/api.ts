@@ -14,6 +14,7 @@ import {
   INITIAL_EVENT_BROADCAST,
   INITIAL_ANONYMOUS_MESSAGES,
 } from '../data/seedData';
+import { deduplicateActivities, findDuplicateActivity, normalizeActivityKey } from '../utils/activityDeduplication';
 
 export enum OperationType {
   CREATE = 'create',
@@ -630,7 +631,19 @@ export class ApiService {
     try {
       const snap = await getDocs(collection(db, 'activities'));
       if (!snap.empty) {
-        activities = snap.docs.map((d) => ({ ...d.data(), id: d.id } as Activity));
+        const rawDocs = snap.docs.map((d) => ({ ...d.data(), id: d.id } as Activity));
+        activities = deduplicateActivities(rawDocs);
+
+        // Auto-clean any duplicate ghost documents from Firestore
+        if (rawDocs.length > activities.length) {
+          const preservedIds = new Set(activities.map((a) => a.id));
+          for (const rawDoc of rawDocs) {
+            if (!preservedIds.has(rawDoc.id)) {
+              deleteDoc(doc(db, 'activities', rawDoc.id)).catch(() => {});
+            }
+          }
+        }
+
         activities.sort(
           (a, b) =>
             new Date(b.createdAt || b.date || 0).getTime() -
@@ -660,7 +673,7 @@ export class ApiService {
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data.activities) && data.activities.length > 0) {
-            activities = data.activities;
+            activities = deduplicateActivities(data.activities);
             if (assignments.length === 0) {
               assignments = data.assignments || [];
             }
@@ -673,7 +686,9 @@ export class ApiService {
     // 3. Resilient fallback to LocalStorage
     if (activities.length === 0) {
       const rawActs = localStorage.getItem(LS_ACTIVITIES);
-      activities = rawActs ? JSON.parse(rawActs) : INITIAL_ACTIVITIES;
+      const parsedActs = rawActs ? JSON.parse(rawActs) : INITIAL_ACTIVITIES;
+      activities = deduplicateActivities(parsedActs);
+      localStorage.setItem(LS_ACTIVITIES, JSON.stringify(activities));
     }
 
     if (assignments.length === 0) {
@@ -686,9 +701,60 @@ export class ApiService {
 
   async createActivity(activityData: Partial<Activity>): Promise<Activity> {
     const rawActs = localStorage.getItem(LS_ACTIVITIES);
-    const acts: Activity[] = rawActs ? JSON.parse(rawActs) : INITIAL_ACTIVITIES;
+    const existingList: Activity[] = deduplicateActivities(rawActs ? JSON.parse(rawActs) : INITIAL_ACTIVITIES);
+
+    // Check if an activity with the same title, date, and barangay already exists
+    const duplicate = findDuplicateActivity(activityData, existingList);
+    if (duplicate) {
+      // Update the existing activity instead of creating a duplicate card
+      const updatedAct: Activity = {
+        ...duplicate,
+        ...activityData,
+        id: duplicate.id,
+        assignedPersonnel:
+          activityData.assignedPersonnel && activityData.assignedPersonnel.length > 0
+            ? activityData.assignedPersonnel
+            : duplicate.assignedPersonnel,
+        targetBeneficiariesCount:
+          Number(activityData.targetBeneficiariesCount) || duplicate.targetBeneficiariesCount,
+        updatedAt: new Date().toISOString(),
+      };
+
+      const updatedList = existingList.map((a) => (a.id === duplicate.id ? updatedAct : a));
+      const dedupedList = deduplicateActivities(updatedList);
+      localStorage.setItem(LS_ACTIVITIES, JSON.stringify(dedupedList));
+
+      // 1. Permanent write to Firestore
+      try {
+        await setDoc(doc(db, 'activities', duplicate.id), updatedAct, { merge: true });
+      } catch (fsErr) {
+        handleFirestoreError(fsErr, OperationType.WRITE, `activities/${duplicate.id}`);
+      }
+
+      // 2. Write to backend API
+      try {
+        await fetch('/api/activities', {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(updatedAct),
+        });
+      } catch {}
+
+      // 3. Broadcast across tabs
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        try {
+          const bc = new BroadcastChannel('ld_sync');
+          bc.postMessage({ type: 'UPDATE_ACTIVITY', activity: updatedAct });
+          bc.close();
+        } catch {}
+      }
+
+      return updatedAct;
+    }
+
+    const uniqueId = activityData.id || `act-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
     const newAct: Activity = {
-      id: `act-${Date.now().toString().slice(-6)}`,
+      id: uniqueId,
       title: activityData.title!,
       programType: activityData.programType || 'COASTAL_CLEANUP',
       description: activityData.description || '',
@@ -720,8 +786,8 @@ export class ApiService {
       ...activityData,
     };
 
-    acts.unshift(newAct);
-    localStorage.setItem(LS_ACTIVITIES, JSON.stringify(acts));
+    const updatedActs = deduplicateActivities([newAct, ...existingList]);
+    localStorage.setItem(LS_ACTIVITIES, JSON.stringify(updatedActs));
 
     // 1. Permanent write to Firestore
     try {
@@ -754,14 +820,23 @@ export class ApiService {
   async deleteActivity(id: string): Promise<boolean> {
     const rawActs = localStorage.getItem(LS_ACTIVITIES);
     const list: Activity[] = rawActs ? JSON.parse(rawActs) : INITIAL_ACTIVITIES;
-    const updated = list.filter(a => a.id !== id);
+    const targetAct = list.find((a) => a.id === id);
+    const targetKey = targetAct ? normalizeActivityKey(targetAct) : null;
+
+    // Identify all duplicates that match this ID or composite key
+    const toDelete = list.filter((a) => a.id === id || (targetKey && normalizeActivityKey(a) === targetKey));
+    const toDeleteIds = toDelete.map((d) => d.id);
+
+    const updated = deduplicateActivities(list.filter((a) => !toDeleteIds.includes(a.id)));
     localStorage.setItem(LS_ACTIVITIES, JSON.stringify(updated));
 
-    // 1. Permanent delete from Firestore
-    try {
-      await deleteDoc(doc(db, 'activities', id));
-    } catch (fsErr) {
-      handleFirestoreError(fsErr, OperationType.DELETE, `activities/${id}`);
+    // 1. Permanent delete from Firestore for all matching duplicate IDs
+    for (const delId of toDeleteIds) {
+      try {
+        await deleteDoc(doc(db, 'activities', delId));
+      } catch (fsErr) {
+        handleFirestoreError(fsErr, OperationType.DELETE, `activities/${delId}`);
+      }
     }
 
     // 2. Delete from server
@@ -777,8 +852,8 @@ export class ApiService {
     if (rawAsgs) {
       try {
         const asgs: ActivityAssignment[] = JSON.parse(rawAsgs);
-        const toDeleteAsgs = asgs.filter(asg => asg.activityId === id);
-        const filteredAsgs = asgs.filter(asg => asg.activityId !== id);
+        const toDeleteAsgs = asgs.filter((asg) => toDeleteIds.includes(asg.activityId));
+        const filteredAsgs = asgs.filter((asg) => !toDeleteIds.includes(asg.activityId));
         localStorage.setItem(LS_ASSIGNMENTS, JSON.stringify(filteredAsgs));
 
         for (const asg of toDeleteAsgs) {

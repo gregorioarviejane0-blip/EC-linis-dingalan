@@ -38,7 +38,8 @@ import adminCoastalWallpaper from './assets/images/dingalan_admin_coastal_bg_179
 import mountainViewWallpaper from './assets/images/dingalan_mountain_view_1791439053773.jpg';
 import systemWallpaper from './assets/images/dingalan_system_wallpaper.jpg';
 import { db } from './firebase';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot, doc, deleteDoc } from 'firebase/firestore';
+import { deduplicateActivities, normalizeActivityKey } from './utils/activityDeduplication';
 
 const DINGALAN_SYSTEM_BG = adminCoastalWallpaper || mountainViewWallpaper || systemWallpaper;
 
@@ -141,7 +142,7 @@ export default function App() {
       setAnonymousMessages(anonRes.messages || []);
 
       const actData = await api.getActivities();
-      setActivities(actData.activities);
+      setActivities(deduplicateActivities(actData.activities));
       setAssignments(actData.assignments);
 
       const atts = await api.getAttendances();
@@ -388,13 +389,25 @@ export default function App() {
         collection(db, 'activities'),
         (snapshot) => {
           if (!snapshot.empty) {
-            const list: Activity[] = [];
+            const rawList: Activity[] = [];
             snapshot.forEach((docSnap) => {
-              list.push({ ...docSnap.data(), id: docSnap.id } as Activity);
+              rawList.push({ ...docSnap.data(), id: docSnap.id } as Activity);
             });
-            list.sort((a, b) => new Date(b.createdAt || b.date || 0).getTime() - new Date(a.createdAt || a.date || 0).getTime());
-            setActivities(list);
-            localStorage.setItem('ld_activities_v1', JSON.stringify(list));
+            const deduped = deduplicateActivities(rawList);
+
+            // Auto-clean any duplicate ghost documents from Firestore
+            if (rawList.length > deduped.length) {
+              const preservedIds = new Set(deduped.map((a) => a.id));
+              rawList.forEach((item) => {
+                if (!preservedIds.has(item.id)) {
+                  deleteDoc(doc(db, 'activities', item.id)).catch(() => {});
+                }
+              });
+            }
+
+            deduped.sort((a, b) => new Date(b.createdAt || b.date || 0).getTime() - new Date(a.createdAt || a.date || 0).getTime());
+            setActivities(deduped);
+            localStorage.setItem('ld_activities_v1', JSON.stringify(deduped));
           }
         },
         (error) => {
@@ -427,7 +440,15 @@ export default function App() {
     // Upsert activity into state and localStorage so that all modals and views (including Programs tab) immediately update
     setActivities((prev) => {
       const targetId = broadcast.activityId || `act-${Date.now().toString().slice(-6)}`;
-      const existingIdx = prev.findIndex((a) => a.id === targetId || a.title === broadcast.activityTitle);
+      const normBroadcastTitle = (broadcast.activityTitle || '').trim().toLowerCase();
+      const existingIdx = prev.findIndex(
+        (a) =>
+          a.id === targetId ||
+          ((a.title || '').trim().toLowerCase() === normBroadcastTitle &&
+            a.barangay === broadcast.barangay &&
+            a.date === broadcast.eventDate) ||
+          (a.title || '').trim().toLowerCase() === normBroadcastTitle
+      );
       let updatedList: Activity[];
 
       if (existingIdx >= 0) {
@@ -442,6 +463,7 @@ export default function App() {
           status: 'scheduled',
           notes: broadcast.additionalNotes || updatedList[existingIdx].notes,
           supervisorName: broadcast.sentByAdminName || updatedList[existingIdx].supervisorName,
+          updatedAt: new Date().toISOString(),
         };
       } else {
         const newAct: Activity = {
@@ -461,12 +483,15 @@ export default function App() {
           status: 'scheduled',
           notes: broadcast.additionalNotes || '',
           createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         };
         updatedList = [newAct, ...prev];
       }
 
+      const deduped = deduplicateActivities(updatedList);
+
       try {
-        localStorage.setItem('ld_activities_v1', JSON.stringify(updatedList));
+        localStorage.setItem('ld_activities_v1', JSON.stringify(deduped));
       } catch {}
 
       try {
@@ -477,11 +502,11 @@ export default function App() {
             'x-user-role': currentUser.role,
             'x-user-id': currentUser.id,
           },
-          body: JSON.stringify(updatedList[0]),
+          body: JSON.stringify(deduped[0]),
         }).catch(() => {});
       } catch {}
 
-      return updatedList;
+      return deduped;
     });
 
     showToast('Naipadala na ang Event QR Code at mga paalala sa lahat ng naka-register na user!', 'success');
@@ -603,7 +628,7 @@ export default function App() {
   // Create Activity Handler
   const handleCreateActivity = async (data: Partial<Activity>) => {
     const newAct = await api.createActivity(data);
-    setActivities((prev) => [newAct, ...prev]);
+    setActivities((prev) => deduplicateActivities([newAct, ...prev.filter((a) => a.id !== newAct.id)]));
 
     // Automatically sync to latestEventBroadcast so the new program can immediately reflect on the Login Advisory (Picture 2)
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://linis-dingalan.aurora.gov.ph';
@@ -628,9 +653,9 @@ export default function App() {
       qrPayload: payload,
       qrScheduleEnabled: newAct.qrScheduleEnabled !== false,
       qrDisplayStartDate: newAct.qrDisplayStartDate || newAct.date,
-      qrDisplayStartTime: newAct.qrDisplayStartTime || '06:00',
+      qrDisplayStartTime: newAct.qrDisplayStartTime || newAct.callTime || '06:00 AM',
       qrDisplayEndDate: newAct.qrDisplayEndDate || newAct.date,
-      qrDisplayEndTime: newAct.qrDisplayEndTime || '23:59',
+      qrDisplayEndTime: newAct.qrDisplayEndTime || newAct.estimatedEndTime || '11:59 PM',
     };
     setLatestEventBroadcast(newBc);
     try {
@@ -679,9 +704,9 @@ export default function App() {
         qrPayload: payload,
         qrScheduleEnabled: act.qrScheduleEnabled !== false,
         qrDisplayStartDate: act.qrDisplayStartDate || act.date,
-        qrDisplayStartTime: act.qrDisplayStartTime || '06:00',
+        qrDisplayStartTime: act.qrDisplayStartTime || act.callTime || '06:00 AM',
         qrDisplayEndDate: act.qrDisplayEndDate || act.date,
-        qrDisplayEndTime: act.qrDisplayEndTime || '23:59',
+        qrDisplayEndTime: act.qrDisplayEndTime || act.estimatedEndTime || '11:59 PM',
       };
 
       setLatestEventBroadcast(broadcast);
@@ -745,9 +770,14 @@ export default function App() {
   // Delete Single Activity Handler
   const handleDeleteActivity = async (id: string) => {
     try {
+      const targetAct = activities.find((a) => a.id === id);
+      const targetKey = targetAct ? normalizeActivityKey(targetAct) : null;
+
       await api.deleteActivity(id);
       setActivities((prev) => {
-        const next = prev.filter((a) => a.id !== id);
+        const next = deduplicateActivities(
+          prev.filter((a) => a.id !== id && (!targetKey || normalizeActivityKey(a) !== targetKey))
+        );
         if (next.length === 0) {
           setLatestEventBroadcast(null);
           if (typeof window !== 'undefined') {

@@ -499,6 +499,10 @@ export const GenerateQrEventModal: React.FC<GenerateQrEventModalProps> = ({
         sentByAdminName: currentUser?.name || 'Admin Officer',
         sentAt: new Date().toISOString(),
         qrScheduleEnabled: true,
+        qrDisplayStartDate: currentAct?.qrDisplayStartDate || cleanEventDate,
+        qrDisplayStartTime: currentAct?.qrDisplayStartTime || startTime || '06:00',
+        qrDisplayEndDate: currentAct?.qrDisplayEndDate || cleanEventDate,
+        qrDisplayEndTime: currentAct?.qrDisplayEndTime || estimatedEndTime || '23:59',
       };
 
       // 1. Immediately store in localStorage & BroadcastChannel for 0ms lag
