@@ -3,6 +3,7 @@ import { EventQrBroadcast, Activity } from '../types';
 import QRCode from 'qrcode';
 import { generateStyledLguQrDataUrl } from '../utils/qrPassGenerator';
 import { OfficialQrPassCard } from './OfficialQrPassCard';
+import { PWAInstallButton } from './PWAInstallButton';
 import {
   QrCode,
   Lock,
@@ -207,12 +208,15 @@ export const EventQrNoticeModal: React.FC<EventQrNoticeModalProps> = ({
                 </h3>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
-            >
-              <X className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
+            <div className="flex items-center space-x-2 shrink-0">
+              <PWAInstallButton />
+              <button
+                onClick={onClose}
+                className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+            </div>
           </div>
 
           <div className="space-y-3">
@@ -294,12 +298,15 @@ export const EventQrNoticeModal: React.FC<EventQrNoticeModalProps> = ({
               </h3>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer shrink-0"
-          >
-            <X className="w-4 h-4 sm:w-5 sm:h-5" />
-          </button>
+          <div className="flex items-center space-x-2 shrink-0">
+            <PWAInstallButton />
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer shrink-0"
+            >
+              <X className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Modal Body */}

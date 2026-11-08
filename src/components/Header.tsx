@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { User, UserRole } from '../types';
 import { useDingalanClock, isDingalanTimeOverridden } from '../utils/philippineClock';
 import { TimeAdjusterModal } from './TimeAdjusterModal';
+import { PWAInstallButton } from './PWAInstallButton';
 import {
   ShieldCheck,
   QrCode,
@@ -331,8 +332,8 @@ export const Header: React.FC<HeaderProps> = ({
             </motion.button>
           )}
 
-          {/* PWA Install Button */}
-          {/* PWAInstallButton omitted */}
+          {/* PWA Mobile App Install Button */}
+          <PWAInstallButton />
 
           {/* Log Out Button */}
           <motion.button

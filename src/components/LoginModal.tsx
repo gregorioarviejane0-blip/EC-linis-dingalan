@@ -9,6 +9,7 @@ import { useDingalanClock, getDingalanNow, checkIsBroadcastActive, checkIsQrRele
 import { generateStyledLguQrDataUrl } from '../utils/qrPassGenerator';
 import { SendAnonymousMessageModal } from './SendAnonymousMessageModal';
 import { FullScreenPhotoViewer } from './FullScreenPhotoViewer';
+import { PWAInstallButton } from './PWAInstallButton';
 import dingalanBgImg from '../assets/images/dingalan_wide_full_drone_1791526093260.jpg';
 import dingalanLighthouseImg from '../assets/images/dingalan_lighthouse_natural_drone_1791512687510.jpg';
 import {
@@ -2503,6 +2504,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       </div>
 
                     <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
+                      <PWAInstallButton />
                       <button
                         type="button"
                         onClick={handleAdminPortalClick}
@@ -2812,6 +2814,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     </div>
 
                     <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
+                      <PWAInstallButton />
                       <button
                         type="button"
                         onClick={handleAdminPortalClick}

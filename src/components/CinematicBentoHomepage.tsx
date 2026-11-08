@@ -35,6 +35,7 @@ import {
 import QRCode from 'qrcode';
 import { useDingalanClock, checkIsQrReleased } from '../utils/philippineClock';
 import { getBarangayPurokData, BarangayPurokData, PurokInfo } from '../data/dingalanPurokData';
+import { PWAInstallButton } from './PWAInstallButton';
 
 export interface MapSector {
   id: string;
@@ -571,6 +572,11 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
             </div>
           </div>
         </section>
+
+        {/* Mobile PWA Install Banner */}
+        <div className="mb-4">
+          <PWAInstallButton variant="banner" />
+        </div>
 
         {/* LATEST EVENT QR & PAALALA BROADCAST BANNER (Synchronized with Login Page Advisory) */}
         {eventBroadcast && (typeof window === 'undefined' || localStorage.getItem('ld_broadcasts_cleared') !== 'true') && (
