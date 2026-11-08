@@ -718,48 +718,7 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
             {/* TILE 2: GOOGLE MAPS TOPOGRAPHIC GPS RADAR (OVERVIEW DISPLAY)          */}
             {/* --------------------------------------------------------------------- */}
             <div className="col-span-12 max-w-6xl mx-auto w-full bg-slate-900/90 backdrop-blur-2xl border border-cyan-500/35 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden relative">
-              {/* Header matching image_e8730e0e.png */}
-              <div className="p-4 sm:p-5 border-b border-slate-800 bg-slate-950/70 flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2.5 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400">
-                    <Compass className="w-6 h-6 animate-spin-slow" />
-                  </div>
-                  <div>
-                    <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2 flex-wrap">
-                      <span>Google Maps Topographic GPS Radar</span>
-                      <span className="px-2 py-0.5 text-xs font-mono rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                        Dingalan, Aurora
-                      </span>
-                    </h3>
-                    <p className="text-xs font-mono text-slate-400">
-                      Satelayt ng Dingalan Bay, Paltic, Butas na Bato, Cabog, Ibona, at Umiray
-                    </p>
-                  </div>
-                </div>
 
-                <div className="flex items-center space-x-2">
-                  <button
-                    type="button"
-                    onClick={() => onNavigate('map')}
-                    className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 text-xs font-bold font-mono transition-all shadow cursor-pointer"
-                    title="Pumunta sa full screen page ng Google Maps Topographic GPS Radar"
-                  >
-                    <Maximize2 className="w-3.5 h-3.5" />
-                    <span>Full Screen Page</span>
-                  </button>
-                  <a
-                    href={`https://maps.google.com/?q=${encodeURIComponent(
-                      `${currentSector.name}, Dingalan, Aurora, Philippines`
-                    )}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-all shadow"
-                  >
-                    <span>Google Maps</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                </div>
-              </div>
 
               {/* Body: 2-Column Layout (Map on Left + Sectors on Right) */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
