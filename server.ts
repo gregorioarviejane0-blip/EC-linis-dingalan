@@ -795,6 +795,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
       verifiedByOfficerId: user.id,
       verifiedByOfficerName: user.name,
       notes: notes || accomplishment_notes || 'Verified with on-site geotag photograph.',
+      uploadSource: (req.body.was_queued_offline || req.body.pending_queued_at) ? 'offline' : 'online',
       isOfflinePending: false,
       wasQueuedOffline: req.body.was_queued_offline ?? Boolean(req.body.pending_queued_at),
       pendingQueuedAt: req.body.pending_queued_at || undefined,

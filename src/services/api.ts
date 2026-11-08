@@ -1238,6 +1238,7 @@ export class ApiService {
         const dtSync = formatPhilippineDateTime(now);
         const syncedRecord: AttendanceRecord = {
           ...record,
+          uploadSource: 'offline',
           isOfflinePending: false,
           wasQueuedOffline: true,
           syncedAt: now.toISOString(),
@@ -1411,6 +1412,7 @@ export class ApiService {
         verifiedByOfficerId: this.currentUser.id,
         verifiedByOfficerName: this.currentUser.name,
         notes: payload.notes || payload.accomplishment_notes || 'Recorded offline on-site via mobile pending queue.',
+        uploadSource: 'offline',
         isOfflinePending: true,
         wasQueuedOffline: true,
         pendingQueuedAt: now.toISOString(),
@@ -1441,6 +1443,18 @@ export class ApiService {
         message: 'Nai-save sa Pending List Attendance dahil walang signal o load. Awtomatikong mag-a-upload sa Admin kapag nagkasignal o load!',
       };
     }
+
+    // Direct Online Upload: Ensure flags are explicitly set
+    resultRecord.uploadSource = 'online';
+    resultRecord.wasQueuedOffline = false;
+    resultRecord.isOfflinePending = false;
+
+    // Immediately save into local attendances cache so Admin records update instantly
+    try {
+      const currentAttendances = await this.getAttendances();
+      const updated = [resultRecord, ...currentAttendances.filter((a) => a.id !== resultRecord!.id)];
+      this.safeSaveAttendances(updated);
+    } catch {}
 
     // Direct Firestore synchronization when online
     try {

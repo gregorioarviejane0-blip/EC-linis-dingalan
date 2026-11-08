@@ -139,6 +139,7 @@ export interface AttendanceRecord {
   notes?: string;
 
   // Offline / Pending Queue tracking fields
+  uploadSource?: 'online' | 'offline'; // 'online' for immediate direct upload, 'offline' for pending list queue
   isOfflinePending?: boolean; // True while waiting for internet/signal
   pendingQueuedAt?: string; // ISO string when queued without signal/load
   pendingQueuedDateFormatted?: string; // Human-readable PST date & exact time when queued (e.g. Sabado, Nobyembre 08, 2026 • 07:15:32 AM PST)

@@ -21,6 +21,8 @@ import {
   RotateCcw,
   EyeOff,
   Lock,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 import { formatPhilippineDateTime } from '../utils/philippineClock';
 import { SendAnonymousMessageModal } from './SendAnonymousMessageModal';
@@ -42,6 +44,9 @@ export interface FullScreenPhotoViewerProps {
   accuracyMeters?: number;
   altitudeMeters?: number | null;
   verifiedByOfficer?: string;
+  uploadMode?: 'ONLINE UPLOADED' | 'OFFLINE UPLOADED';
+  pendingQueuedDateFormatted?: string;
+  syncedDateFormatted?: string;
 }
 
 export const FullScreenPhotoViewer: React.FC<FullScreenPhotoViewerProps> = ({
@@ -61,6 +66,9 @@ export const FullScreenPhotoViewer: React.FC<FullScreenPhotoViewerProps> = ({
   accuracyMeters,
   altitudeMeters,
   verifiedByOfficer,
+  uploadMode,
+  pendingQueuedDateFormatted,
+  syncedDateFormatted,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -259,8 +267,24 @@ export const FullScreenPhotoViewer: React.FC<FullScreenPhotoViewerProps> = ({
           </div>
         </div>
 
-        {/* Right Side: Photo Counter + Action Controls */}
+        {/* Right Side: Upload Mode Pill + Photo Counter + Action Controls */}
         <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0 ml-auto">
+          {/* Upload Mode Badge */}
+          {uploadMode && (
+            <span className={`px-2.5 py-1 rounded-xl border text-[11px] sm:text-xs font-mono font-black inline-flex items-center gap-1.5 shadow-sm ${
+              uploadMode === 'OFFLINE UPLOADED'
+                ? 'bg-amber-500/25 text-amber-300 border-amber-400/60'
+                : 'bg-emerald-500/25 text-emerald-300 border-emerald-400/60'
+            }`}>
+              {uploadMode === 'OFFLINE UPLOADED' ? (
+                <WifiOff className="w-3.5 h-3.5 text-amber-400" />
+              ) : (
+                <Wifi className="w-3.5 h-3.5 text-emerald-400" />
+              )}
+              <span>{uploadMode}</span>
+            </span>
+          )}
+
           {/* Photos Counter */}
           <span className="px-2.5 py-1 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-mono text-[11px] sm:text-xs font-bold hidden xs:inline-flex items-center gap-1">
             <span>Larawan</span>
@@ -391,6 +415,34 @@ export const FullScreenPhotoViewer: React.FC<FullScreenPhotoViewerProps> = ({
             className="max-w-[96vw] max-h-[82vh] w-auto h-auto object-contain rounded-2xl shadow-[0_0_60px_rgba(0,0,0,0.9)] border-2 border-emerald-500/40 select-none"
             draggable={false}
           />
+
+          {/* Prominent Overlay Badge on the Picture */}
+          {uploadMode && (
+            <div className={`absolute top-4 left-4 z-10 px-3.5 py-2 rounded-2xl border backdrop-blur-xl flex flex-col gap-0.5 shadow-2xl pointer-events-none select-none ${
+              uploadMode === 'OFFLINE UPLOADED'
+                ? 'bg-amber-950/90 border-amber-400 text-amber-200 shadow-[0_0_25px_rgba(245,158,11,0.5)]'
+                : 'bg-emerald-950/90 border-emerald-400 text-emerald-200 shadow-[0_0_25px_rgba(16,185,129,0.5)]'
+            }`}>
+              <div className="flex items-center gap-2 font-mono font-black text-xs sm:text-sm tracking-wider">
+                {uploadMode === 'OFFLINE UPLOADED' ? (
+                  <>
+                    <WifiOff className="w-4 h-4 text-amber-400 animate-pulse" />
+                    <span className="text-amber-300">OFFLINE UPLOADED</span>
+                  </>
+                ) : (
+                  <>
+                    <Wifi className="w-4 h-4 text-emerald-400" />
+                    <span className="text-emerald-300">ONLINE UPLOADED</span>
+                  </>
+                )}
+              </div>
+              {uploadMode === 'OFFLINE UPLOADED' && pendingQueuedDateFormatted && (
+                <div className="text-[10px] font-mono text-amber-300/90 font-bold">
+                  Nasa Pending List: {pendingQueuedDateFormatted}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Navigation Arrow Next */}

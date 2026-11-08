@@ -158,6 +158,7 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
             assignedArea: cleanedArea || activity?.targetArea || realtimeDetectedArea,
             barangay: beneficiary.barangay,
             verifiedByOfficer: currentUser.name,
+            uploadMode: isDeviceOnline ? 'ONLINE UPLOADED' : 'OFFLINE UPLOADED',
           },
           1280,
           0.82,
@@ -211,6 +212,7 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
             assignedArea: cleanedArea || activity?.targetArea || realtimeDetectedArea,
             barangay: beneficiary.barangay,
             verifiedByOfficer: currentUser.name,
+            uploadMode: isDeviceOnline ? 'ONLINE UPLOADED' : 'OFFLINE UPLOADED',
           },
           1280,
           0.82,
@@ -765,6 +767,7 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
           accuracyMeters={gpsCoords?.accuracy}
           altitudeMeters={gpsCoords?.altitude}
           verifiedByOfficer={currentUser.name}
+          uploadMode={isDeviceOnline ? 'ONLINE UPLOADED' : 'OFFLINE UPLOADED'}
         />
       )}
     </div>

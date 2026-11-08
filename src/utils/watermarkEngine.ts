@@ -10,6 +10,7 @@ export interface GeotagMetadata {
   assignedArea: string;
   barangay: string;
   verifiedByOfficer?: string;
+  uploadMode?: 'ONLINE UPLOADED' | 'OFFLINE UPLOADED';
 }
 
 export interface GeotagResult {
@@ -315,10 +316,18 @@ export async function burnGeotagWatermark(
   const startY = hudY + (hudHeight * 0.32);
   const lineHeight = Math.round(hudHeight * 0.16);
 
-  // System Badge & LGU Header
+  // System Badge & LGU Header with Online/Offline Status
+  const isCurrentlyOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+  const uploadModeLabel = metadata.uploadMode || (isCurrentlyOffline ? 'OFFLINE UPLOADED' : 'ONLINE UPLOADED');
+  const isOff = uploadModeLabel === 'OFFLINE UPLOADED';
+
   ctx.font = 'bold 13px "JetBrains Mono", monospace';
-  ctx.fillStyle = '#10b981'; // Emerald-500
-  ctx.fillText('LINIS DINGALAN EC MANAGEMENT // MENRO-PESO VERIFIED GEOTAG', paddingX, startY);
+  ctx.fillStyle = isOff ? '#fbbf24' : '#10b981'; // Amber-400 if offline, Emerald-500 if online
+  ctx.fillText(
+    `LINIS DINGALAN // [${uploadModeLabel}] // MENRO-PESO GEOTAG`,
+    paddingX,
+    startY
+  );
 
   // Beneficiary Name & Code
   ctx.font = `bold ${Math.max(16, Math.round(width * 0.022))}px "Plus Jakarta Sans", sans-serif`;
