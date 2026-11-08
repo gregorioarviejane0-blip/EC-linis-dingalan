@@ -886,7 +886,14 @@ export default function App() {
     const metrics = await api.getStorageMetrics();
     setStorageMetrics(metrics);
 
-    showToast('Geotagged compliance photograph verified & recorded!', 'success');
+    if (result.isPendingOffline) {
+      showToast(
+        `Nai-save sa PENDING LIST ATTENDANCE dahil walang signal/load! Oras: ${result.attendance.pendingQueuedDateFormatted || 'ngayon'}. Awtomatikong mai-a-upload sa Admin kapag nagka-signal.`,
+        'info'
+      );
+    } else {
+      showToast('Geotagged compliance photograph verified & recorded!', 'success');
+    }
     return result;
   };
 

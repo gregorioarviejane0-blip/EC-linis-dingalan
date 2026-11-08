@@ -55,6 +55,8 @@ import {
   HelpCircle,
   FileText,
   Info,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 import systemWallpaper from '../assets/images/dingalan_system_wallpaper.jpg';
 
@@ -311,6 +313,47 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     }
   }, [activeView, defaultUploadBene]);
 
+  const [isDeviceOnline, setIsDeviceOnline] = useState<boolean>(
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  );
+  const [pendingQueueCount, setPendingQueueCount] = useState<number>(() => {
+    return api.getPendingAttendances().length;
+  });
+
+  useEffect(() => {
+    const updateOnlineStatus = () => {
+      const online = typeof navigator !== 'undefined' ? navigator.onLine : true;
+      setIsDeviceOnline(online);
+      setPendingQueueCount(api.getPendingAttendances().length);
+    };
+
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+
+    const interval = setInterval(() => {
+      updateOnlineStatus();
+    }, 4000);
+
+    return () => {
+      window.removeEventListener('online', updateOnlineStatus);
+      window.removeEventListener('offline', updateOnlineStatus);
+      clearInterval(interval);
+    };
+  }, []);
+
+  const handleSyncPendingNow = async () => {
+    setUploadIsProcessing(true);
+    try {
+      const res = await api.syncPendingAttendances();
+      setPendingQueueCount(api.getPendingAttendances().length);
+      if (res.syncedCount > 0) {
+        setUploadErrorMessage(null);
+      }
+    } finally {
+      setUploadIsProcessing(false);
+    }
+  };
+
   const handleApplyUploadRealtimeGpsArea = () => {
     if (uploadRealtimeArea) {
       setUploadCleanedArea(uploadRealtimeArea);
@@ -467,6 +510,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         if (res.success && res.attendance) {
           setUploadSubmittedRecord(res.attendance);
           setUploadIsSuccess(true);
+          setPendingQueueCount(api.getPendingAttendances().length);
           if (propOnSuccessSubmitted) {
             propOnSuccessSubmitted(res.attendance);
           }
@@ -476,6 +520,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         if (res.success && res.attendance) {
           setUploadSubmittedRecord(res.attendance);
           setUploadIsSuccess(true);
+          setPendingQueueCount(api.getPendingAttendances().length);
           if (propOnSuccessSubmitted) {
             propOnSuccessSubmitted(res.attendance);
           }
@@ -1845,22 +1890,51 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       <div className="p-2 xs:p-2.5 sm:p-5 overflow-hidden sm:overflow-y-auto space-y-1.5 xs:space-y-2 sm:space-y-4 flex-1 min-h-0 text-left scrollbar-none">
                         {uploadIsSuccess ? (
                           <div className="text-center py-2 sm:py-6 space-y-2 sm:space-y-3.5 animate-scaleIn">
-                            <div className="w-10 h-10 sm:w-20 sm:h-20 mx-auto rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.4)]">
-                              <CheckCircle2 className="w-5 h-5 sm:w-10 sm:h-10 text-emerald-400" />
+                            <div className={`w-10 h-10 sm:w-20 sm:h-20 mx-auto rounded-full ${uploadSubmittedRecord?.isOfflinePending ? 'bg-amber-500/20 border-2 border-amber-400 shadow-[0_0_30px_rgba(245,158,11,0.4)]' : 'bg-emerald-500/20 border-2 border-emerald-400 shadow-[0_0_30px_rgba(16,185,129,0.4)]'} flex items-center justify-center`}>
+                              {uploadSubmittedRecord?.isOfflinePending ? (
+                                <Clock className="w-5 h-5 sm:w-10 sm:h-10 text-amber-400 animate-pulse" />
+                              ) : (
+                                <CheckCircle2 className="w-5 h-5 sm:w-10 sm:h-10 text-emerald-400" />
+                              )}
                             </div>
                             <div className="space-y-0.5 sm:space-y-1">
-                              <span className="px-2.5 py-0.5 rounded-full text-[9px] sm:text-xs font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase tracking-wider">
-                                ATTENDANCE & PROOF RECORDED
-                              </span>
-                              <h4 className="text-sm sm:text-2xl font-black text-white uppercase">
-                                MATAGUMPAY NA NA-UPLOAD ANG ACCOMPLISHMENT!
-                              </h4>
-                              <p className="text-[10px] sm:text-xs text-slate-300 max-w-md mx-auto uppercase font-medium">
-                                ANG {uploadPhotos.length} NA PATUNAY NA LARAWAN NI <strong className="text-white">{uploadFullName}</strong> AY NAISUMITE NA SA SYSTEM.
-                              </p>
+                              {uploadSubmittedRecord?.isOfflinePending ? (
+                                <>
+                                  <span className="px-2.5 py-0.5 rounded-full text-[9px] sm:text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 uppercase tracking-wider inline-flex items-center gap-1">
+                                    <WifiOff className="w-3 h-3 text-amber-400" />
+                                    <span>PENDING LIST ATTENDANCE (WALANG SIGNAL / LOAD)</span>
+                                  </span>
+                                  <h4 className="text-sm sm:text-2xl font-black text-amber-300 uppercase">
+                                    NAISUMITE SA PENDING LIST!
+                                  </h4>
+                                  <p className="text-[10px] sm:text-xs text-amber-100/90 max-w-md mx-auto font-medium">
+                                    Dahil walang signal o load ang iyong device, ligtas nang na-record ang patunay na larawan kasama ang eksaktong oras at petsa. Awtomatiko itong mai-a-upload sa Accomplishment Attendance Records ng Admin kapag nagkasignal o load ka na!
+                                  </p>
+                                </>
+                              ) : (
+                                <>
+                                  <span className="px-2.5 py-0.5 rounded-full text-[9px] sm:text-xs font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase tracking-wider">
+                                    ATTENDANCE & PROOF RECORDED
+                                  </span>
+                                  <h4 className="text-sm sm:text-2xl font-black text-white uppercase">
+                                    MATAGUMPAY NA NA-UPLOAD ANG ACCOMPLISHMENT!
+                                  </h4>
+                                  <p className="text-[10px] sm:text-xs text-slate-300 max-w-md mx-auto uppercase font-medium">
+                                    ANG {uploadPhotos.length} NA PATUNAY NA LARAWAN NI <strong className="text-white">{uploadFullName}</strong> AY NAISUMITE NA SA SYSTEM.
+                                  </p>
+                                </>
+                              )}
                             </div>
 
                             <div className="p-2 sm:p-3.5 rounded-xl sm:rounded-2xl bg-slate-950/70 border border-slate-800 text-[10px] sm:text-xs font-mono text-left space-y-1 sm:space-y-1.5 max-w-md mx-auto uppercase">
+                              {uploadSubmittedRecord?.isOfflinePending && (
+                                <div className="flex justify-between bg-amber-950/40 p-1.5 rounded border border-amber-500/30 text-amber-200">
+                                  <span className="text-amber-400 font-bold">ORAS SA PENDING LIST:</span>
+                                  <span className="text-amber-300 font-bold text-right text-[9px] sm:text-[11px]">
+                                    {uploadSubmittedRecord.pendingQueuedDateFormatted || uploadSubmittedRecord.localPhTime}
+                                  </span>
+                                </div>
+                              )}
                               <div className="flex justify-between">
                                 <span className="text-slate-400">ATTENDEE:</span>
                                 <span className="text-white font-bold">{uploadFullName}</span>
@@ -1877,6 +1951,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                                 <span className="text-slate-400">MGA LARAWAN:</span>
                                 <span className="text-emerald-400 font-bold">{uploadPhotos.length} LARAWAN</span>
                               </div>
+                              {uploadSubmittedRecord?.isOfflinePending && (
+                                <div className="flex justify-between text-[9px] sm:text-[10px]">
+                                  <span className="text-slate-400">KATAYUAN:</span>
+                                  <span className="text-amber-400 font-bold">AUTO-SYNC KAPAG NAGKA-SIGNAL O LOAD</span>
+                                </div>
+                              )}
                             </div>
 
                             <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-2.5 max-w-md mx-auto pt-1 sm:pt-2 w-full">
@@ -1906,6 +1986,37 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                           </div>
                         ) : (
                           <>
+                            {/* NO SIGNAL / NO LOAD OFFLINE PENDING BANNER */}
+                            {!isDeviceOnline && (
+                              <div className="p-2 sm:p-3 rounded-xl bg-amber-950/90 border-2 border-amber-500/70 text-amber-200 text-[10px] sm:text-xs font-mono space-y-1 shadow-[0_0_20px_rgba(245,158,11,0.25)]">
+                                <div className="flex items-center space-x-1.5 font-bold text-amber-300 uppercase">
+                                  <WifiOff className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 shrink-0 animate-pulse" />
+                                  <span>WALANG SIGNAL / LOAD (OFFLINE PENDING MODE)</span>
+                                </div>
+                                <p className="text-[9.5px] sm:text-[11px] leading-tight text-amber-100/90 font-sans">
+                                  Makakapag-upload ka pa rin! Awtomatiko itong mai-iimbak sa <strong>Pending List Attendance</strong> kasama ang eksaktong oras at petsa. Pag nagkasignal o load ka na, awtomatiko itong mai-a-upload sa Admin.
+                                </p>
+                              </div>
+                            )}
+
+                            {/* SYNC PENDING ATTENDANCES BANNER (WHEN ONLINE WITH PENDING ITEMS) */}
+                            {isDeviceOnline && pendingQueueCount > 0 && (
+                              <div className="p-2 sm:p-2.5 rounded-xl bg-cyan-950/80 border border-cyan-500/60 flex items-center justify-between text-[10px] sm:text-xs font-mono text-cyan-200">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <Wifi className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                                  <span className="truncate">May <strong>{pendingQueueCount}</strong> attendance sa Pending List na handang i-upload.</span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={handleSyncPendingNow}
+                                  disabled={uploadIsProcessing}
+                                  className="px-2.5 py-1 rounded-lg bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold text-[10px] uppercase cursor-pointer shrink-0 ml-2 shadow transition-all active:scale-95"
+                                >
+                                  {uploadIsProcessing ? 'Nag-a-upload...' : 'I-sync Ngayon'}
+                                </button>
+                              </div>
+                            )}
+
                             {/* CUT-OFF WARNING BANNER (Matching the screenshot exactly with CAPITAL LETTERS) */}
                             {uploadCutoffInfo.isExpired ? (
                               <div className="p-2 sm:p-4 rounded-xl sm:rounded-2xl bg-rose-950/90 border-2 border-rose-500/80 text-rose-200 text-[10px] sm:text-xs font-sans space-y-0.5 sm:space-y-1.5 shadow-[0_0_30px_rgba(244,63,94,0.35)]">

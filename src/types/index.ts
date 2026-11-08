@@ -137,6 +137,14 @@ export interface AttendanceRecord {
   verifiedByOfficerId: string;
   verifiedByOfficerName: string;
   notes?: string;
+
+  // Offline / Pending Queue tracking fields
+  isOfflinePending?: boolean; // True while waiting for internet/signal
+  pendingQueuedAt?: string; // ISO string when queued without signal/load
+  pendingQueuedDateFormatted?: string; // Human-readable PST date & exact time when queued (e.g. Sabado, Nobyembre 08, 2026 • 07:15:32 AM PST)
+  wasQueuedOffline?: boolean; // Permanently true even after synced so admin knows it originated offline
+  syncedAt?: string; // ISO string when automatically uploaded to admin once signal returned
+  syncedDateFormatted?: string; // Human-readable PST date & time of synchronization
 }
 
 export interface AuditLog {

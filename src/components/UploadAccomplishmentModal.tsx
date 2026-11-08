@@ -22,6 +22,8 @@ import {
   RefreshCw,
   Navigation,
   Compass,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 
 interface UploadAccomplishmentModalProps {
@@ -69,6 +71,20 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
   const [isSuccess, setIsSuccess] = useState(false);
   const [submittedRecord, setSubmittedRecord] = useState<AttendanceRecord | null>(null);
   const [previewFullscreenIndex, setPreviewFullscreenIndex] = useState<number | null>(null);
+  const [isDeviceOnline, setIsDeviceOnline] = useState<boolean>(
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  );
+
+  useEffect(() => {
+    const handleOnline = () => setIsDeviceOnline(true);
+    const handleOffline = () => setIsDeviceOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
@@ -337,18 +353,40 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
             </div>
           ) : isSuccess ? (
             <div className="text-center py-4 sm:py-8 space-y-2.5 sm:space-y-4 animate-scaleIn">
-              <div className="w-12 h-12 sm:w-20 sm:h-20 mx-auto rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.4)]">
-                <CheckCircle2 className="w-6 h-6 sm:w-10 sm:h-10 text-emerald-400" />
+              <div className={`w-12 h-12 sm:w-20 sm:h-20 mx-auto rounded-full flex items-center justify-center ${
+                submittedRecord?.isOfflinePending
+                  ? 'bg-amber-500/20 border-2 border-amber-400 text-amber-400 shadow-[0_0_30px_rgba(245,158,11,0.4)]'
+                  : 'bg-emerald-500/20 border-2 border-emerald-400 text-emerald-400 shadow-[0_0_30px_rgba(16,185,129,0.4)]'
+              }`}>
+                {submittedRecord?.isOfflinePending ? (
+                  <WifiOff className="w-6 h-6 sm:w-10 sm:h-10 text-amber-400" />
+                ) : (
+                  <CheckCircle2 className="w-6 h-6 sm:w-10 sm:h-10 text-emerald-400" />
+                )}
               </div>
               <div className="space-y-0.5 sm:space-y-1">
-                <span className="px-2.5 py-0.5 rounded-full text-[9px] sm:text-xs font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase tracking-wider">
-                  ATTENDANCE & PROOF RECORDED
+                <span className={`px-2.5 py-0.5 rounded-full text-[9px] sm:text-xs font-mono font-bold uppercase tracking-wider ${
+                  submittedRecord?.isOfflinePending
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                    : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                }`}>
+                  {submittedRecord?.isOfflinePending ? 'NAI-SAVE SA PENDING LIST (OFFLINE QUEUE)' : 'ATTENDANCE & PROOF RECORDED'}
                 </span>
                 <h4 className="text-base sm:text-2xl font-black text-white uppercase">
-                  MATAGUMPAY NA NA-UPLOAD ANG ACCOMPLISHMENT!
+                  {submittedRecord?.isOfflinePending
+                    ? 'NAI-TALA SA PENDING LIST ATTENDANCE!'
+                    : 'MATAGUMPAY NA NA-UPLOAD ANG ACCOMPLISHMENT!'}
                 </h4>
                 <p className="text-[10px] sm:text-xs text-slate-300 max-w-md mx-auto uppercase font-medium">
-                  ANG {uploadedPhotos.length} NA PATUNAY NA LARAWAN NI <strong className="text-white">{fullName}</strong> AY NAISUMITE NA SA SYSTEM AT MAKIKITA NA SA <strong>ACCOMPLISHMENT ATTENDANCE</strong> BUTTON NG ADMIN.
+                  {submittedRecord?.isOfflinePending ? (
+                    <>
+                      Dahil walang signal o load ang inyong telepono, ang attendance ni <strong className="text-white">{fullName}</strong> ay ligtas na nai-record sa <strong>Pending List Attendance</strong> kasama ang eksaktong oras ng inyong pagpasa. Awtomatiko itong ma-a-upload sa Admin kapag nagkaroon ng signal o load.
+                    </>
+                  ) : (
+                    <>
+                      ANG {uploadedPhotos.length} NA PATUNAY NA LARAWAN NI <strong className="text-white">{fullName}</strong> AY NAISUMITE NA SA SYSTEM AT MAKIKITA NA SA <strong>ACCOMPLISHMENT ATTENDANCE</strong> BUTTON NG ADMIN.
+                    </>
+                  )}
                 </p>
               </div>
 
@@ -373,6 +411,12 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
                   <span className="text-slate-400">MGA LARAWAN:</span>
                   <span className="text-cyan-400 font-bold">{uploadedPhotos.length} PICTURES</span>
                 </div>
+                {submittedRecord?.pendingQueuedDateFormatted && (
+                  <div className="flex justify-between items-center pt-1 border-t border-slate-800 text-amber-300 font-bold">
+                    <span className="text-slate-400">ORAS SA PENDING LIST:</span>
+                    <span>{submittedRecord.pendingQueuedDateFormatted}</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center pt-1 border-t border-slate-800">
                   <span className="text-slate-400">ORAS NG PILIPINAS:</span>
                   <span className="text-cyan-300 font-bold">
@@ -381,7 +425,9 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">STATUS:</span>
-                  <span className="text-emerald-300 font-bold">VERIFIED CLEANUP ATTENDANCE</span>
+                  <span className={`font-bold ${submittedRecord?.isOfflinePending ? 'text-amber-300' : 'text-emerald-300'}`}>
+                    {submittedRecord?.isOfflinePending ? 'PENDING SYNC (WALANG SIGNAL/LOAD)' : 'VERIFIED CLEANUP ATTENDANCE'}
+                  </span>
                 </div>
               </div>
 
@@ -407,6 +453,19 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
             </div>
           ) : (
             <>
+              {/* OFFLINE / NO LOAD DETECTED BANNER */}
+              {!isDeviceOnline && (
+                <div className="p-2 sm:p-3 rounded-xl bg-amber-950/60 border border-amber-500/60 text-amber-200 text-[10px] sm:text-xs font-mono space-y-1 shadow-[0_0_20px_rgba(245,158,11,0.2)]">
+                  <div className="flex items-center space-x-2 text-amber-300 font-bold uppercase text-[11px]">
+                    <WifiOff className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
+                    <span>OFFLINE PENDING MODE (WALANG LOAD O SIGNAL)</span>
+                  </div>
+                  <p className="text-amber-100/90 leading-tight">
+                    Maaari ka pa ring mag-upload ng attendance pictures. Ligtas itong mai-se-save sa <strong>Pending List Attendance</strong> kasama ang eksaktong oras at petsa, at awtomatikong mai-a-upload sa Admin sa oras na magkaroon muli ng signal o load.
+                  </p>
+                </div>
+              )}
+
               {/* CUT-OFF WARNING BANNER (Shows when event time limit has passed) */}
               {cutoffInfo.isExpired ? (
                 <div className="p-2 sm:p-4 rounded-xl sm:rounded-2xl bg-rose-950/90 border-2 border-rose-500/80 text-rose-200 text-[10px] sm:text-xs font-sans space-y-1 sm:space-y-1.5 shadow-[0_0_30px_rgba(244,63,94,0.35)] animate-pulse">

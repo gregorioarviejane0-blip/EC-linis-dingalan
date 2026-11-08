@@ -795,6 +795,12 @@ app.use((req: Request, res: Response, next: NextFunction) => {
       verifiedByOfficerId: user.id,
       verifiedByOfficerName: user.name,
       notes: notes || accomplishment_notes || 'Verified with on-site geotag photograph.',
+      isOfflinePending: false,
+      wasQueuedOffline: req.body.was_queued_offline ?? Boolean(req.body.pending_queued_at),
+      pendingQueuedAt: req.body.pending_queued_at || undefined,
+      pendingQueuedDateFormatted: req.body.pending_queued_date_formatted || undefined,
+      syncedAt: req.body.synced_at || (req.body.pending_queued_at ? now.toISOString() : undefined),
+      syncedDateFormatted: req.body.synced_date_formatted || (req.body.pending_queued_at ? localPhTime : undefined),
     };
 
     attendances.unshift(newRecord);

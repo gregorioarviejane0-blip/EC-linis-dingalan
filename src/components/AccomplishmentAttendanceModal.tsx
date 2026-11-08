@@ -4,6 +4,7 @@ import { FullScreenPhotoViewer } from './FullScreenPhotoViewer';
 import { SendAnonymousMessageModal } from './SendAnonymousMessageModal';
 import { formatPhilippineDateTime } from '../utils/philippineClock';
 import { exportAttendanceToExcel } from '../utils/excelExporter';
+import { api } from '../services/api';
 import {
   Camera,
   Images,
@@ -27,6 +28,9 @@ import {
   Trash2,
   AlertTriangle,
   EyeOff,
+  Wifi,
+  WifiOff,
+  RefreshCw,
 } from 'lucide-react';
 
 interface AccomplishmentAttendanceModalProps {
@@ -48,6 +52,9 @@ export const AccomplishmentAttendanceModal: React.FC<AccomplishmentAttendanceMod
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBarangay, setSelectedBarangay] = useState<string>('all');
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'pending' | 'direct'>('all');
+  const [pendingQueue, setPendingQueue] = useState<AttendanceRecord[]>([]);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const ITEMS_PER_PAGE = 20;
 
@@ -68,12 +75,29 @@ export const AccomplishmentAttendanceModal: React.FC<AccomplishmentAttendanceMod
   const [isAnonymousSendOpen, setIsAnonymousSendOpen] = useState<boolean>(false);
   const [exportSuccessToast, setExportSuccessToast] = useState<string | null>(null);
 
-  // Trigger auto-prune of records older than 1 month (30 days) when modal is opened
+  // Refresh pending attendances queue on modal open and sync
   useEffect(() => {
-    if (isOpen && onAutoPruneStale) {
-      onAutoPruneStale();
+    if (isOpen) {
+      setPendingQueue(api.getPendingAttendances());
+      if (onAutoPruneStale) {
+        onAutoPruneStale();
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, attendances]);
+
+  const handleSyncPending = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await api.syncPendingAttendances();
+      setPendingQueue(api.getPendingAttendances());
+      if (res.syncedCount > 0) {
+        setExportSuccessToast(`Matagumpay na na-sync ang ${res.syncedCount} tala mula sa Pending List patungong Accomplishment Records!`);
+        setTimeout(() => setExportSuccessToast(null), 5000);
+      }
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   // Automatic Excel Table Export for Print Record
   const handlePrintRecordAsExcel = () => {
@@ -111,7 +135,7 @@ export const AccomplishmentAttendanceModal: React.FC<AccomplishmentAttendanceMod
   // Reset to page 1 whenever filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedBarangay]);
+  }, [searchTerm, selectedBarangay, sourceFilter]);
 
   if (!isOpen) return null;
 
@@ -127,7 +151,12 @@ export const AccomplishmentAttendanceModal: React.FC<AccomplishmentAttendanceMod
       selectedBarangay === 'all' ||
       att.locationDescription.toLowerCase().includes(selectedBarangay.toLowerCase());
 
-    return matchesSearch && matchesBarangay;
+    const matchesSource =
+      sourceFilter === 'all' ||
+      (sourceFilter === 'pending' && (att.wasQueuedOffline || att.isOfflinePending || Boolean(att.pendingQueuedDateFormatted))) ||
+      (sourceFilter === 'direct' && !att.wasQueuedOffline && !att.isOfflinePending && !att.pendingQueuedDateFormatted);
+
+    return matchesSearch && matchesBarangay && matchesSource;
   });
 
   // Pagination calculation: exactly 20 items per page; items 21+ appear on next page
@@ -243,11 +272,32 @@ export const AccomplishmentAttendanceModal: React.FC<AccomplishmentAttendanceMod
           </div>
         )}
 
+        {/* PENDING QUEUE ALERT & SYNC BANNER */}
+        {pendingQueue.length > 0 && (
+          <div className="mx-3 sm:mx-6 mt-2.5 p-2.5 sm:p-3 bg-amber-950/80 border border-amber-500/60 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs font-mono text-amber-200 shadow-md">
+            <div className="flex items-center gap-2">
+              <WifiOff className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
+              <span>
+                <strong>PENDING LIST ATTENDANCE:</strong> May <strong>{pendingQueue.length}</strong> na tala mula sa field na kinuha habang walang signal/load na handang i-upload sa Admin.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleSyncPending}
+              disabled={isSyncing}
+              className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold uppercase text-[11px] shrink-0 shadow flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span>{isSyncing ? 'Nag-si-sync...' : 'I-sync Ngayon'}</span>
+            </button>
+          </div>
+        )}
+
         {/* ========================================================================= */}
         {/* FILTER & SEARCH BAR                                                       */}
         {/* ========================================================================= */}
-        <div className="px-3 sm:px-6 py-2.5 sm:py-3.5 bg-slate-950/60 border-b border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-3">
-          <div className="relative w-full sm:w-80">
+        <div className="px-3 sm:px-6 py-2.5 sm:py-3.5 bg-slate-950/60 border-b border-slate-800 flex flex-col lg:flex-row items-center justify-between gap-2.5 sm:gap-3">
+          <div className="relative w-full lg:w-80">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
@@ -258,27 +308,43 @@ export const AccomplishmentAttendanceModal: React.FC<AccomplishmentAttendanceMod
             />
           </div>
 
-          <div className="flex items-center space-x-2.5 w-full sm:w-auto justify-end">
-            <Filter className="w-3.5 h-3.5 text-slate-400 hidden sm:inline" />
-            <span className="text-xs font-mono text-slate-400 hidden sm:inline">Barangay:</span>
-            <select
-              value={selectedBarangay}
-              onChange={(e) => setSelectedBarangay(e.target.value)}
-              className="px-3 py-2 bg-slate-900 border border-slate-700 focus:border-emerald-400 rounded-xl text-xs text-slate-200 focus:outline-none font-mono cursor-pointer"
-            >
-              <option value="all">Lahat ng Barangay (All)</option>
-              <option value="Paltic">Paltic</option>
-              <option value="Poblacion">Poblacion</option>
-              <option value="Ibona">Ibona</option>
-              <option value="Aplaya">Aplaya</option>
-              <option value="Umiray">Umiray</option>
-              <option value="Tanawan">Tanawan</option>
-              <option value="Butas Na Bato">Butas Na Bato</option>
-              <option value="Cabog">Cabog</option>
-              <option value="Caragsacan">Caragsacan</option>
-              <option value="Davil-Davilan">Davil-Davilan</option>
-              <option value="Dikapanikian">Dikapanikian</option>
-            </select>
+          <div className="flex flex-wrap items-center space-x-2.5 w-full lg:w-auto justify-start sm:justify-end">
+            {/* Source Filter (Pending vs Online) */}
+            <div className="flex items-center space-x-1.5">
+              <span className="text-xs font-mono text-slate-400 hidden sm:inline">Uri:</span>
+              <select
+                value={sourceFilter}
+                onChange={(e) => setSourceFilter(e.target.value as any)}
+                className="px-3 py-2 bg-slate-900 border border-slate-700 focus:border-emerald-400 rounded-xl text-xs text-slate-200 focus:outline-none font-mono cursor-pointer"
+              >
+                <option value="all">Lahat ng Records</option>
+                <option value="pending">📶 Galing sa Pending List (Offline/Walang Signal)</option>
+                <option value="direct">🌐 Direktang Online</option>
+              </select>
+            </div>
+
+            <div className="flex items-center space-x-1.5">
+              <Filter className="w-3.5 h-3.5 text-slate-400 hidden sm:inline" />
+              <span className="text-xs font-mono text-slate-400 hidden sm:inline">Barangay:</span>
+              <select
+                value={selectedBarangay}
+                onChange={(e) => setSelectedBarangay(e.target.value)}
+                className="px-3 py-2 bg-slate-900 border border-slate-700 focus:border-emerald-400 rounded-xl text-xs text-slate-200 focus:outline-none font-mono cursor-pointer"
+              >
+                <option value="all">Lahat ng Barangay (All)</option>
+                <option value="Paltic">Paltic</option>
+                <option value="Poblacion">Poblacion</option>
+                <option value="Ibona">Ibona</option>
+                <option value="Aplaya">Aplaya</option>
+                <option value="Umiray">Umiray</option>
+                <option value="Tanawan">Tanawan</option>
+                <option value="Butas Na Bato">Butas Na Bato</option>
+                <option value="Cabog">Cabog</option>
+                <option value="Caragsacan">Caragsacan</option>
+                <option value="Davil-Davilan">Davil-Davilan</option>
+                <option value="Dikapanikian">Dikapanikian</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -346,6 +412,19 @@ export const AccomplishmentAttendanceModal: React.FC<AccomplishmentAttendanceMod
                           <Sparkles className="w-3 h-3 text-emerald-400 shrink-0" />
                           <span className="truncate font-semibold text-white">{att.activityTitle}</span>
                         </div>
+                        {/* Offline / Pending Queue Details */}
+                        {(att.wasQueuedOffline || att.pendingQueuedDateFormatted) && (
+                          <div className="p-1 rounded bg-amber-950/60 border border-amber-500/40 text-amber-200 text-[9px] font-mono flex items-start gap-1">
+                            <WifiOff className="w-2.5 h-2.5 text-amber-400 shrink-0 mt-0.5" />
+                            <div>
+                              <span className="text-amber-400 font-bold block">Oras sa Pending List:</span>
+                              <span className="text-white font-bold">{att.pendingQueuedDateFormatted || att.localPhTime}</span>
+                              {att.syncedDateFormatted && (
+                                <span className="text-cyan-300 block text-[8px] pt-0.5">Na-sync: {att.syncedDateFormatted}</span>
+                              )}
+                            </div>
+                          </div>
+                        )}
                         <div className="flex items-center justify-between pt-1 border-t border-slate-800 text-[9px] font-mono text-cyan-300">
                           <span>{dt.exactTimeWithSeconds}</span>
                           <span className="text-slate-400">{dt.monthTagalog} {dt.dayNum}, {dt.yearNum}</span>
@@ -353,10 +432,22 @@ export const AccomplishmentAttendanceModal: React.FC<AccomplishmentAttendanceMod
                       </div>
 
                       <div className="flex items-center justify-between pt-1 border-t border-slate-800">
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 inline-flex items-center gap-1">
-                          <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" />
-                          <span>VERIFIED</span>
-                        </span>
+                        {att.isOfflinePending ? (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 inline-flex items-center gap-1">
+                            <Clock className="w-2.5 h-2.5 text-amber-400 animate-pulse" />
+                            <span>PENDING SYNC</span>
+                          </span>
+                        ) : att.wasQueuedOffline ? (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 inline-flex items-center gap-1">
+                            <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" />
+                            <span>VERIFIED (MULA PENDING)</span>
+                          </span>
+                        ) : (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 inline-flex items-center gap-1">
+                            <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" />
+                            <span>VERIFIED</span>
+                          </span>
+                        )}
 
                         <button
                           type="button"
@@ -450,6 +541,30 @@ export const AccomplishmentAttendanceModal: React.FC<AccomplishmentAttendanceMod
                             <td className="py-3 px-4 font-mono text-slate-300">
                               {(() => {
                                 const dt = formatPhilippineDateTime(att.timestamp || att.localPhTime, att.localPhTime);
+                                if (att.wasQueuedOffline || att.pendingQueuedDateFormatted) {
+                                  return (
+                                    <div className="flex flex-col text-[11px] bg-slate-900/90 px-2.5 py-1.5 rounded-lg border border-amber-500/40 space-y-1">
+                                      <div className="flex items-center gap-1 text-[10px] text-amber-300 font-bold">
+                                        <WifiOff className="w-3 h-3 text-amber-400 shrink-0" />
+                                        <span>Nasa Pending List:</span>
+                                      </div>
+                                      <span className="text-[10px] text-white font-bold leading-tight">
+                                        {att.pendingQueuedDateFormatted || att.localPhTime}
+                                      </span>
+                                      {att.syncedDateFormatted ? (
+                                        <span className="text-[9px] text-cyan-300 pt-0.5 border-t border-slate-800 flex items-center gap-1">
+                                          <Wifi className="w-2.5 h-2.5 text-cyan-400" />
+                                          <span>Na-sync: {att.syncedDateFormatted}</span>
+                                        </span>
+                                      ) : att.isOfflinePending ? (
+                                        <span className="text-[9px] text-amber-400/90 pt-0.5 border-t border-slate-800 animate-pulse">
+                                          Hinihintay ang signal/load...
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                  );
+                                }
+
                                 return (
                                   <div className="flex flex-col text-[11px] text-cyan-300 bg-slate-900/80 px-2.5 py-1 rounded-lg border border-cyan-500/30">
                                     <span className="font-bold text-white flex items-center gap-1">
@@ -479,10 +594,27 @@ export const AccomplishmentAttendanceModal: React.FC<AccomplishmentAttendanceMod
 
                             {/* Status */}
                             <td className="py-3 px-3 text-center">
-                              <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 inline-flex items-center gap-1">
-                                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                                <span>VERIFIED</span>
-                              </span>
+                              {att.isOfflinePending ? (
+                                <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 inline-flex items-center gap-1">
+                                  <Clock className="w-3 h-3 text-amber-400 animate-pulse" />
+                                  <span>PENDING SYNC</span>
+                                </span>
+                              ) : att.wasQueuedOffline ? (
+                                <div className="flex flex-col items-center gap-0.5">
+                                  <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 inline-flex items-center gap-1">
+                                    <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                                    <span>VERIFIED</span>
+                                  </span>
+                                  <span className="text-[8.5px] font-mono text-cyan-300 flex items-center gap-0.5">
+                                    <Wifi className="w-2.5 h-2.5 text-cyan-400" /> Mula Pending
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 inline-flex items-center gap-1">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                                  <span>VERIFIED</span>
+                                </span>
+                              )}
                             </td>
 
                             {/* Action Button */}
@@ -666,6 +798,76 @@ export const AccomplishmentAttendanceModal: React.FC<AccomplishmentAttendanceMod
                     );
                   })()}
                 </div>
+
+                {/* Offline Pending Queue Timestamp Box */}
+                {(selectedRecordForPhotos.wasQueuedOffline || selectedRecordForPhotos.isOfflinePending || selectedRecordForPhotos.pendingQueuedDateFormatted) && (
+                  <div className={`p-3.5 rounded-2xl border text-xs font-mono space-y-2 ${
+                    selectedRecordForPhotos.isOfflinePending
+                      ? 'bg-amber-950/40 border-amber-500/50 text-amber-200'
+                      : 'bg-emerald-950/30 border-emerald-500/40 text-emerald-200'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {selectedRecordForPhotos.isOfflinePending ? (
+                          <WifiOff className="w-4 h-4 text-amber-400 animate-pulse shrink-0" />
+                        ) : (
+                          <Wifi className="w-4 h-4 text-emerald-400 shrink-0" />
+                        )}
+                        <span className="font-black uppercase tracking-wider text-[11px] text-white">
+                          {selectedRecordForPhotos.isOfflinePending
+                            ? 'Nasa Pending List Attendance (Walang Signal o Load noong nag-submit)'
+                            : 'Mula sa Offline Pending List (Matagumpay na na-sync sa Admin)'}
+                        </span>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                        selectedRecordForPhotos.isOfflinePending
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                          : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                      }`}>
+                        {selectedRecordForPhotos.isOfflinePending ? 'NAGHIHINTAY NG SYNC' : 'OFFLINE SYNCED'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-[11px]">
+                      <div className="p-2 rounded-xl bg-slate-900/80 border border-slate-800/80">
+                        <span className="text-[10px] text-slate-400 block font-bold">
+                          Eksaktong Oras at Petsa ng Pag-save sa Pending List:
+                        </span>
+                        <div className="text-amber-300 font-extrabold flex items-center gap-1.5 mt-0.5">
+                          <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                          <span>
+                            {selectedRecordForPhotos.pendingQueuedDateFormatted || selectedRecordForPhotos.pendingQueuedAt || 'Nai-tala sa device'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="p-2 rounded-xl bg-slate-900/80 border border-slate-800/80">
+                        <span className="text-[10px] text-slate-400 block font-bold">
+                          {selectedRecordForPhotos.isOfflinePending
+                            ? 'Katayuan ng Koneksyon sa Admin Server:'
+                            : 'Oras ng Pag-sync sa Admin Server:'}
+                        </span>
+                        <div className={`font-extrabold flex items-center gap-1.5 mt-0.5 ${
+                          selectedRecordForPhotos.isOfflinePending ? 'text-amber-400' : 'text-emerald-300'
+                        }`}>
+                          {selectedRecordForPhotos.isOfflinePending ? (
+                            <>
+                              <RefreshCw className="w-3.5 h-3.5 text-amber-400 animate-spin shrink-0" />
+                              <span>Naghihintay magkaroon ng internet/load</span>
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                              <span>
+                                {selectedRecordForPhotos.syncedDateFormatted || selectedRecordForPhotos.syncedAt || 'Awtomatikong pumasok sa records'}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Accomplishment Photos Gallery */}

@@ -33,6 +33,9 @@ export function exportAttendanceToExcel(
       'Gawain / Proyekto (Cleanup Activity)': att.activityTitle || 'Coastal Cleanup',
       'Petsa Naipasa': `${dt.monthTagalog} ${dt.dayNum}, ${dt.yearNum} (${dt.dayOfWeekTagalog})`,
       'Eksaktong Oras': dt.exactTimeWithSeconds,
+      'Galing sa Pending List (Offline)?': att.wasQueuedOffline || att.isOfflinePending ? 'OO (OFFLINE QUEUE)' : 'HINDI (ONLINE DIRECT)',
+      'Oras at Petsa sa Pending List': att.pendingQueuedDateFormatted || att.pendingQueuedAt || (att.wasQueuedOffline ? 'Nai-record sa device' : 'N/A (Online Direct)'),
+      'Oras Na-sync sa Admin': att.syncedDateFormatted || att.syncedAt || (att.isOfflinePending ? 'NAGHIHINTAY NG SYNC (Walang Signal)' : 'Direktang Na-upload'),
       'GPS Latitude': Number(att.latitude ? att.latitude.toFixed(6) : 0),
       'GPS Longitude': Number(att.longitude ? att.longitude.toFixed(6) : 0),
       'GPS Katumpakan (Accuracy)': `±${att.accuracyMeters || 3}m`,
@@ -58,6 +61,9 @@ export function exportAttendanceToExcel(
     { wch: 38 }, // Gawain
     { wch: 26 }, // Petsa
     { wch: 20 }, // Oras
+    { wch: 28 }, // Galing sa Pending List
+    { wch: 38 }, // Oras sa Pending List
+    { wch: 32 }, // Oras Na-sync sa Admin
     { wch: 16 }, // Lat
     { wch: 16 }, // Long
     { wch: 18 }, // Katumpakan
