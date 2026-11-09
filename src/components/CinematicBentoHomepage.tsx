@@ -485,13 +485,13 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
       {/* ========================================================================= */}
       {/* FOREGROUND HERO CONTENT (FIT-TO-SCREEN COMPACT GLASS BANNER) */}
       {/* ========================================================================= */}
-      <div className="relative z-10 w-full px-2 sm:px-4 md:px-6 pt-1 pb-10">
+      <div className="relative z-10 w-full px-2 sm:px-4 md:px-6 pt-1 pb-4 md:pb-10">
         {/* Fit-To-Screen Hero Banner */}
         <section className="pt-1 pb-3">
           <div className="bg-slate-900/40 backdrop-blur-xl border border-slate-700/60 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 shadow-2xl space-y-3 sm:space-y-4">
             {/* Top Horizontal Row: Live Telemetry Badge + Small Horizontal Action Buttons */}
             <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2.5 sm:pb-3.5 border-b border-slate-800/80">
-              <div className="w-full sm:w-auto inline-flex items-center justify-center sm:justify-start space-x-2 px-3 py-1.5 sm:py-1 rounded-full bg-slate-950/70 border border-emerald-500/40 text-emerald-300 text-[9px] sm:text-[11px] font-mono font-semibold shadow-[0_0_15px_rgba(16,185,129,0.2)] text-center sm:text-left">
+              <div className="inline-flex items-center space-x-2 px-3 py-1.5 sm:py-1 rounded-full bg-slate-950/70 border border-emerald-500/40 text-emerald-300 text-[9px] sm:text-[11px] font-mono font-semibold shadow-[0_0_15px_rgba(16,185,129,0.2)] text-left">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
                 <span className="tracking-wide">
                   LIVE FIELD TELEMETRY • COASTAL SECTOR 04 — DINGALAN PACIFIC SEAWALL
@@ -501,7 +501,7 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
               {/* Active User Status or Quick Telemetry Indicator (No duplicate buttons with Header) */}
               <div className="flex items-center gap-2 shrink-0">
                 {currentUser && (
-                  <div className="hidden sm:inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-slate-900/80 border border-emerald-500/40 text-[11px] font-mono text-emerald-300">
+                  <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-slate-900/80 border border-emerald-500/40 text-[10px] sm:text-[11px] font-mono text-emerald-300">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                     <span>Naka-login: <strong className="text-white">{currentUser.name}</strong> ({currentUser.role})</span>
                   </div>
@@ -580,7 +580,7 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
 
         {/* LATEST EVENT QR & PAALALA BROADCAST BANNER (Synchronized with Login Page Advisory) */}
         {eventBroadcast && (typeof window === 'undefined' || localStorage.getItem('ld_broadcasts_cleared') !== 'true') && (
-          <section className="mb-6 animate-fadeIn">
+          <section className="mb-6 animate-fadeIn hidden md:block">
             <div className="bg-gradient-to-r from-slate-900/90 via-emerald-950/40 to-slate-900/90 border-2 border-emerald-500/50 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 shadow-2xl relative overflow-hidden">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 {(() => {
@@ -685,7 +685,7 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
         {/* ========================================================================= */}
         {/* BELOW THE FOLD: ASYMMETRIC BENTO GRID OF GLASS CARDS */}
         {/* ========================================================================= */}
-        <section id="bento-grid-section" className="pt-2 pb-8">
+        <section id="bento-grid-section" className="pt-2 pb-8 hidden md:block">
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-3">
             <div>
               <div className="flex items-center space-x-2 text-xs font-mono text-emerald-400 uppercase tracking-widest font-bold">
