@@ -732,6 +732,24 @@ app.use((req: Request, res: Response, next: NextFunction) => {
         hour12: true,
       }).format(new Date()) + ' PST';
 
+      // Explicitly set online vs offline sync status
+      const isOnlineUpload = !req.body.was_queued_offline && !req.body.pending_queued_at;
+      if (isOnlineUpload) {
+        duplicate.uploadSource = 'online';
+        duplicate.isOfflinePending = false;
+        duplicate.wasQueuedOffline = false;
+        duplicate.pendingQueuedAt = undefined;
+        duplicate.pendingQueuedDateFormatted = undefined;
+      } else {
+        duplicate.uploadSource = 'offline';
+        duplicate.isOfflinePending = false;
+        duplicate.wasQueuedOffline = true;
+        duplicate.pendingQueuedAt = req.body.pending_queued_at || duplicate.pendingQueuedAt;
+        duplicate.pendingQueuedDateFormatted = req.body.pending_queued_date_formatted || duplicate.pendingQueuedDateFormatted;
+        duplicate.syncedAt = req.body.synced_at || new Date().toISOString();
+        duplicate.syncedDateFormatted = req.body.synced_date_formatted || duplicate.localPhTime;
+      }
+
       return res.status(200).json({
         success: true,
         attendance: duplicate,

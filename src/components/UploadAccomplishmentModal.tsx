@@ -367,32 +367,57 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
                 )}
               </div>
               <div className="space-y-0.5 sm:space-y-1">
-                <span className={`px-2.5 py-0.5 rounded-full text-[9px] sm:text-xs font-mono font-bold uppercase tracking-wider ${
+                <span className={`px-3 py-1 rounded-full text-[9px] sm:text-xs font-mono font-black uppercase tracking-wider inline-flex items-center gap-1.5 shadow-[0_0_15px_rgba(16,185,129,0.3)] ${
                   submittedRecord?.isOfflinePending
                     ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                    : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                    : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50'
                 }`}>
-                  {submittedRecord?.isOfflinePending ? 'NAI-SAVE SA PENDING LIST (OFFLINE QUEUE)' : 'ATTENDANCE & PROOF RECORDED'}
+                  {submittedRecord?.isOfflinePending ? (
+                    <>
+                      <WifiOff className="w-3.5 h-3.5 text-amber-400" />
+                      <span>NAI-SAVE SA PENDING LIST (OFFLINE QUEUE)</span>
+                    </>
+                  ) : (
+                    <>
+                      <Wifi className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>ONLINE UPLOAD COMPLETED</span>
+                    </>
+                  )}
                 </span>
-                <h4 className="text-base sm:text-2xl font-black text-white uppercase">
+                <h4 className={`text-base sm:text-2xl font-black uppercase tracking-wide ${submittedRecord?.isOfflinePending ? 'text-amber-300' : 'text-emerald-300'}`}>
                   {submittedRecord?.isOfflinePending
                     ? 'NAI-TALA SA PENDING LIST ATTENDANCE!'
-                    : 'MATAGUMPAY NA NA-UPLOAD ANG ACCOMPLISHMENT!'}
+                    : 'ONLINE UPLOAD COMPLETED!'}
                 </h4>
-                <p className="text-[10px] sm:text-xs text-slate-300 max-w-md mx-auto uppercase font-medium">
+                <p className="text-[10px] sm:text-xs text-slate-100 max-w-lg mx-auto font-medium leading-relaxed font-sans bg-slate-900/60 p-2.5 rounded-xl border border-emerald-500/30">
                   {submittedRecord?.isOfflinePending ? (
                     <>
                       Dahil walang signal o load ang inyong telepono, ang attendance ni <strong className="text-white">{fullName}</strong> ay ligtas na nai-record sa <strong>Pending List Attendance</strong> kasama ang eksaktong oras ng inyong pagpasa. Awtomatiko itong ma-a-upload sa Admin kapag nagkaroon ng signal o load.
                     </>
                   ) : (
                     <>
-                      ANG {uploadedPhotos.length} NA PATUNAY NA LARAWAN NI <strong className="text-white">{fullName}</strong> AY NAISUMITE NA SA SYSTEM AT MAKIKITA NA SA <strong>ACCOMPLISHMENT ATTENDANCE</strong> BUTTON NG ADMIN.
+                      Magandang araw! Maraming salamat sa inyong dedikasyon at tapat na pakikiisa sa programang Linis Dingalan. Matagumpay at kumpirmadong naitala nang direkta online sa <strong>Accomplishment Attendance Records</strong> ng Admin ang inyong patunay na larawan kasama ang opisyal na Geotag Watermark at Philippine Standard Time.
                     </>
                   )}
                 </p>
               </div>
 
               <div className="p-2.5 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-950/70 border border-slate-800 text-[10px] sm:text-xs font-mono text-left space-y-1 sm:space-y-1.5 max-w-md mx-auto uppercase">
+                {submittedRecord?.isOfflinePending ? (
+                  <div className="flex justify-between bg-amber-950/40 p-1.5 rounded border border-amber-500/30 text-amber-200">
+                    <span className="text-amber-400 font-bold">ORAS SA PENDING LIST:</span>
+                    <span className="text-amber-300 font-bold text-right text-[9px] sm:text-[11px]">
+                      {submittedRecord.pendingQueuedDateFormatted || submittedRecord.localPhTime}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex justify-between bg-emerald-950/40 p-1.5 rounded border border-emerald-500/30 text-emerald-200">
+                    <span className="text-emerald-400 font-bold">ORAS NG ONLINE UPLOAD:</span>
+                    <span className="text-emerald-300 font-bold text-right text-[9px] sm:text-[11px]">
+                      {formatPhilippineDateTime(submittedRecord?.timestamp || new Date()).dayOfWeekTagalog}, {formatPhilippineDateTime(submittedRecord?.timestamp || new Date()).monthTagalog} {formatPhilippineDateTime(submittedRecord?.timestamp || new Date()).dayNum}, {formatPhilippineDateTime(submittedRecord?.timestamp || new Date()).yearNum} ganap na {formatPhilippineDateTime(submittedRecord?.timestamp || new Date()).exactTimeWithSeconds} PST
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-slate-400">ATTENDEE (PANGALAN):</span>
                   <span className="text-white font-bold">{fullName}</span>
@@ -413,22 +438,17 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
                   <span className="text-slate-400">MGA LARAWAN:</span>
                   <span className="text-cyan-400 font-bold">{uploadedPhotos.length} PICTURES</span>
                 </div>
-                {submittedRecord?.pendingQueuedDateFormatted && (
-                  <div className="flex justify-between items-center pt-1 border-t border-slate-800 text-amber-300 font-bold">
-                    <span className="text-slate-400">ORAS SA PENDING LIST:</span>
-                    <span>{submittedRecord.pendingQueuedDateFormatted}</span>
-                  </div>
-                )}
                 <div className="flex justify-between items-center pt-1 border-t border-slate-800">
-                  <span className="text-slate-400">ORAS NG PILIPINAS:</span>
-                  <span className="text-cyan-300 font-bold">
-                    {formatPhilippineDateTime(submittedRecord?.timestamp || new Date()).fullCombinedTagalog}
-                  </span>
-                </div>
-                <div className="flex justify-between">
                   <span className="text-slate-400">STATUS:</span>
-                  <span className={`font-bold ${submittedRecord?.isOfflinePending ? 'text-amber-300' : 'text-emerald-300'}`}>
-                    {submittedRecord?.isOfflinePending ? 'PENDING SYNC (WALANG SIGNAL/LOAD)' : 'VERIFIED CLEANUP ATTENDANCE'}
+                  <span className={`font-bold flex items-center gap-1 ${submittedRecord?.isOfflinePending ? 'text-amber-300' : 'text-emerald-300'}`}>
+                    {submittedRecord?.isOfflinePending ? (
+                      'PENDING SYNC (WALANG SIGNAL/LOAD)'
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                        <span>ONLINE UPLOAD COMPLETED</span>
+                      </>
+                    )}
                   </span>
                 </div>
               </div>
