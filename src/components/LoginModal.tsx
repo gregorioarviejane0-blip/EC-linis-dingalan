@@ -622,7 +622,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       : `${rawCallTime}`;
 
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://linis-dingalan.aurora.gov.ph';
-    const payload = `${origin}/?action=upload&act_id=${act.id}&brgy=${encodeURIComponent(act.barangay || 'Paltic')}&date=${encodeURIComponent(act.date || '')}`;
+    const payload = `${origin}/?action=advisory&act_id=${act.id}&brgy=${encodeURIComponent(act.barangay || 'Paltic')}&date=${encodeURIComponent(act.date || '')}`;
 
     return {
       id: `bc-auto-${act.id}`,
@@ -910,7 +910,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       return;
     }
     const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://linis-dingalan.aurora.gov.ph';
-    const payload = `${currentOrigin}/?action=upload&act_id=${eventBroadcast.activityId}&brgy=${encodeURIComponent(eventBroadcast.barangay)}&date=${encodeURIComponent(eventBroadcast.eventDate)}`;
+    const payload = `${currentOrigin}/?action=advisory&act_id=${eventBroadcast.activityId}&brgy=${encodeURIComponent(eventBroadcast.barangay)}&date=${encodeURIComponent(eventBroadcast.eventDate)}`;
 
     generateStyledLguQrDataUrl(payload, {
       width: 480,
@@ -1147,12 +1147,17 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const action = params.get('action');
+      const viewParam = params.get('view');
       const actId = params.get('act_id');
       const brgyParam = params.get('brgy');
 
-      if (action === 'personal_qr' || action === 'register' || actId) {
+      if (action === 'advisory' || action === 'event' || action === 'upload' || action === 'personal_qr' || action === 'register' || viewParam === 'advisory' || actId) {
         setIsUnfolded(true);
         setActiveView('event');
+
+        if (actId) {
+          setSelectedScheduledActivityId(actId);
+        }
 
         if (brgyParam && DINGALAN_BARANGAYS.includes(brgyParam)) {
           setRegBarangay(brgyParam);

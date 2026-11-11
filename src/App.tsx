@@ -186,6 +186,40 @@ export default function App() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const action = urlParams.get('action');
+    const actId = urlParams.get('act_id');
+
+    if (actId && activities.length > 0) {
+      const matchAct = activities.find((a) => a.id === actId);
+      if (matchAct) {
+        const origin = typeof window !== 'undefined' ? window.location.origin : 'https://linis-dingalan.aurora.gov.ph';
+        const payload = `${origin}/?action=advisory&act_id=${matchAct.id}&brgy=${encodeURIComponent(matchAct.barangay || 'Paltic')}&date=${encodeURIComponent(matchAct.date || '')}`;
+        setLatestEventBroadcast({
+          id: `bc-auto-${matchAct.id}`,
+          activityId: matchAct.id,
+          activityTitle: matchAct.title,
+          targetArea: matchAct.targetArea || 'Dingalan Feeder Port & Rock Wall',
+          barangay: matchAct.barangay || 'Paltic',
+          qrPayload: payload,
+          eventDate: matchAct.date || new Date().toISOString().split('T')[0],
+          startTime: matchAct.callTime || '06:00 AM',
+          estimatedEndTime: matchAct.estimatedEndTime || '11:59 PM',
+          totalHours: matchAct.totalHours || '4 na Oras',
+          requiredTools: matchAct.requiredTools || 'Guwantes, sako ng basura, walis tingting, tongs',
+          waterTumblerReminder: matchAct.waterReminder || 'Magdala ng sariling reusable tumbler na may inuming tubig.',
+          recommendedAttire: matchAct.recommendedAttire || 'Linis Dingalan t-shirt o komportableng damit, bota/shoes, sumbrero',
+          additionalNotes: matchAct.description || matchAct.notes || '',
+          sentAt: new Date().toISOString(),
+          sentByAdminName: matchAct.supervisorName || 'Admin Officer',
+          qrScheduleEnabled: matchAct.qrScheduleEnabled !== false,
+          qrDisplayStartDate: matchAct.qrDisplayStartDate || matchAct.date,
+          qrDisplayStartTime: matchAct.qrDisplayStartTime || '06:00',
+          qrDisplayEndDate: matchAct.qrDisplayEndDate || matchAct.date,
+          qrDisplayEndTime: matchAct.qrDisplayEndTime || '23:59',
+          assignedPersonnel: matchAct.assignedPersonnel || [],
+        });
+      }
+    }
+
     if (action === 'upload') {
       const id = urlParams.get('id') || '';
       const beneCode = urlParams.get('beneCode') || '';
@@ -753,7 +787,7 @@ export default function App() {
 
     // Automatically sync to latestEventBroadcast so the new program can immediately reflect on the Login Advisory (Picture 2)
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://linis-dingalan.aurora.gov.ph';
-    const payload = `${origin}/?action=upload&act_id=${newAct.id}&brgy=${encodeURIComponent(newAct.barangay || 'Paltic')}&date=${encodeURIComponent(newAct.date || '')}`;
+    const payload = `${origin}/?action=advisory&act_id=${newAct.id}&brgy=${encodeURIComponent(newAct.barangay || 'Paltic')}&date=${encodeURIComponent(newAct.date || '')}`;
     const newBc: EventQrBroadcast = {
       id: `bc-auto-${newAct.id}`,
       activityId: newAct.id,
@@ -796,7 +830,7 @@ export default function App() {
   const handleSetAsActiveLoginAdvisory = async (act: Activity) => {
     try {
       const origin = typeof window !== 'undefined' ? window.location.origin : 'https://linis-dingalan.aurora.gov.ph';
-      const payload = `${origin}/?action=upload&act_id=${act.id}&brgy=${encodeURIComponent(act.barangay || 'Paltic')}&date=${encodeURIComponent(act.date || '')}`;
+      const payload = `${origin}/?action=advisory&act_id=${act.id}&brgy=${encodeURIComponent(act.barangay || 'Paltic')}&date=${encodeURIComponent(act.date || '')}`;
 
       const assignedBenes = beneficiaries.filter((b) =>
         assignments.some((asg) => asg.activityId === act.id && asg.beneficiaryId === b.id)
@@ -853,7 +887,7 @@ export default function App() {
 
       // Synchronize strictly with latestEventBroadcast and permanently save to Firestore & LocalStorage
       const origin = typeof window !== 'undefined' ? window.location.origin : 'https://linis-dingalan.aurora.gov.ph';
-      const payload = `${origin}/?action=upload&act_id=${updated.id}&brgy=${encodeURIComponent(updated.barangay || 'Paltic')}&date=${encodeURIComponent(updated.date || '')}`;
+      const payload = `${origin}/?action=advisory&act_id=${updated.id}&brgy=${encodeURIComponent(updated.barangay || 'Paltic')}&date=${encodeURIComponent(updated.date || '')}`;
       const newBc: EventQrBroadcast = {
         id: `broadcast-${updated.id}`,
         activityId: updated.id,
