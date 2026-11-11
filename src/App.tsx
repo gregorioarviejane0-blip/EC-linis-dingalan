@@ -70,23 +70,6 @@ export default function App() {
   const [isEventQrNoticeModalOpen, setIsEventQrNoticeModalOpen] = useState<boolean>(false);
   const [isAnonymousInboxModalOpen, setIsAnonymousInboxModalOpen] = useState<boolean>(false);
   const [anonymousMessages, setAnonymousMessages] = useState<AnonymousMessage[]>([]);
-  // Real-time synchronization for Login Page advisory & Homepage picture content
-  useEffect(() => {
-    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-      const bc = new BroadcastChannel('ld_sync');
-      bc.onmessage = (event) => {
-        if (event.data?.type === 'LOGIN_ADVISORY_CHANGED') {
-          setLatestEventBroadcast(event.data.broadcast);
-        } else if (event.data?.type === 'CLEAR_BROADCASTS') {
-          setLatestEventBroadcast(null);
-        } else if (event.data?.type === 'NEW_BROADCAST' && event.data.broadcast) {
-          setLatestEventBroadcast(event.data.broadcast);
-        }
-      };
-      return () => bc.close();
-    }
-  }, []);
-
   const [latestEventBroadcast, setLatestEventBroadcast] = useState<EventQrBroadcast | null>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -101,6 +84,41 @@ export default function App() {
     }
     return null;
   });
+
+  // Memoized callback and equality check to prevent infinite re-render feedback loop
+  const handleActiveBroadcastChange = React.useCallback((incoming: EventQrBroadcast | null) => {
+    setLatestEventBroadcast((prev) => {
+      if (!prev && !incoming) return prev;
+      if (
+        prev &&
+        incoming &&
+        prev.id === incoming.id &&
+        prev.activityId === incoming.activityId &&
+        prev.startTime === incoming.startTime &&
+        prev.eventDate === incoming.eventDate
+      ) {
+        return prev;
+      }
+      return incoming;
+    });
+  }, []);
+
+  // Real-time synchronization for Login Page advisory & Homepage picture content
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      const bc = new BroadcastChannel('ld_sync');
+      bc.onmessage = (event) => {
+        if (event.data?.type === 'LOGIN_ADVISORY_CHANGED') {
+          handleActiveBroadcastChange(event.data.broadcast);
+        } else if (event.data?.type === 'CLEAR_BROADCASTS') {
+          setLatestEventBroadcast(null);
+        } else if (event.data?.type === 'NEW_BROADCAST' && event.data.broadcast) {
+          handleActiveBroadcastChange(event.data.broadcast);
+        }
+      };
+      return () => bc.close();
+    }
+  }, [handleActiveBroadcastChange]);
 
   // Core Data State
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
@@ -325,6 +343,16 @@ export default function App() {
         if (event.data?.type === 'CLEAR_ATTENDANCES') {
           setAttendances([]);
           showToast('Nabura ang lahat ng accomplishment attendance records.', 'info');
+        }
+        if (event.data?.type === 'SYSTEM_FORMATTED') {
+          setAttendances([]);
+          setBeneficiaries([]);
+          setActivities([]);
+          setAssignments([]);
+          setLatestEventBroadcast(null);
+          setAnonymousMessages([]);
+          setAuditLogs([]);
+          showToast('Ang system ay ganap na na-format! Nabura ang lahat ng data.', 'info');
         }
         if (event.data?.type === 'NEW_BROADCAST' && event.data.broadcast) {
           const newBc = event.data.broadcast as EventQrBroadcast;
@@ -1001,6 +1029,25 @@ export default function App() {
     }
   };
 
+  // Format / Wipe Entire System Handler (Requires PIN 123)
+  const handleFormatSystem = async (pincode: string) => {
+    try {
+      const res = await api.formatEntireSystem(pincode);
+      setAttendances([]);
+      setBeneficiaries([]);
+      setActivities([]);
+      setAssignments([]);
+      setLatestEventBroadcast(null);
+      setAnonymousMessages([]);
+      setAuditLogs([]);
+      showToast(res.message, 'success');
+      return res;
+    } catch (err: any) {
+      showToast(err.message || 'Nagka-error sa pag-format ng system.', 'error');
+      throw err;
+    }
+  };
+
   // Auto-prune records older than 1 month (30 days)
   const handleAutoPruneMonthlyAttendances = async () => {
     try {
@@ -1083,7 +1130,7 @@ export default function App() {
           }}
           onOpenScanQrModal={() => setIsScanQrModalOpen(true)}
           eventBroadcast={latestEventBroadcast}
-          onActiveBroadcastChange={(b) => setLatestEventBroadcast(b)}
+          onActiveBroadcastChange={handleActiveBroadcastChange}
         />
 
         {/* Standalone Personal QR Generator & Registration Modal */}
@@ -1259,6 +1306,7 @@ export default function App() {
               onOpenGenerateQrModal={() => setIsGenerateQrModalOpen(true)}
               onOpenEventNoticeModal={() => setIsEventQrNoticeModalOpen(true)}
               onOpenPersonalQrModal={() => setIsPersonalQrModalOpen(true)}
+              onFormatSystem={handleFormatSystem}
               eventBroadcast={latestEventBroadcast}
             />
           )}
@@ -1574,7 +1622,7 @@ export default function App() {
             showToast(`Naka-register na si ${newBene.firstName} ${newBene.lastName}! Na-generate na ang kanyang Personal QR Code.`, 'success');
           }}
           eventBroadcast={latestEventBroadcast}
-          onActiveBroadcastChange={(b) => setLatestEventBroadcast(b)}
+          onActiveBroadcastChange={handleActiveBroadcastChange}
         />
 
         {/* Standalone Personal QR Generator & Registration Modal */}

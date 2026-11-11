@@ -901,6 +901,34 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     });
   });
 
+  // Format / Wipe Entire System (Requires Pincode 123)
+  app.post('/api/system/format', (req: Request, res: Response) => {
+    const { pincode } = req.body;
+    if (String(pincode).trim() !== '123') {
+      return res.status(401).json({
+        success: false,
+        error: 'Maling pincode! Ang tamang security code (123) ay kailangan upang mai-format ang system.',
+      });
+    }
+
+    attendances = [];
+    beneficiaries = [];
+    activities = [];
+    assignments = [];
+    broadcastHistory = [];
+    anonymousMessages = [];
+    auditLogs = [];
+
+    storageMetrics.totalPhotos = 0;
+    storageMetrics.totalStorageBytes = 0;
+    storageMetrics.averagePhotoSizeBytes = 0;
+
+    res.json({
+      success: true,
+      message: 'Matagumpay na na-format ang sistema! Permanenteng nabura ang lahat ng data.',
+    });
+  });
+
   // ----------------------------------------------------------------------------
   // BROADCASTS & EVENT REMINDERS (PAALALA) API
   // ----------------------------------------------------------------------------

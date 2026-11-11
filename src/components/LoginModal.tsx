@@ -786,7 +786,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     }
 
     setActiveBroadcast(null);
-  }, [allActivities, selectedScheduledActivityId, propEventBroadcast, phTime]);
+  }, [allActivities, selectedScheduledActivityId, propEventBroadcast]);
 
   const isBroadcastCleared = typeof window !== 'undefined' && localStorage.getItem('ld_broadcasts_cleared') === 'true';
   const eventBroadcast = isBroadcastCleared ? null : activeBroadcast;
@@ -833,8 +833,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   }, [eventBroadcast, clock]);
 
   // Strict Real-Time Synchronization with Homepage Banner (Picture content):
-  // Kung ano ang naka-upload o active na paalala sa Login page, iyon agad ang magre-reflect sa homepage banner
+  // Guard with lastBroadcastFingerprintRef to prevent infinite re-render loop
+  const lastBroadcastFingerprintRef = useRef<string | null>(null);
+
   useEffect(() => {
+    const currentFingerprint = eventBroadcast
+      ? `${eventBroadcast.id}_${eventBroadcast.activityId}_${eventBroadcast.startTime}_${eventBroadcast.eventDate}`
+      : 'NONE';
+
+    if (lastBroadcastFingerprintRef.current === currentFingerprint) {
+      return;
+    }
+    lastBroadcastFingerprintRef.current = currentFingerprint;
+
     onActiveBroadcastChange?.(eventBroadcast);
     if (typeof window !== 'undefined') {
       try {
@@ -1571,14 +1582,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               title="Click to view Official Admin Guidelines, Advisory & Event QR Code"
             >
               {activeView === 'event' && (
-                <motion.div
-                  layoutId="activeTabIndicator"
-                  className="absolute inset-0 rounded-lg sm:rounded-xl lg:rounded-lg fluid-btn-emerald border border-emerald-300"
-                  transition={{ type: 'spring', stiffness: 500, damping: 32 }}
+                <div
+                  className="absolute inset-0 rounded-lg sm:rounded-xl lg:rounded-lg fluid-btn-emerald border border-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.4)]"
                 />
               )}
               <span className="relative z-10 flex items-center space-x-1 sm:space-x-1.5 lg:space-x-1">
-                <Radio className={`w-3.5 h-3.5 lg:w-3 lg:h-3 shrink-0 ${activeView === 'event' ? 'text-slate-950 animate-pulse' : 'text-emerald-400'}`} />
+                <Radio className={`w-3.5 h-3.5 lg:w-3 lg:h-3 shrink-0 ${activeView === 'event' ? 'text-slate-950' : 'text-emerald-400'}`} />
                 <span className="truncate hidden xs:inline">PROGRAM ADVISORY</span>
                 <span className="truncate xs:hidden">ADVISORY</span>
                 {eventBroadcast && qrTiming.startTimeFormatted && (
@@ -1586,7 +1595,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     activeView === 'event'
                       ? 'bg-slate-950 text-emerald-300 border-slate-800'
                       : qrTiming.isUpcoming
-                        ? 'bg-cyan-950/80 text-cyan-300 border-cyan-500/50 animate-pulse'
+                        ? 'bg-cyan-950/80 text-cyan-300 border-cyan-500/50'
                         : 'bg-emerald-950/80 text-emerald-300 border-emerald-500/50'
                   }`}>
                     QR: {qrTiming.startTimeFormatted}
@@ -1614,10 +1623,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               title="Pindutin para makita ang Linis Dingalan EC Management Overview o Anonymous Message"
             >
               {(activeView === 'overview' || activeView === 'anonymous') && (
-                <motion.div
-                  layoutId="activeTabIndicator"
+                <div
                   className="absolute inset-0 rounded-lg sm:rounded-xl fluid-btn-emerald border border-emerald-300 shadow-[0_0_14px_rgba(16,185,129,0.5)]"
-                  transition={{ type: 'spring', stiffness: 500, damping: 32 }}
                 />
               )}
               <span className="relative z-10 flex items-center space-x-1 sm:space-x-1.5">
@@ -1647,10 +1654,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               title="Pindutin para buksan ang Admin Portal o mag-login agad"
             >
               {activeView === 'login' && (
-                <motion.div
-                  layoutId="activeTabIndicator"
+                <div
                   className="absolute inset-0 rounded-lg sm:rounded-xl lg:rounded-lg bg-white border border-white shadow-[0_0_16px_rgba(255,255,255,0.45)]"
-                  transition={{ type: 'spring', stiffness: 500, damping: 32 }}
                 />
               )}
               <span className="relative z-10 flex items-center space-x-1 sm:space-x-1.5 lg:space-x-1">
@@ -2518,13 +2523,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
                   {eventBroadcast ? (
 
-                  <div className="relative rounded-xl sm:rounded-3xl border-2 border-emerald-400/80 shadow-[0_0_40px_rgba(16,185,129,0.35),inset_0_0_20px_rgba(16,185,129,0.15)] bg-slate-950/95 hover:bg-slate-950/98 backdrop-blur-md p-3.5 xs:p-4 sm:p-6 lg:p-7 space-y-2 sm:space-y-4 transition-all duration-300 hover:border-emerald-300 animate-scaleIn w-full text-left flex flex-col my-0">
+                  <div className="relative rounded-xl sm:rounded-3xl border-2 border-emerald-400/80 shadow-[0_0_40px_rgba(16,185,129,0.35),inset_0_0_20px_rgba(16,185,129,0.15)] bg-slate-950/95 hover:bg-slate-950/98 backdrop-blur-md p-3.5 xs:p-4 sm:p-6 lg:p-7 space-y-2 sm:space-y-4 transition-all duration-300 hover:border-emerald-300 w-full text-left flex flex-col my-0">
                     {/* Top Bar inside Card */}
                     <div className="flex items-center justify-between border-b border-white/10 pb-1.5 sm:pb-3 gap-1.5">
                       <div className="flex items-center space-x-1.5 sm:space-x-2.5 min-w-0">
-                        <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
+                        <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-emerald-400 shrink-0 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
                         <span className="px-2 py-0.5 sm:px-3.5 sm:py-1 rounded-full text-[10px] sm:text-sm font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase tracking-wider flex items-center gap-1.5 backdrop-blur-sm truncate">
-                          <Radio className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-400 animate-pulse shrink-0" />
+                          <Radio className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-400 shrink-0" />
                           <span className="truncate">Admin Guidelines & Advisory</span>
                         </span>
                       </div>
@@ -2578,7 +2583,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     /* ------------------------------------------------------------- */
                     /* UPCOMING (100% CONTAINED INSIDE BOX WITH LIVE COUNTDOWN)     */
                     /* ------------------------------------------------------------- */
-                    <div className="min-h-[90px] sm:min-h-[100px] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-950/95 border-2 border-cyan-500/70 backdrop-blur-md shadow-[0_0_20px_rgba(6,182,212,0.25)] flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-4 w-full max-w-full overflow-hidden animate-fadeIn">
+                    <div className="min-h-[90px] sm:min-h-[100px] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-950/95 border-2 border-cyan-500/70 backdrop-blur-md shadow-[0_0_20px_rgba(6,182,212,0.25)] flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-4 w-full max-w-full overflow-hidden">
                       {/* Left: Box ng QR Code (Locked) */}
                       <div className="flex items-center space-x-3 min-w-0 w-full sm:w-auto">
                         <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl border-2 border-dashed border-cyan-400/80 bg-cyan-950/40 flex flex-col items-center justify-center p-1 text-center shadow-[inset_0_0_12px_rgba(6,182,212,0.25)] shrink-0">
@@ -2592,7 +2597,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                             Box ng QR Code:
                           </span>
                           <span className="text-xs sm:text-sm font-bold text-cyan-300 flex items-center gap-1.5 truncate">
-                            <Clock className="w-3.5 h-3.5 text-cyan-400 shrink-0 animate-pulse" />
+                            <Clock className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                             <span className="truncate">Locked QR Code</span>
                           </span>
                         </div>
@@ -2610,7 +2615,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                         {/* Live Ticking Countdown Timer */}
                         <div className="flex items-center space-x-1 text-[10px] sm:text-xs text-slate-200 bg-slate-900/90 px-2.5 py-1 rounded-lg border border-cyan-500/50 shadow-inner max-w-full">
                           <span className="text-slate-400 text-[9px] sm:text-[10px] uppercase font-bold">Lalabas sa:</span>
-                          <span className="text-cyan-300 font-black font-mono tracking-wider animate-pulse">
+                          <span className="text-cyan-300 font-black font-mono tracking-wider">
                             {qrTiming.countdownFormatted}
                           </span>
                         </div>
@@ -2622,7 +2627,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     /* ------------------------------------------------------------- */
                     /* EXPIRED (FIXED HEIGHT & STABLE POSITION)                      */
                     /* ------------------------------------------------------------- */
-                    <div className="min-h-[90px] sm:min-h-[100px] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-rose-950/40 border-2 border-rose-500/60 backdrop-blur-md shadow-[0_0_20px_rgba(244,63,94,0.25)] flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-4 w-full max-w-full overflow-hidden animate-fadeIn">
+                    <div className="min-h-[90px] sm:min-h-[100px] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-rose-950/40 border-2 border-rose-500/60 backdrop-blur-md shadow-[0_0_20px_rgba(244,63,94,0.25)] flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-4 w-full max-w-full overflow-hidden">
                       <div className="flex items-center space-x-3 text-left min-w-0">
                         <div className="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-500/50 flex items-center justify-center text-rose-400 shrink-0">
                           <AlertCircle className="w-5 h-5" />
@@ -2650,7 +2655,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     /* ------------------------------------------------------------- */
                     /* ACTIVE (FIXED HEIGHT & STABLE POSITION MATCHING UPCOMING)     */
                     /* ------------------------------------------------------------- */
-                    <div className="min-h-[90px] sm:min-h-[100px] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-950/95 border-2 border-emerald-400/70 backdrop-blur-md shadow-[0_0_20px_rgba(16,185,129,0.25)] flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-4 w-full max-w-full overflow-hidden animate-fadeIn">
+                    <div className="min-h-[90px] sm:min-h-[100px] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-950/95 border-2 border-emerald-400/70 backdrop-blur-md shadow-[0_0_20px_rgba(16,185,129,0.25)] flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-4 w-full max-w-full overflow-hidden">
                       {/* Embedded QR Code (Click to Enlarge) */}
                       {eventQrUrl && (
                         <div
@@ -2695,7 +2700,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
                         {qrTiming.endTimeFormatted && (
                           <div className="text-[8.5px] sm:text-[9.5px] font-mono text-emerald-300/90 flex items-center gap-1">
-                            <Clock className="w-3 h-3 text-emerald-400 shrink-0 animate-pulse" />
+                            <Clock className="w-3 h-3 text-emerald-400 shrink-0" />
                             <span>{qrTiming.countdownFormatted} nalalabi bago maglaho</span>
                           </div>
                         )}
@@ -2777,7 +2782,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   {/* Bottom Author Row - Responsive on Mobile & Desktop */}
                   <div className="text-[9.5px] xs:text-[10px] sm:text-xs md:text-sm font-mono text-slate-400 pt-1.5 sm:pt-2.5 border-t border-white/10 flex flex-row items-center justify-between gap-1">
                     <div className="flex items-center gap-1.5 text-emerald-300 font-bold whitespace-nowrap shrink-0">
-                      <Clock className={`w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 ${qrTiming.isActive ? 'text-emerald-400 animate-pulse' : qrTiming.isUpcoming ? 'text-cyan-400' : 'text-rose-400'}`} />
+                      <Clock className={`w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 ${qrTiming.isActive ? 'text-emerald-400' : qrTiming.isUpcoming ? 'text-cyan-400' : 'text-rose-400'}`} />
                       <span className={`px-1.5 py-0.5 rounded font-mono tracking-wider whitespace-nowrap text-[9px] sm:text-xs border ${
                         qrTiming.isUpcoming
                           ? 'bg-cyan-950/80 border-cyan-500/40 text-cyan-300'
@@ -2802,7 +2807,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   <div className="lg:hidden p-1.5 xs:p-2 rounded-lg bg-slate-900/95 border border-amber-500/60 flex items-center justify-between gap-2 shadow-md">
                     <div className="flex items-center space-x-1.5 min-w-0">
                       <div className="w-6 h-6 rounded-md bg-amber-500/20 flex items-center justify-center shrink-0">
-                        <EyeOff className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                        <EyeOff className="w-3.5 h-3.5 text-amber-400" />
                       </div>
                       <div className="min-w-0 text-left">
                         <p className="text-[9px] font-mono font-bold text-amber-300 uppercase leading-none">Confidential Message to Admin</p>
@@ -2828,11 +2833,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 /* ========================================================================= */
                 /* NO ACTIVE SCHEDULE: COMPACT PROFESSIONAL ADVISORY CARD (FITS MOBILE)      */
                 /* ========================================================================= */
-                <div className="relative rounded-xl sm:rounded-3xl border-2 border-slate-700/80 shadow-[0_0_40px_rgba(0,0,0,0.8),inset_0_0_20px_rgba(16,185,129,0.12)] bg-slate-950/95 hover:bg-slate-950/98 backdrop-blur-md p-3.5 xs:p-4 sm:p-6 lg:p-7 space-y-2 sm:space-y-4 transition-all duration-300 hover:border-slate-600 animate-scaleIn w-full max-w-xl sm:max-w-2xl mx-auto text-left flex flex-col my-auto">
+                <div className="relative rounded-xl sm:rounded-3xl border-2 border-slate-700/80 shadow-[0_0_40px_rgba(0,0,0,0.8),inset_0_0_20px_rgba(16,185,129,0.12)] bg-slate-950/95 hover:bg-slate-950/98 backdrop-blur-md p-3.5 xs:p-4 sm:p-6 lg:p-7 space-y-2 sm:space-y-4 transition-all duration-300 hover:border-slate-600 w-full max-w-xl sm:max-w-2xl mx-auto text-left flex flex-col my-auto">
                   {/* Top Bar inside Card */}
                   <div className="flex items-center justify-between border-b border-white/10 pb-1.5 sm:pb-3 gap-1.5">
                     <div className="flex items-center space-x-1.5 sm:space-x-2.5 min-w-0">
-                      <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-cyan-400 animate-pulse shrink-0" />
+                      <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-cyan-400 shrink-0 shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
                       <span className="px-2 py-0.5 sm:px-3.5 sm:py-1 rounded-full text-[10px] sm:text-sm font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 uppercase tracking-wider flex items-center gap-1.5 backdrop-blur-sm truncate">
                         <ShieldCheck className="w-3 h-3 sm:w-4 sm:h-4 text-cyan-400 shrink-0" />
                         <span className="truncate">Public Advisory • PESO & MENRO Operations</span>
@@ -2924,7 +2929,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   {/* Live Monitoring Badge */}
                   <div className="pt-1.5 sm:pt-2.5 border-t border-white/10 flex items-center justify-between text-[9px] xs:text-[10px] sm:text-xs lg:text-sm font-mono text-slate-400">
                     <div className="flex items-center space-x-1.5 text-emerald-400">
-                      <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-400 animate-ping" />
+                      <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
                       <span className="truncate">Live Scheduler Active • Auto-updates upon broadcast</span>
                     </div>
                     <span className="text-slate-400 font-semibold shrink-0">Dingalan LGU</span>
@@ -2934,7 +2939,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   <div className="lg:hidden p-1.5 xs:p-2 rounded-lg bg-slate-900/95 border border-amber-500/60 flex items-center justify-between gap-2 shadow-md">
                     <div className="flex items-center space-x-1.5 min-w-0">
                       <div className="w-6 h-6 rounded-md bg-amber-500/20 flex items-center justify-center shrink-0">
-                        <EyeOff className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                        <EyeOff className="w-3.5 h-3.5 text-amber-400" />
                       </div>
                       <div className="min-w-0 text-left">
                         <p className="text-[9px] font-mono font-bold text-amber-300 uppercase leading-none">Confidential Message to Admin</p>

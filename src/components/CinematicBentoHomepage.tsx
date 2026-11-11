@@ -31,6 +31,9 @@ import {
   Maximize2,
   Minimize2,
   X,
+  Trash2,
+  AlertTriangle,
+  KeyRound,
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { useDingalanClock, checkIsQrReleased } from '../utils/philippineClock';
@@ -263,6 +266,7 @@ interface CinematicBentoHomepageProps {
   onOpenGenerateQrModal?: () => void;
   onOpenEventNoticeModal?: () => void;
   onOpenPersonalQrModal?: () => void;
+  onFormatSystem?: (pincode: string) => Promise<any>;
   eventBroadcast?: EventQrBroadcast | null;
 }
 
@@ -280,9 +284,43 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
   onOpenGenerateQrModal,
   onOpenEventNoticeModal,
   onOpenPersonalQrModal,
+  onFormatSystem,
   eventBroadcast,
 }) => {
   const { time: phTime } = useDingalanClock();
+  const [isFormatModalOpen, setIsFormatModalOpen] = useState(false);
+  const [formatPincode, setFormatPincode] = useState('');
+  const [formatError, setFormatError] = useState<string | null>(null);
+  const [isFormatLoading, setIsFormatLoading] = useState(false);
+  const [formatSuccessMessage, setFormatSuccessMessage] = useState<string | null>(null);
+
+  const handleConfirmFormat = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormatError(null);
+    setFormatSuccessMessage(null);
+
+    if (formatPincode.trim() !== '123') {
+      setFormatError('Maling Pincode! Ilagay ang tamang security code (123) upang mabura ang lahat ng data sa system.');
+      return;
+    }
+
+    setIsFormatLoading(true);
+    try {
+      if (onFormatSystem) {
+        await onFormatSystem('123');
+      }
+      setFormatSuccessMessage('Matagumpay na na-format ang sistema! Permanenteng nabura ang lahat ng datos.');
+      setTimeout(() => {
+        setIsFormatModalOpen(false);
+        setFormatPincode('');
+        setFormatSuccessMessage(null);
+      }, 1500);
+    } catch (err: any) {
+      setFormatError(err.message || 'Nagkaroon ng problema sa pag-format ng system.');
+    } finally {
+      setIsFormatLoading(false);
+    }
+  };
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [radarAngle, setRadarAngle] = useState(0);
   const [watermarkSimulated, setWatermarkSimulated] = useState(false);
@@ -568,6 +606,22 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
                     <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-0.5" />
                   </button>
                 )}
+
+                {/* FORMAT SYSTEM BUTTON (Permanent Wipe with PIN 123) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormatPincode('');
+                    setFormatError(null);
+                    setFormatSuccessMessage(null);
+                    setIsFormatModalOpen(true);
+                  }}
+                  className="w-full sm:w-auto px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl bg-rose-950/80 hover:bg-rose-900 border-2 border-rose-500/70 hover:border-rose-400 text-rose-300 hover:text-white font-black text-xs sm:text-sm tracking-wide shadow-[0_0_25px_rgba(244,63,94,0.35)] flex items-center justify-center space-x-2 transition-all transform hover:-translate-y-0.5 active:scale-95 cursor-pointer"
+                  title="Permanenteng burahin ang lahat ng data sa system (Kailangan ng Pincode: 123)"
+                >
+                  <Trash2 className="w-4 h-4 text-rose-400 animate-pulse shrink-0" />
+                  <span>Format System (Burahin Lahat ng Data)</span>
+                </button>
               </div>
             </div>
           </div>
@@ -1122,6 +1176,130 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
           </div>
         </section>
       </div>
+
+      {/* ========================================================================= */}
+      {/* FORMAT SYSTEM MODAL (REQUIRES SECURITY PIN: 123)                          */}
+      {/* ========================================================================= */}
+      {isFormatModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-slate-950/90 backdrop-blur-xl animate-fadeIn">
+          <div className="relative w-full max-w-lg bg-slate-900 border-2 border-rose-500/80 rounded-2xl sm:rounded-3xl shadow-[0_25px_80px_rgba(0,0,0,0.9),0_0_50px_rgba(244,63,94,0.3)] overflow-hidden my-auto flex flex-col">
+            
+            {/* Modal Header */}
+            <div className="px-4 sm:px-6 py-3.5 sm:py-4 bg-rose-950/70 border-b border-rose-500/40 flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <div className="p-2 rounded-xl bg-rose-500/20 border border-rose-500/50 text-rose-400">
+                  <AlertTriangle className="w-5 h-5 text-rose-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black text-white uppercase tracking-wide">
+                    FORMAT SYSTEM DATA
+                  </h3>
+                  <p className="text-[10px] sm:text-xs font-mono text-rose-300">
+                    Permanenteng Pagbura ng Lahat ng Impormasyon
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsFormatModalOpen(false)}
+                disabled={isFormatLoading}
+                className="p-1 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Content & Warning */}
+            <form onSubmit={handleConfirmFormat} className="p-4 sm:p-6 space-y-4 text-left">
+              <div className="p-3 sm:p-4 rounded-xl bg-rose-950/40 border border-rose-500/40 text-rose-200 text-xs leading-relaxed space-y-2">
+                <p className="font-bold text-rose-300 flex items-center gap-1.5">
+                  <Trash2 className="w-4 h-4 shrink-0 text-rose-400" />
+                  <span>BABALA: Ang aksyong ito ay PERMANENTE at hindi na maaaring bawiin!</span>
+                </p>
+                <p className="text-[11px] text-slate-300">
+                  Mabubura nang sabay-sabay sa <strong>Firebase Cloud Database</strong> at sa <strong>Lokal na Memorya</strong> ang:
+                </p>
+                <ul className="list-disc list-inside text-[10.5px] text-slate-300 space-y-0.5 font-mono">
+                  <li>Lahat ng Accomplishment Attendance Records at Larawan</li>
+                  <li>Lahat ng Pending List Attendance (Offline Queue)</li>
+                  <li>Lahat ng Beneficiaries at Masterlist ng mga Kalahok</li>
+                  <li>Lahat ng Clean-up Activities, Programa, at Iskedyul</li>
+                  <li>Lahat ng Naka-assign na Lider at Kalahok</li>
+                  <li>Lahat ng Admin Event Broadcasts at QR Codes</li>
+                  <li>Lahat ng Anonymous Inbox Reports at Audit Logs</li>
+                </ul>
+              </div>
+
+              {/* PIN Code Input */}
+              <div className="space-y-2">
+                <label className="block text-xs font-mono font-bold text-slate-200 uppercase tracking-wide">
+                  Ilagay ang Pincode upang kumpirmahin:
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <KeyRound className="w-4 h-4 text-amber-400" />
+                  </div>
+                  <input
+                    type="text"
+                    value={formatPincode}
+                    onChange={(e) => {
+                      setFormatPincode(e.target.value);
+                      if (formatError) setFormatError(null);
+                    }}
+                    placeholder="Ilagay ang Pincode (123)"
+                    disabled={isFormatLoading}
+                    autoFocus
+                    className="w-full pl-10 pr-4 py-2.5 sm:py-3 rounded-xl bg-slate-950 border-2 border-rose-500/60 focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-500/40 text-white font-mono font-black text-base sm:text-lg tracking-widest placeholder:text-slate-600 placeholder:text-xs placeholder:font-normal placeholder:tracking-normal"
+                  />
+                </div>
+                <p className="text-[10px] font-mono text-slate-400">
+                  Pahiwatig: Ilagay ang security code na <strong className="text-amber-300 font-bold">123</strong> bago mabura ang lahat ng data.
+                </p>
+              </div>
+
+              {formatError && (
+                <div className="p-2.5 rounded-lg bg-rose-950/80 border border-rose-500/80 text-rose-300 text-xs font-mono font-bold flex items-center gap-2 animate-shake">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
+                  <span>{formatError}</span>
+                </div>
+              )}
+
+              {formatSuccessMessage && (
+                <div className="p-2.5 rounded-lg bg-emerald-950/80 border border-emerald-500/80 text-emerald-300 text-xs font-mono font-bold flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                  <span>{formatSuccessMessage}</span>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="pt-2 flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsFormatModalOpen(false)}
+                  disabled={isFormatLoading}
+                  className="w-full sm:w-1/2 py-2.5 sm:py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
+                >
+                  Kanselahin (Huwag Ituloy)
+                </button>
+                <button
+                  type="submit"
+                  disabled={isFormatLoading || !formatPincode.trim()}
+                  className="w-full sm:w-1/2 py-2.5 sm:py-3 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 disabled:opacity-50 text-white font-black text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(244,63,94,0.4)] flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
+                >
+                  {isFormatLoading ? (
+                    <span>Binubura ang data...</span>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      <span>Kumpirmahin at I-Format</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

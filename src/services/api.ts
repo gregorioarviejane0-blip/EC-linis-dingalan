@@ -1611,6 +1611,83 @@ export class ApiService {
     };
   }
 
+  // --- SYSTEM FORMAT: WIPE ALL DATA WITH SECURITY PIN 123 ---
+  async formatEntireSystem(pincode: string): Promise<{ success: boolean; message: string }> {
+    if (String(pincode).trim() !== '123') {
+      throw new Error('Maling Pincode! Ilagay ang 123 upang kumpirmahin ang pag-format.');
+    }
+
+    // 1. Trigger server format endpoint
+    try {
+      await fetch('/api/system/format', {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ pincode: '123' }),
+      });
+    } catch (e) {
+      console.warn('Server format warning:', e);
+    }
+
+    // 2. Wipe all collections from Firestore
+    const collectionsToClear = [
+      'attendances',
+      'beneficiaries',
+      'activities',
+      'assignments',
+      'broadcasts',
+      'anonymous_messages',
+      'auditLogs',
+    ];
+
+    for (const colName of collectionsToClear) {
+      try {
+        const snap = await getDocs(collection(db, colName));
+        const delPromises: Promise<void>[] = [];
+        snap.forEach((docSnap) => {
+          delPromises.push(deleteDoc(doc(db, colName, docSnap.id)));
+        });
+        if (delPromises.length > 0) {
+          await Promise.all(delPromises);
+        }
+      } catch (err) {
+        console.warn(`Firestore wipe error for ${colName}:`, err);
+      }
+    }
+
+    // 3. Clear all LocalStorage data caches and pending queues
+    localStorage.removeItem(LS_ATTENDANCES);
+    localStorage.removeItem(LS_BENEFICIARIES);
+    localStorage.removeItem('ld_activities_v1');
+    localStorage.removeItem('ld_assignments_v1');
+    localStorage.removeItem(LS_PENDING_ATTENDANCE_QUEUE);
+    localStorage.removeItem('ld_broadcasts_v1');
+    localStorage.removeItem('ld_anonymous_messages_v1');
+    localStorage.removeItem('ld_audit_logs_v1');
+    localStorage.removeItem('LD_LAST_REGISTERED_BENE');
+    localStorage.setItem(LS_ATTENDANCES, JSON.stringify([]));
+    localStorage.setItem(LS_BENEFICIARIES, JSON.stringify([]));
+    localStorage.setItem('ld_activities_v1', JSON.stringify([]));
+    localStorage.setItem('ld_assignments_v1', JSON.stringify([]));
+    localStorage.setItem(LS_PENDING_ATTENDANCE_QUEUE, JSON.stringify([]));
+    localStorage.setItem('ld_broadcasts_cleared', 'true');
+
+    // 4. Cross-tab/window Broadcast synchronization
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('ld_sync');
+        bc.postMessage({ type: 'SYSTEM_FORMATTED' });
+        bc.postMessage({ type: 'CLEAR_ATTENDANCES' });
+        bc.postMessage({ type: 'CLEAR_BROADCASTS' });
+        bc.close();
+      }
+    } catch {}
+
+    return {
+      success: true,
+      message: 'Matagumpay na na-format ang sistema! Permanenteng nabura ang lahat ng data.',
+    };
+  }
+
   // Automatic 1-Month (30 Days) Retention Purge
   async autoPruneMonthlyAttendances(): Promise<number> {
     const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
