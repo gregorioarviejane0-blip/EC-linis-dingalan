@@ -685,14 +685,14 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
         {/* ========================================================================= */}
         {/* BELOW THE FOLD: ASYMMETRIC BENTO GRID OF GLASS CARDS */}
         {/* ========================================================================= */}
-        <section id="bento-grid-section" className="pt-2 pb-8 hidden md:block">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-3">
+        <section id="bento-grid-section" className="pt-2 pb-8 block">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-6 sm:mb-8 gap-3">
             <div>
               <div className="flex items-center space-x-2 text-xs font-mono text-emerald-400 uppercase tracking-widest font-bold">
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>Modular Bento Architecture</span>
               </div>
-              <h2 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight mt-1">
+              <h2 className="text-xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight mt-1">
                 Field Operations & Geotag Telemetry Hub
               </h2>
             </div>
@@ -701,23 +701,43 @@ export const CinematicBentoHomepage: React.FC<CinematicBentoHomepageProps> = ({
             </p>
           </div>
 
-          {/* Asymmetric Bento Grid (4 core tiles) */}
+          {/* Grid Layout (Full width for Topographic GPS Radar) */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-5 items-stretch">
-            {/* --------------------------------------------------------------------- */}
-            {/* TILE 1: LARGE TILE (Span 7) - Camera HUD Crosshairs & Geotag Watermark */}
-            {/* --------------------------------------------------------------------- */}
-            <div className="hidden md:col-span-7 bg-slate-900/60 backdrop-blur-2xl border border-emerald-500/25 rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 shadow-[0_12px_40px_rgba(0,0,0,0.4)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.08)] flex flex-col justify-between relative overflow-hidden group">
-              {/* Subtle green ambient inner corner glow */}
-              <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 blur-2xl pointer-events-none" />
-
-              {/* Removed Component Content */}
-
-            </div>
-            
             {/* --------------------------------------------------------------------- */}
             {/* TILE 2: GOOGLE MAPS TOPOGRAPHIC GPS RADAR (OVERVIEW DISPLAY)          */}
             {/* --------------------------------------------------------------------- */}
             <div className="col-span-12 max-w-6xl mx-auto w-full bg-slate-900/90 backdrop-blur-2xl border border-cyan-500/35 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden relative">
+              {/* Header Bar */}
+              <div className="p-3 sm:p-5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-slate-950/70">
+                <div className="flex items-start sm:items-center space-x-3">
+                  <div className="p-2 sm:p-2.5 rounded-xl bg-cyan-500/15 border border-cyan-500/35 text-cyan-400 shrink-0">
+                    <Compass className="w-5 h-5 sm:w-6 sm:h-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base sm:text-xl font-black text-white tracking-tight">
+                        Google Maps Topographic GPS Radar
+                      </h3>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                        Dingalan, Aurora
+                      </span>
+                      <span className="text-[11px] font-mono text-slate-300">
+                        Satelayt ng Dingalan Bay, Paltic, Butas na Bato, Cabog, Ibona, at Umiray
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onNavigate('map')}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-black text-xs inline-flex items-center gap-1.5 shadow-lg transition-all cursor-pointer shrink-0"
+                >
+                  <Maximize2 className="w-3.5 h-3.5" />
+                  <span>Full Screen Page</span>
+                </button>
+              </div>
 
 
               {/* Body: 2-Column Layout (Map on Left + Sectors on Right) */}

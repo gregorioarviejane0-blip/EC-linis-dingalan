@@ -287,10 +287,14 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           )}
 
-
-
-
-          {/* Anonymous Messages Inbox Button */}
+          {/* Real-Time Cloud Live Sync Indicator */}
+          <div
+            className="flex items-center space-x-1 text-[8px] xs:text-[9px] sm:text-[9.5px] font-mono px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-950/70 border border-emerald-500/40 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.25)] select-none shrink-0"
+            title="Real-Time Cloud Live Sync: Awtomatikong nag-si-sync ang data sa lahat ng mobile at computer devices nang sabay-sabay"
+          >
+            <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+            <span className="font-extrabold tracking-tight">LIVE SYNC</span>
+          </div>
           {isAdminOrSuperAdmin && onOpenAnonymousInboxModal && (
             <motion.button
               whileHover={{ scale: 1.05, y: -1 }}

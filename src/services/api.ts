@@ -568,14 +568,29 @@ export class ApiService {
       const res = await fetch('/api/beneficiaries', { credentials: 'omit', headers: this.getAuthHeaders() });
       if (res.ok) {
         const data = await res.json();
-        return data.beneficiaries;
+        if (data.beneficiaries && data.beneficiaries.length > 0) {
+          localStorage.setItem(LS_BENEFICIARIES, JSON.stringify(data.beneficiaries));
+          return data.beneficiaries;
+        }
       }
     } catch {
       // offline fallback
     }
+
+    // Direct Firestore synchronization
+    try {
+      const snap = await getDocs(collection(db, 'beneficiaries'));
+      if (!snap.empty) {
+        const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as Beneficiary));
+        list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+        localStorage.setItem(LS_BENEFICIARIES, JSON.stringify(list));
+        return list;
+      }
+    } catch {}
+
     const raw = localStorage.getItem(LS_BENEFICIARIES);
     const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_BENEFICIARIES;
   }
 
   async createBeneficiary(beneData: Partial<Beneficiary>): Promise<Beneficiary> {
@@ -587,7 +602,11 @@ export class ApiService {
       });
       if (res.ok) {
         const data = await res.json();
-        return data.beneficiary;
+        const created = data.beneficiary;
+        try {
+          await setDoc(doc(db, 'beneficiaries', created.id), created, { merge: true });
+        } catch {}
+        return created;
       }
       const err = await res.json();
       throw new Error(err.error || 'Failed to register beneficiary');
@@ -625,11 +644,17 @@ export class ApiService {
       };
       list.unshift(newBene);
       localStorage.setItem(LS_BENEFICIARIES, JSON.stringify(list));
+      try {
+        await setDoc(doc(db, 'beneficiaries', newBene.id), newBene, { merge: true });
+      } catch {}
       return newBene;
     }
   }
 
   async deleteBeneficiary(id: string): Promise<boolean> {
+    try {
+      await deleteDoc(doc(db, 'beneficiaries', id));
+    } catch {}
     try {
       const res = await fetch(`/api/beneficiaries/${id}`, {
         method: 'DELETE',
@@ -662,6 +687,9 @@ export class ApiService {
           updatedList[idx] = data.beneficiary;
           localStorage.setItem(LS_BENEFICIARIES, JSON.stringify(updatedList));
         }
+        try {
+          await setDoc(doc(db, 'beneficiaries', id), data.beneficiary, { merge: true });
+        } catch {}
         return data.beneficiary;
       }
       const err = await res.json();
@@ -674,6 +702,9 @@ export class ApiService {
       const updated = { ...list[idx], ...beneficiaryData, updatedAt: new Date().toISOString() };
       list[idx] = updated;
       localStorage.setItem(LS_BENEFICIARIES, JSON.stringify(list));
+      try {
+        await setDoc(doc(db, 'beneficiaries', id), updated, { merge: true });
+      } catch {}
       return updated;
     }
   }

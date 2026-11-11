@@ -422,6 +422,99 @@ export default function App() {
     };
   }, []);
 
+  // Real-time synchronization #6: Firestore onSnapshot for Beneficiaries
+  useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+    try {
+      unsubscribe = onSnapshot(
+        collection(db, 'beneficiaries'),
+        (snapshot) => {
+          if (!snapshot.empty) {
+            const list: Beneficiary[] = [];
+            snapshot.forEach((docSnap) => {
+              list.push({ ...docSnap.data(), id: docSnap.id } as Beneficiary);
+            });
+            list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+            setBeneficiaries((prev) => {
+              if (prev.length > 0 && list.length > prev.length) {
+                const newest = list[0];
+                if (!prev.some((b) => b.id === newest.id)) {
+                  showToast(`Live Sync: Bagong Beneficiary nairehistro (${newest.firstName} ${newest.lastName})`, 'info');
+                }
+              }
+              return list;
+            });
+            localStorage.setItem('ld_beneficiaries_v1', JSON.stringify(list));
+          }
+        },
+        (error) => {
+          console.warn('Firestore onSnapshot beneficiaries warning:', error);
+        }
+      );
+    } catch (err) {
+      console.warn('Firestore beneficiaries subscription exception:', err);
+    }
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
+
+  // Real-time synchronization #7: Firestore onSnapshot for Activity Assignments
+  useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+    try {
+      unsubscribe = onSnapshot(
+        collection(db, 'assignments'),
+        (snapshot) => {
+          if (!snapshot.empty) {
+            const list: ActivityAssignment[] = [];
+            snapshot.forEach((docSnap) => {
+              list.push({ ...docSnap.data(), id: docSnap.id } as ActivityAssignment);
+            });
+            setAssignments(list);
+            localStorage.setItem('ld_assignments_v1', JSON.stringify(list));
+          }
+        },
+        (error) => {
+          console.warn('Firestore onSnapshot assignments warning:', error);
+        }
+      );
+    } catch (err) {
+      console.warn('Firestore assignments subscription exception:', err);
+    }
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
+
+  // Real-time synchronization #8: Firestore onSnapshot for Anonymous Messages
+  useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+    try {
+      unsubscribe = onSnapshot(
+        collection(db, 'anonymous_messages'),
+        (snapshot) => {
+          if (!snapshot.empty) {
+            const list: AnonymousMessage[] = [];
+            snapshot.forEach((docSnap) => {
+              list.push({ ...docSnap.data(), id: docSnap.id } as AnonymousMessage);
+            });
+            list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+            setAnonymousMessages(list);
+          }
+        },
+        (error) => {
+          console.warn('Firestore onSnapshot anonymous_messages warning:', error);
+        }
+      );
+    } catch (err) {
+      console.warn('Firestore anonymous_messages subscription exception:', err);
+    }
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
+
   const handleBroadcastSuccess = async (broadcast: EventQrBroadcast | null) => {
     if (!broadcast || !broadcast.id) {
       // Clear or reload from DB
