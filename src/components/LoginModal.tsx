@@ -652,19 +652,50 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
   // Dedicated active broadcast state, initialized synchronously from prop, localStorage, or seed fallback
   const [activeBroadcast, setActiveBroadcast] = useState<EventQrBroadcast | null>(() => {
-    if (typeof window !== 'undefined' && localStorage.getItem('ld_broadcasts_cleared') === 'true') {
-      return null;
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const urlActId = params.get('act_id');
+      const urlBrgy = params.get('brgy') || 'Paltic';
+      if (urlActId) {
+        localStorage.removeItem('ld_broadcasts_cleared');
+        const origin = window.location.origin;
+        return {
+          id: `bc-auto-${urlActId}`,
+          activityId: urlActId,
+          activityTitle: `Linis Dingalan Environmental Compliance Operation (${urlBrgy})`,
+          targetArea: 'Dingalan Feeder Port & Seawall Area',
+          barangay: urlBrgy,
+          qrPayload: `${origin}/?action=advisory&act_id=${urlActId}&brgy=${encodeURIComponent(urlBrgy)}`,
+          eventDate: new Date().toISOString().split('T')[0],
+          startTime: '06:00 AM',
+          estimatedEndTime: '11:59 PM',
+          totalHours: '4 na Oras',
+          requiredTools: 'Guwantes, sako ng basura, walis tingting, tongs',
+          waterTumblerReminder: 'Magdala ng sariling reusable tumbler na may inuming tubig.',
+          recommendedAttire: 'Linis Dingalan t-shirt o komportableng damit, bota/shoes, sumbrero',
+          additionalNotes: 'Opisyal na itinakdang gawain para sa Linis Dingalan Program. Mag-upload ng patunay na larawan bago matapos ang oras.',
+          sentAt: new Date().toISOString(),
+          sentByAdminName: 'MENRO Admin Officer (Operations Administrator)',
+          qrScheduleEnabled: true,
+          qrDisplayStartDate: new Date().toISOString().split('T')[0],
+          qrDisplayStartTime: '06:00',
+          qrDisplayEndDate: new Date().toISOString().split('T')[0],
+          qrDisplayEndTime: '23:59',
+          assignedPersonnel: [],
+        };
+      }
+      if (localStorage.getItem('ld_broadcasts_cleared') === 'true') {
+        return null;
+      }
     }
     if (propEventBroadcast && propEventBroadcast.id) {
-      if (checkIsBroadcastActive(propEventBroadcast)) return propEventBroadcast;
-      return null;
+      return propEventBroadcast;
     }
     if (typeof window !== 'undefined') {
       try {
         const direct = localStorage.getItem('ld_latest_event_broadcast');
         if (direct) {
-          const parsed = JSON.parse(direct);
-          if (checkIsBroadcastActive(parsed)) return parsed;
+          return JSON.parse(direct);
         }
       } catch {}
     }
@@ -684,14 +715,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   // Automatic Schedule & Program Button Mirroring Engine:
   // Shows the program advisory with live countdown to QR release & expiry
   useEffect(() => {
-    if (typeof window !== 'undefined' && localStorage.getItem('ld_broadcasts_cleared') === 'true') {
+    const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const urlActId = selectedScheduledActivityId || urlParams?.get('act_id');
+
+    if (urlActId && typeof window !== 'undefined') {
+      localStorage.removeItem('ld_broadcasts_cleared');
+    } else if (typeof window !== 'undefined' && localStorage.getItem('ld_broadcasts_cleared') === 'true') {
       setActiveBroadcast(null);
       return;
     }
 
-    // 1. If user clicked a specific program from the Program pills, show that selected program
-    if (selectedScheduledActivityId) {
-      const found = (allActivities || []).find((a) => a.id === selectedScheduledActivityId);
+    // 1. If an explicit act_id is specified in URL or selected by user from pills
+    if (urlActId) {
+      const found = (allActivities || []).find((a) => a.id === urlActId);
       if (found) {
         const candidate = convertActivityToBroadcast(found);
         setActiveBroadcast((prev) => {
@@ -701,9 +737,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             prev.startTime === candidate.startTime &&
             prev.estimatedEndTime === candidate.estimatedEndTime &&
             prev.eventDate === candidate.eventDate &&
-            prev.barangay === candidate.barangay &&
-            prev.qrDisplayStartTime === candidate.qrDisplayStartTime &&
-            prev.qrDisplayEndTime === candidate.qrDisplayEndTime
+            prev.barangay === candidate.barangay
           ) {
             return prev;
           }
@@ -711,10 +745,17 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         });
         return;
       }
+      if (propEventBroadcast && (propEventBroadcast.activityId === urlActId || propEventBroadcast.id === urlActId)) {
+        setActiveBroadcast(propEventBroadcast);
+        return;
+      }
+      if (activeBroadcast && activeBroadcast.activityId === urlActId) {
+        return;
+      }
     }
 
     // 2. Prioritize explicitly broadcasted event if active, keeping schedule in sync with latest activity updates
-    if (propEventBroadcast && propEventBroadcast.id && checkIsBroadcastActive(propEventBroadcast)) {
+    if (propEventBroadcast && propEventBroadcast.id) {
       const matchingAct = (allActivities || []).find(
         (a) => a.id === propEventBroadcast.activityId || (a.title && a.title.trim().toLowerCase() === (propEventBroadcast.activityTitle || '').trim().toLowerCase())
       );
@@ -735,8 +776,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           prev &&
           prev.id === effectiveBroadcast.id &&
           prev.startTime === effectiveBroadcast.startTime &&
-          prev.qrDisplayStartTime === effectiveBroadcast.qrDisplayStartTime &&
-          prev.qrDisplayEndTime === effectiveBroadcast.qrDisplayEndTime
+          prev.activityTitle === effectiveBroadcast.activityTitle
         ) {
           return prev;
         }
@@ -745,23 +785,17 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       return;
     }
 
-    // 3. Match scheduled/ongoing activities from programs list
+    // 3. Match scheduled/ongoing activities from programs list, or fallback to any program
     if (allActivities && allActivities.length > 0) {
-      const todayStr = new Date().toISOString().split('T')[0];
-      const validActs = scheduledActivities.filter(isActValidForAdvisory);
-      if (validActs.length > 0) {
-        const candidateAct = validActs.find((a) => a.date === todayStr) || validActs[0];
+      const candidateAct = allActivities.find((a) => a.status === 'scheduled' || a.status === 'ongoing') || allActivities[0];
+      if (candidateAct) {
         const candidate = convertActivityToBroadcast(candidateAct);
         setActiveBroadcast((prev) => {
           if (
             prev &&
             prev.activityId === candidate.activityId &&
             prev.startTime === candidate.startTime &&
-            prev.estimatedEndTime === candidate.estimatedEndTime &&
-            prev.eventDate === candidate.eventDate &&
-            prev.barangay === candidate.barangay &&
-            prev.qrDisplayStartTime === candidate.qrDisplayStartTime &&
-            prev.qrDisplayEndTime === candidate.qrDisplayEndTime
+            prev.eventDate === candidate.eventDate
           ) {
             return prev;
           }
@@ -776,11 +810,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       try {
         const stored = localStorage.getItem('ld_latest_event_broadcast');
         if (stored) {
-          const parsed = JSON.parse(stored);
-          if (checkIsBroadcastActive(parsed)) {
-            setActiveBroadcast(parsed);
-            return;
-          }
+          setActiveBroadcast(JSON.parse(stored));
+          return;
         }
       } catch {}
     }
@@ -788,7 +819,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     setActiveBroadcast(null);
   }, [allActivities, selectedScheduledActivityId, propEventBroadcast]);
 
-  const isBroadcastCleared = typeof window !== 'undefined' && localStorage.getItem('ld_broadcasts_cleared') === 'true';
+  const isBroadcastCleared = typeof window !== 'undefined' && localStorage.getItem('ld_broadcasts_cleared') === 'true' && !selectedScheduledActivityId && !(typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('act_id'));
   const eventBroadcast = isBroadcastCleared ? null : activeBroadcast;
 
   // Real-time QR Timing & Release State (Recalculates every second with device clock)

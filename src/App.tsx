@@ -73,6 +73,36 @@ export default function App() {
   const [latestEventBroadcast, setLatestEventBroadcast] = useState<EventQrBroadcast | null>(() => {
     if (typeof window !== 'undefined') {
       try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlActId = urlParams.get('act_id');
+        const urlBrgy = urlParams.get('brgy') || 'Paltic';
+        if (urlActId) {
+          const origin = window.location.origin;
+          return {
+            id: `bc-auto-${urlActId}`,
+            activityId: urlActId,
+            activityTitle: `Linis Dingalan Environmental Operation (${urlBrgy})`,
+            targetArea: 'Dingalan Feeder Port & Seawall Area',
+            barangay: urlBrgy,
+            qrPayload: `${origin}/?action=advisory&act_id=${urlActId}&brgy=${encodeURIComponent(urlBrgy)}`,
+            eventDate: new Date().toISOString().split('T')[0],
+            startTime: '06:00 AM',
+            estimatedEndTime: '11:59 PM',
+            totalHours: '4 na Oras',
+            requiredTools: 'Guwantes, sako ng basura, walis tingting, tongs',
+            waterTumblerReminder: 'Magdala ng sariling reusable tumbler na may inuming tubig.',
+            recommendedAttire: 'Linis Dingalan t-shirt o komportableng damit, bota/shoes, sumbrero',
+            additionalNotes: 'Opisyal na itinakdang gawain para sa Linis Dingalan Program.',
+            sentAt: new Date().toISOString(),
+            sentByAdminName: 'MENRO Admin Officer (Operations Administrator)',
+            qrScheduleEnabled: true,
+            qrDisplayStartDate: new Date().toISOString().split('T')[0],
+            qrDisplayStartTime: '06:00',
+            qrDisplayEndDate: new Date().toISOString().split('T')[0],
+            qrDisplayEndTime: '23:59',
+            assignedPersonnel: [],
+          };
+        }
         const direct = localStorage.getItem('ld_latest_event_broadcast');
         if (direct) return JSON.parse(direct);
         const raw = localStorage.getItem('ld_event_broadcasts_v1');
