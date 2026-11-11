@@ -33,7 +33,7 @@ interface UploadAccomplishmentModalProps {
   activity: Activity | null;
   eventBroadcast?: EventQrBroadcast | null;
   currentUser: User;
-  onSubmitAttendance: (payload: any) => Promise<{ success: boolean; attendance: AttendanceRecord }>;
+  onSubmitAttendance: (payload: any) => Promise<{ success: boolean; attendance: AttendanceRecord; isPendingOffline?: boolean; message?: string }>;
   onSuccessSubmitted?: (attendance: AttendanceRecord) => void;
 }
 
@@ -280,6 +280,11 @@ export const UploadAccomplishmentModal: React.FC<UploadAccomplishmentModalProps>
 
       const res = await onSubmitAttendance(payload);
       if (res.success && res.attendance) {
+        if (isDeviceOnline && !res.isPendingOffline) {
+          res.attendance.isOfflinePending = false;
+          res.attendance.uploadSource = 'online';
+          res.attendance.wasQueuedOffline = false;
+        }
         setSubmittedRecord(res.attendance);
         setIsSuccess(true);
         if (onSuccessSubmitted) {
